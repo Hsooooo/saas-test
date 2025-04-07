@@ -1,0 +1,10 @@
+FROM openjdk:17-slim
+
+EXPOSE 80
+
+WORKDIR /app
+
+# jar 파일 복사
+COPY ./build/libs/em-stock-rest-api.jar /app/
+
+ENTRYPOINT ["java", "-jar", "em-stock-rest-api.jar", "-Djava.net.preferIPv4Stack=true", "-Djava.net.preferIPv4Addresses=true"]

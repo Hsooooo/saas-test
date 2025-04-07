@@ -1,0 +1,71 @@
+jwt:
+  secret: ${jwt-secret}
+  access-token-expiration: ${jwt-access-seconds:1800}                  # accessToken 유효시간(초)
+  refresh-token-expiration: ${jwt-refresh-seconds:86400}               # refreshToken 유효시간(초)
+
+server:
+  version: 1.0.0
+  cors-list: ${cors-list}
+  port: 80
+  encrypt-key: ${enctype-key}           # 최대32자리(256bit/32byte)
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%c{0}.%method] : [%marker] %msg%n"
+  file:
+    path: /data/logs/em-stock-rest-api
+  logback:
+    rolling policy:
+      max-file-size: 50MB
+      max-history: 7
+  level:
+    root: info
+    org.hibernate.SQL: warn
+
+spring:
+  profiles:
+    include: aws
+    group:
+      dev: dev, aws
+      local: local, aws
+  datasource:
+    url: ${rds-url}
+    username: ${rds-user}
+    password: ${rds-pass}
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+    open-in-view: false
+  sql:
+    init:
+      schema-locations: classpath*:db/prod/schema.sql,
+                        classpath*:db/common/alter_table.sql
+      data-locations: classpath*:db/common/code.sql
+      mode: always
+
+hts:
+  scrap-host: ${hts-scrap-domain}
+  search-host: ${hts-search-domain}
+  front-end:
+    cert-join-url: ${cert-join-url}                                       # 회원가입 인증 URL
+    cert-password-url: ${cert-password-url}                               # 비밀번호 변경 URL
+webhook:
+  synology:
+    url: ${synology-hook-url}
+    api: ${synology-hook-api}
+    method: ${synology-hook-method}
+    version: ${synology-hook-version}
+    scrap:
+      token: ${synology-hook-scrap-token}
+    use: true
+debug:
+  mode: ${debug_mode}

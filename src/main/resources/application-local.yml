@@ -1,0 +1,61 @@
+jwt:
+  secret: emstockrestapi0624emstockrestapi0624emstockrestapi0624emstockrestapi0624emstockrestapi0624emstockrestapi0624
+  access-token-expiration: 1800                  # accessToken 유효시간(초) - 30분
+  refresh-token-expiration: 86400                # refreshToken 유효시간(초) - 24시간
+
+server:
+  cors-list: http://localhost:3000
+  port: 10321
+  encrypt-key: emstockaes256emstockaes256111111           # 최대32자리(256bit/32byte)
+
+logging:
+  level:
+    root: info
+    org.hibernate.SQL: warn
+
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:mariadb://localhost:3306/em_stock
+    username: admin
+    password: Illunex123!
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+    open-in-view: false
+  sql:
+    init:
+      schema-locations: classpath*:db/local/drop.sql,
+        classpath*:db/local/schema.sql,
+        classpath*:db/common/alter_table.sql
+      data-locations: classpath*:db/common/code.sql,
+        classpath*:db/local/data.sql
+      mode: always
+
+hts:
+  scrap-host: http://localhost:10321
+  search-host: http://localhost:10321
+  front-end:
+    cert-join-url: http://220.118.147.58:20022/auth/join?step=certification                           # 회원가입 인증 URL
+    cert-password-url: http://220.118.147.58:20022/auth/find-password?step=certification              # 비밀번호 변경 URL
+webhook:
+  synology:
+    url: https://illunex.synology.me:52582/webapi/entry.cgi
+    api: SYNO.Chat.External
+    method: SYNO.Chat.External
+    version: 2
+    scrap:
+      token: ""
+    use: false
+debug:
+  mode: true
