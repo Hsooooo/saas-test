@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.license.mapper.LicensePartnershipMapper">
+
+    <insert id="insertByLicensePartnership" parameterType="LicensePartnershipVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO license_partnership(
+           license_idx,
+           partnership_idx,
+           state_cd,
+           start_date,
+           end_date,
+           pause_date,
+           update_date,
+           create_date
+        ) VALUES (
+            #{licenseIdx},
+            #{partnershipIdx},
+            #{stateCd},
+            #{startDate},
+            #{endDate},
+            #{pauseDate},
+            now(),
+            now()
+        )
+    </insert>
+
+
+</mapper>

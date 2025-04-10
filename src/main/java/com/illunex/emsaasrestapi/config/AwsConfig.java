@@ -10,19 +10,19 @@ import software.amazon.awssdk.services.sesv2.SesV2Client;
 
 @Configuration
 public class AwsConfig {
-    @Value("${spring.cloud.aws.credentials.access-key}")
-    private String accessKey;
-    @Value("${spring.cloud.aws.credentials.secret-key}")
-    private String secretKey;
-    @Value("${spring.cloud.aws.region.static}")
-    private String region;
-
-    @Bean
-    public SesV2Client getSes2Client() {
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
-        return SesV2Client.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .region(Region.of(region))
-                .build();
-    }
+//    @Value("${spring.cloud.aws.credentials.access-key}")
+//    private String accessKey;
+//    @Value("${spring.cloud.aws.credentials.secret-key}")
+//    private String secretKey;
+//    @Value("${spring.cloud.aws.region.static}")
+//    private String region;
+//
+//    @Bean
+//    public SesV2Client getSes2Client() {
+//        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+//        return SesV2Client.builder()
+//                .credentialsProvider(StaticCredentialsProvider.create(credentials))
+//                .region(Region.of(region))
+//                .build();
+//    }
 }

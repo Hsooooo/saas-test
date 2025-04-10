@@ -30,7 +30,12 @@ public enum ErrorCode {
     MEMBER_EMAIL_CERTIFICATE_EXPIRE(306, "인증이 만료 되었습니다."),
     MEMBER_EMAIL_CERTIFICATE_INVALID(307, "인증이 유효 하지 않습니다."),
     MEMBER_NICKNAME_DUPLICATE(308, "중복된 닉네임이 있습니다."),
-    MEMBER_ALREADY_EMAIL_CERTIFICATE(309, "이미 인증이 완료된 계정입니다."),;
+    MEMBER_ALREADY_EMAIL_CERTIFICATE(309, "이미 인증이 완료된 계정입니다."),
+
+    /**
+     * 파트너쉽
+     */
+    PARTNERSHIP_DOMAIN_DUPLICATE(401, "중복되는 도메인입니다."),;
 
     @Getter
     private int status;

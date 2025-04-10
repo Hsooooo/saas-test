@@ -12,8 +12,10 @@ public class RequestMemberDTO {
     @Getter
     public static class Join {
         private String email;
-        private String nickname;
+        private String name;
         private String password;
+        private String partnershipName;
+        private String domain;
         List<MemberTermAgree> memberTermAgreeList;
     }
 

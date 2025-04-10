@@ -47,25 +47,42 @@ spring:
     open-in-view: false
   sql:
     init:
-      schema-locations: classpath*:db/prod/schema.sql,
-                        classpath*:db/common/alter_table.sql
-      data-locations: classpath*:db/common/code.sql
+#      schema-locations: classpath*:db/prod/schema.sql,
+#                        classpath*:db/common/alter_table.sql
+#      data-locations: classpath*:db/common/code.sql
       mode: always
+  data:
+    redis:
+      host: 220.118.147.58
+      port: 46379
 
-hts:
-  scrap-host: ${hts-scrap-domain}
-  search-host: ${hts-search-domain}
-  front-end:
-    cert-join-url: ${cert-join-url}                                       # 회원가입 인증 URL
-    cert-password-url: ${cert-password-url}                               # 비밀번호 변경 URL
-webhook:
-  synology:
-    url: ${synology-hook-url}
-    api: ${synology-hook-api}
-    method: ${synology-hook-method}
-    version: ${synology-hook-version}
-    scrap:
-      token: ${synology-hook-scrap-token}
-    use: true
-debug:
-  mode: ${debug_mode}
+mybatis:
+  configuration:
+    # 카멜케이스 변환
+    map-underscore-to-camel-case: true
+    # null 필드 누락 방지
+    call-setters-on-nulls: true
+    # 쿼리 날릴 때 파라미터에 null이 있을 때 오류 방지
+    jdbc-type-for-null: null
+  mapper-locations: classpath:/mapper/**/*.xml
+  #  config-location: classpath:/config/mybatis-config.xml
+  # alias annotation 사용하여 입력한 패키지경로 빼고 인식하는 옵션
+  type-aliases-package: com.illunex.emsaasrestapi
+
+#hts:
+#  scrap-host: ${hts-scrap-domain}
+#  search-host: ${hts-search-domain}
+#  front-end:
+#    cert-join-url: ${cert-join-url}                                       # 회원가입 인증 URL
+#    cert-password-url: ${cert-password-url}                               # 비밀번호 변경 URL
+#webhook:
+#  synology:
+#    url: ${synology-hook-url}
+#    api: ${synology-hook-api}
+#    method: ${synology-hook-method}
+#    version: ${synology-hook-version}
+#    scrap:
+#      token: ${synology-hook-scrap-token}
+#    use: true
+#debug:
+#  mode: ${debug_mode}

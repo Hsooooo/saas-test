@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper">
+
+    <select id="selectByDomain" resultType="PartnershipVO">
+        SELECT idx,
+               name,
+               domain,
+               image_url,
+               image_path,
+               comment,
+               update_date,
+               create_date
+          FROM partnership
+         WHERE domain = #{domain}
+    </select>
+
+    <insert id="insertByPartnerJoin" parameterType="PartnershipVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO partnership(
+            name,
+            domain,
+            image_url,
+            image_path,
+            comment,
+            update_date,
+            create_date
+        ) VALUES (
+            #{name},
+            #{domain},
+            #{imageUrl},
+            #{imagePath},
+            #{comment},
+            now(),
+            now()
+        )
+    </insert>
+</mapper>

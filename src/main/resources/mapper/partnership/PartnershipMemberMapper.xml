@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper">
+
+    <insert id="insertByPartnershipMemberJoin" parameterType="PartnershipMemberVO">
+        INSERT INTO partnership_member(
+            partnership_idx,
+            partnership_team_idx,
+            member_idx,
+            partnership_position_idx,
+            manager_cd,
+            state_cd,
+            profile_image_url,
+            profile_image_path,
+            disable_functions,
+            update_date,
+            create_date
+        ) VALUES (
+            #{partnershipIdx},
+            #{partnershipTeamIdx},
+            #{memberIdx},
+            #{partnershipPositionIdx},
+            #{managerCd},
+            #{stateCd},
+            #{profileImageUrl},
+            #{profileImagePath},
+            #{disableFunctions},
+            now(),
+            now()
+        )
+    </insert>
+</mapper>
