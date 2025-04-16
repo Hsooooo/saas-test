@@ -1,11 +1,11 @@
 jwt:
-  secret: emstockrestapi0624emstockrestapi0624emstockrestapi0624emstockrestapi0624emstockrestapi0624emstockrestapi0624
+  secret: emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308
   access-token-expiration: 1800                  # accessToken 유효시간(초) - 30분
   refresh-token-expiration: 86400                # refreshToken 유효시간(초) - 24시간
 
 server:
   cors-list: http://localhost:3000
-  port: 10321
+  port: 10350
   encrypt-key: emstockaes256emstockaes256111111           # 최대32자리(256bit/32byte)
 
 logging:
@@ -19,7 +19,7 @@ spring:
       on-profile: local
   datasource:
     url: jdbc:mariadb://localhost:3306/em_saas
-    username: root
+    username: admin
     password: Illunex123!
   servlet:
     multipart:
@@ -41,13 +41,16 @@ spring:
 #      data-locations: classpath*:db/common/code.sql,
 #        classpath*:db/local/data.sql
       mode: always
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      username: root
+      password: Illunex123!
+      database: em_saas
+      authentication-database: admin
+      auto-index-creation: true
 
-hts:
-  scrap-host: http://localhost:10321
-  search-host: http://localhost:10321
-  front-end:
-    cert-join-url: http://220.118.147.58:20022/auth/join?step=certification                           # 회원가입 인증 URL
-    cert-password-url: http://220.118.147.58:20022/auth/find-password?step=certification              # 비밀번호 변경 URL
 webhook:
   synology:
     url: https://illunex.synology.me:52582/webapi/entry.cgi

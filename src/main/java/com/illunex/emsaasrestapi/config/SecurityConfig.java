@@ -46,6 +46,7 @@ public class SecurityConfig {
                         .requestMatchers("/finance/**").permitAll()
                         .requestMatchers("/logo/**").permitAll()
                         .requestMatchers("/ai/**").permitAll()
+                        .requestMatchers("/project/**").permitAll()
                         .anyRequest()
                         .authenticated()
                 )

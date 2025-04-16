@@ -1,0 +1,24 @@
+package com.illunex.emsaasrestapi.project.document;
+
+import lombok.*;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Document(collection = "edge")
+public class Edge {
+    private String edgeType;
+    private String srcNodeType;
+    private String srcFieldName;
+    private String destNodeType;
+    private String destFieldName;
+    private String labelFieldName;
+    private String labelFieldType;
+    private String unit;
+    private String color;
+    private Boolean useDirection;
+    private Boolean weight;
+}
