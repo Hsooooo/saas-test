@@ -1,5 +1,5 @@
 #!/bin/bash
-APP_NAME="em-stock-rest-api"
+APP_NAME="em-saas-rest-api"
 
 # move to project folder
 #cd ~/back-end/${APP_NAME}
