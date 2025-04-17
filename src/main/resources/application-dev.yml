@@ -19,7 +19,7 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: jdbc:mariadb://127.0.0.1/em_saas
+    url: jdbc:mariadb://172.19.0.100:3306/em_saas
     username: root
     password: Illunex123!
   servlet:
