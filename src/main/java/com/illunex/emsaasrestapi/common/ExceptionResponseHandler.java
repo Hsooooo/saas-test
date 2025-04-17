@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 @Slf4j
-@RestControllerAdvice("com.illunex.emstockrestapi")
+@RestControllerAdvice("com.illunex.emsaasrestapi")
 public class ExceptionResponseHandler {
 
     @ResponseStatus(HttpStatus.OK)
@@ -22,7 +22,7 @@ public class ExceptionResponseHandler {
     public ResponseEntity<CustomResponse<?>> CustomException(CustomException e) {
         log.error(Utils.getLogMaker(Utils.eLogType.USER), e.getLocalizedMessage());
         Arrays.stream(e.getStackTrace())
-                .filter(stackTraceElement -> stackTraceElement.getClassName().startsWith("com.illunex.emstockrestapi"))
+                .filter(stackTraceElement -> stackTraceElement.getClassName().startsWith("com.illunex.emsaasrestapi"))
                 .forEach(stackTraceElement -> {
                     log.error(Utils.getLogMaker(Utils.eLogType.USER), String.format("%s.%s:%d", stackTraceElement.getClassName(), stackTraceElement.getMethodName(), stackTraceElement.getLineNumber()));
                 });
@@ -37,7 +37,7 @@ public class ExceptionResponseHandler {
     public ResponseEntity<CustomResponse<?>> MethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.error(Utils.getLogMaker(Utils.eLogType.USER), Objects.requireNonNull(e.getBindingResult().getFieldError()).getDefaultMessage());
         Arrays.stream(e.getStackTrace())
-                .filter(stackTraceElement -> stackTraceElement.getClassName().startsWith("com.illunex.emstockrestapi"))
+                .filter(stackTraceElement -> stackTraceElement.getClassName().startsWith("com.illunex.emsaasrestapi"))
                 .forEach(stackTraceElement -> {
                     log.error(Utils.getLogMaker(Utils.eLogType.USER), String.format("%s.%s:%d", stackTraceElement.getClassName(), stackTraceElement.getMethodName(), stackTraceElement.getLineNumber()));
                 });
@@ -50,9 +50,10 @@ public class ExceptionResponseHandler {
 
     @ExceptionHandler({AccessDeniedException.class, AuthenticationException.class})
     public ResponseEntity<CustomResponse<?>> AccessDeniedException(Exception e) {
+        log.error("Access Denied: {}", e.getMessage(), e);
         log.error(Utils.getLogMaker(Utils.eLogType.USER), e.getLocalizedMessage());
         Arrays.stream(e.getStackTrace())
-                .filter(stackTraceElement -> stackTraceElement.getClassName().startsWith("com.illunex.emstockrestapi"))
+                .filter(stackTraceElement -> stackTraceElement.getClassName().startsWith("com.illunex.emsaasrestapi"))
                 .forEach(stackTraceElement -> {
                     log.error(Utils.getLogMaker(Utils.eLogType.USER), String.format("%s.%s:%d", stackTraceElement.getClassName(), stackTraceElement.getMethodName(), stackTraceElement.getLineNumber()));
                 });
@@ -67,7 +68,7 @@ public class ExceptionResponseHandler {
     public ResponseEntity<CustomResponse<?>> Exception(Exception e) {
         log.error(Utils.getLogMaker(Utils.eLogType.USER), e.getLocalizedMessage());
         Arrays.stream(e.getStackTrace())
-                .filter(stackTraceElement -> stackTraceElement.getClassName().startsWith("com.illunex.emstockrestapi"))
+                .filter(stackTraceElement -> stackTraceElement.getClassName().startsWith("com.illunex.emsaasrestapi"))
                 .forEach(stackTraceElement -> {
                     log.error(Utils.getLogMaker(Utils.eLogType.USER), String.format("%s.%s:%d", stackTraceElement.getClassName(), stackTraceElement.getMethodName(), stackTraceElement.getLineNumber()));
                 });

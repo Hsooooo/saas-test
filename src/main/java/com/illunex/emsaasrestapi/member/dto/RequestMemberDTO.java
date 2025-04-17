@@ -1,6 +1,8 @@
 package com.illunex.emsaasrestapi.member.dto;
 
 
+import com.illunex.emsaasrestapi.partnership.dto.PartnershipCreateDTO;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
 import java.util.List;
@@ -14,8 +16,8 @@ public class RequestMemberDTO {
         private String email;
         private String name;
         private String password;
-        private String partnershipName;
-        private String domain;
+        @NotNull
+        private PartnershipCreateDTO partnership;
         List<MemberTermAgree> memberTermAgreeList;
     }
 

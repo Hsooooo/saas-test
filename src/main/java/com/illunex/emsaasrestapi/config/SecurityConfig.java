@@ -1,5 +1,7 @@
 package com.illunex.emsaasrestapi.config;
 
+import com.illunex.emsaasrestapi.common.jwt.JwtAccesDeniedHandler;
+import com.illunex.emsaasrestapi.common.jwt.JwtAuthenticationEntryPoint;
 import com.illunex.emsaasrestapi.common.jwt.JwtFilter;
 import com.illunex.emsaasrestapi.common.jwt.TokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,8 @@ public class SecurityConfig {
 
     public static final String MEMBER = "MEMBER";
     private final TokenProvider tokenProvider;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccesDeniedHandler jwtAccesDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -46,10 +50,15 @@ public class SecurityConfig {
                         .requestMatchers("/finance/**").permitAll()
                         .requestMatchers("/logo/**").permitAll()
                         .requestMatchers("/ai/**").permitAll()
+                        .requestMatchers("/project/**").permitAll()
                         .anyRequest()
                         .authenticated()
                 )
                 .sessionManagement(configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccesDeniedHandler)
+                )
                 .addFilterBefore(new JwtFilter(tokenProvider), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

@@ -17,6 +17,7 @@ import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
 import com.illunex.emsaasrestapi.member.vo.MemberLoginHistoryVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.partnership.PartnershipService;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
@@ -49,11 +50,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Service
 public class MemberService {
-    // 회원가입 - 프로필 이미지 업로드 필요, klat 유저 생성 연동
-    // 인증코드 확인
-    // 로그인 - klat 로그인 연동
-    // 회원정보 수정 - klat 사용자 정보 업데이트 연동
-    // 회원탈퇴 - klat 사용자 삭제 연동
+    private final PartnershipService partnershipService;
 
 //    private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
@@ -173,11 +170,6 @@ public class MemberService {
             throw new CustomException(ErrorCode.MEMBER_ALREADY_EXISTS);
         }
 
-        //파트너쉽 도메인 중복체크
-        if(partnershipMapper.selectByDomain(joinData.getDomain()).isPresent()) {
-            throw new CustomException(ErrorCode.PARTNERSHIP_DOMAIN_DUPLICATE);
-        }
-
         // 약관 체크 TODO
 //        List<MemberTerm> memberTermList = memberTermRepository.findAllByActiveTrue();
 //        for (MemberTerm memberTerm : memberTermList) {
@@ -196,32 +188,10 @@ public class MemberService {
         member.setPassword(passwordEncoder.encode(member.getPassword()));
 
         //회원정보 생성
-        Integer memberIdx = memberJoinMapper.insertByMemberJoin(member);
+        memberJoinMapper.insertByMemberJoin(member);
 
-        //파트너쉽 정보 등록
-        PartnershipVO partnership = new PartnershipVO();
-        partnership.setName(joinData.getPartnershipName());
-        partnership.setDomain(joinData.getDomain());
-
-        Integer partnershipIdx = partnershipMapper.insertByPartnerJoin(partnership);
-
-
-        //파트너쉽회원정보 등록
-        PartnershipMemberVO partnershipMember = new PartnershipMemberVO();
-        partnershipMember.setMemberIdx(member.getIdx());
-        partnershipMember.setPartnershipIdx(partnership.getIdx());
-        partnershipMember.setManagerCd("PST0001");
-        partnershipMember.setStateCd("PMS0001");
-
-        partnershipMemberMapper.insertByPartnershipMemberJoin(partnershipMember);
-
-
-
-        //파트너십 기본 라이센스 등록
-        LicensePartnershipVO licensePartnershipVO = new LicensePartnershipVO();
-        licensePartnershipVO.setPartnershipIdx(partnership.getIdx());
-        licensePartnershipVO.setLicenseIdx(1); // 기본 라이센스 ?
-        licensePartnershipVO.setStateCd("LST0001");
+        //파트너십 생성
+        partnershipService.createPartnership(joinData.getPartnership(), member.getIdx());
 
         // 약관 동의 저장
 //        List<MemberTermAgree> memberMemberTermAgreeList = new ArrayList<>();
@@ -343,22 +313,6 @@ public class MemberService {
                 .build();
     }
 
-    /**
-     * 회원정보 조회
-     * @return
-     * @throws CustomException
-     */
-    public CustomResponse<?> getMember() throws CustomException {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//        Member member = memberRepository.findByEmail(auth.getName()).
-//                orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMPTY_ACCOUNT));
-//
-//        ResponseMemberDTO.Member response = modelMapper.map(member, ResponseMemberDTO.Member.class);
-
-        return CustomResponse.builder()
-                .data(null)
-                .build();
-    }
 
     /**
      * 회원정보 수정
@@ -544,5 +498,10 @@ public class MemberService {
 
         return CustomResponse.builder()
                 .build();
+    }
+
+    public MemberVO findByEmail(String email) throws CustomException {
+        return memberMapper.selectByEmail(email)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
     }
 }

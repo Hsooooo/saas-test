@@ -193,47 +193,55 @@ public class EnumCode {
 //
 //    // 회원
     public static class Member {
+        @Getter
         @AllArgsConstructor
-        public enum TypeCd {
+        public enum TypeCd implements BaseCodeEnum {
             Normal("MTP0001", "일반회원");
 
-            @Getter
-            private String code;
-            @Getter
-            private String value;
-
-            public static Member.TypeCd codeToEnum(String stringCode) {
-                for (Member.TypeCd value : values()) {
-                    if (value.code.equals(stringCode)) {
-                        return value;
-                    }
-                }
-                return null;
-            }
+            private final String code;
+            private final String value;
         }
 //
+        @Getter
         @AllArgsConstructor
-        public enum StateCd {
+        public enum StateCd implements BaseCodeEnum {
             Wait("MST0001", "인증대기"),
             Approval("MST0002", "인증완료"),
             Suspend("MST0003", "정지"),
             Withdrawal("MST0004", "탈퇴");
 
-            @Getter
-            private String code;
-            @Getter
-            private String value;
-
-            public static Member.StateCd codeToEnum(String stringCode) {
-                for (Member.StateCd value : values()) {
-                    if (value.code.equals(stringCode)) {
-                        return value;
-                    }
-                }
-                return null;
-            }
+            private final String code;
+            private final String value;
         }
     }
+
+    // 파트너쉽
+    public static class Partnership {
+        @Getter
+        @AllArgsConstructor
+        public enum ManagerCd implements BaseCodeEnum {
+            Manager("PST0001", "관리자"),
+            Normal("PST0002", "일반");
+
+            private final String code;
+            private final String value;
+
+        }
+        //
+        @Getter
+        @AllArgsConstructor
+        public enum StateCd implements BaseCodeEnum {
+            Normal("PMS0001", "정상"),
+            Stop("PMS0002", "정지"),
+            Delete("PMS0003", "삭제"),
+            Wait("PMS0004", "대기");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+
 //
 //    // 이메일
 //    public static class Email {

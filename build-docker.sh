@@ -1,14 +1,14 @@
 #!/bin/bash
 # shellcheck disable=SC2154
 # shellcheck disable=SC1091
-APP_NAME="em-stock-rest-api"
+APP_NAME="em-saas-rest-api"
 APP_NAME_OLD="${APP_NAME}-old"
 ACTIVE="dev"
-PORT="10321"
+PORT="10350"
 NETWORK="database-network"
 source ./yaml.sh
-source ../documents/em-stock-rest-api/em-stock-key
-source ../documents/em-stock-rest-api/em-stock-environments
+source ../documents/em-saas-rest-api/em-stock-key
+source ../documents/em-saas-rest-api/em-stock-environments
 
 # 시놀로지 웹훅 배포 시작 알림
 curl -X POST 'https://illunex.synology.me:52582/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token='${SYNOLOGY_HOOK_TOKEN} \
@@ -65,10 +65,6 @@ docker run -d -p ${PORT}:${PORT} \
     -e "spring.datasource.password=${RDS_PASS}" \
     -e "server.cors-list=${CORS_LIST}" \
     -e "server.encrypt-key=${AES_ENCRYPT_KEY}" \
-    -e "hts.scrap-host=${HTS_SCRAP_DOMAIN}" \
-    -e "hts.search-host=${HTS_SEARCH_DOMAIN}" \
-    -e "hts.front-end.cert-join-url=${HTS_FRONT_END_CERT_JOIN_URL}" \
-    -e "hts.front-end.cert-password-url=${HTS_FRONT_END_CERT_PASSWORD_URL}" \
     -e "webhook.synology.url=${SYNOLOGY_HOOK_URL}" \
     -e "webhook.synology.api=${SYNOLOGY_HOOK_API}" \
     -e "webhook.synology.method=${SYNOLOGY_HOOK_METHOD}" \

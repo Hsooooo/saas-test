@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.common;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+@Getter
 @AllArgsConstructor
 public enum ErrorCode {
 
@@ -35,10 +36,11 @@ public enum ErrorCode {
     /**
      * 파트너쉽
      */
-    PARTNERSHIP_DOMAIN_DUPLICATE(401, "중복되는 도메인입니다."),;
+    PARTNERSHIP_DOMAIN_DUPLICATE(401, "중복되는 도메인입니다."),
+    PARTNERSHIP_INVALID_MEMBER(402, "유효한 파트너쉽 회원이 아닙니다."),
+    PARTNERSHIP_MEMBER_DUPLICATE_EMAIL(403, "동일한 이메일로 초대된 회원이 있습니다."),
+    ;
 
-    @Getter
-    private int status;
-    @Getter
-    private String message;
+    private final int status;
+    private final String message;
 }

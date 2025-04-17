@@ -6,7 +6,7 @@ jwt:
 server:
   version: 1.0.0
   cors-list: ${cors-list}
-  port: 10321
+  port: 10350
   encrypt-key: ${enctype-key}           # 최대32자리(256bit/32byte)
 
 logging:
@@ -41,12 +41,6 @@ spring:
       data-locations: classpath*:db/common/code.sql
       mode: always
 
-hts:
-  scrap-host: ${hts-scrap-domain}
-  search-host: ${hts-search-domain}
-  front-end:
-    cert-join-url: ${cert-join-url}                                       # 회원가입 인증 URL
-    cert-password-url: ${cert-password-url}                               # 비밀번호 변경 URL
 webhook:
   synology:
     url: ${synology-hook-url}
