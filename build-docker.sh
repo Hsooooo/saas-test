@@ -60,9 +60,6 @@ echo "---------- [Deploy Step - 8] : Run New Docker Container"
 docker run -d -p ${PORT}:${PORT} \
     -v /etc/localtime:/etc/localtime:ro -e TZ=Asia/Seoul \
     -e "spring.profiles.active=${ACTIVE}" \
-    -e "spring.datasource.url=${RDS_URL}" \
-    -e "spring.datasource.username=${RDS_USER}" \
-    -e "spring.datasource.password=${RDS_PASS}" \
     -e "server.cors-list=${CORS_LIST}" \
     -e "server.encrypt-key=${AES_ENCRYPT_KEY}" \
     -e "webhook.synology.url=${SYNOLOGY_HOOK_URL}" \
