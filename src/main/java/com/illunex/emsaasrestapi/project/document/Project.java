@@ -20,5 +20,6 @@ public class Project {
     private List<Node> nodeList;
     private List<Edge> edgeList;
     private List<NodeSize> nodeSizeList;
+    private List<Filter> filterList;
     private List<Property> propertyList;
 }

@@ -72,7 +72,20 @@ public class ResponseProjectDTO {
     }
 
     /**
-     * 노드 사이즈 아이템 정보
+     * 필터 정보
+     */
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Filter {
+        private String categoryName;
+        private List<Item> itemList;
+    }
+
+    /**
+     * 노드 사이즈 & 필터 아이템 정보
      */
     @Getter
     @Setter
@@ -85,7 +98,7 @@ public class ResponseProjectDTO {
     }
 
     /**
-     * 노드 사이즈 아이템 범례 정보
+     * 노드 사이즈 & 필터 아이템 범례 정보
      */
     @Getter
     @Setter
