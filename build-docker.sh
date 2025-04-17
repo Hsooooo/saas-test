@@ -1,19 +1,19 @@
 #!/bin/bash
 # shellcheck disable=SC2154
 # shellcheck disable=SC1091
-APP_NAME="em-stock-rest-api"
+APP_NAME="em-saas-rest-api"
 APP_NAME_OLD="${APP_NAME}-old"
 ACTIVE="dev"
-PORT="10321"
+PORT="10350"
 NETWORK="database-network"
 source ./yaml.sh
-source ../documents/em-stock-rest-api/em-stock-key
-source ../documents/em-stock-rest-api/em-stock-environments
+source ../documents/em-saas-rest-api/em-saas-key
+source ../documents/em-saas-rest-api/em-saas-environments
 
 # 시놀로지 웹훅 배포 시작 알림
 curl -X POST 'https://illunex.synology.me:52582/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token='${SYNOLOGY_HOOK_TOKEN} \
 -H 'Content-Type: application/x-www-form-urlencoded' \
--d 'payload={"text":"@channel [EM-STOCK] ('${APP_NAME}') 배포 시작"}'
+-d 'payload={"text":"@channel [EM-SAAS] ('${APP_NAME}') 배포 시작"}'
 
 # Execute
 create_variables ./src/main/resources/application-dev.yml
@@ -60,15 +60,8 @@ echo "---------- [Deploy Step - 8] : Run New Docker Container"
 docker run -d -p ${PORT}:${PORT} \
     -v /etc/localtime:/etc/localtime:ro -e TZ=Asia/Seoul \
     -e "spring.profiles.active=${ACTIVE}" \
-    -e "spring.datasource.url=${RDS_URL}" \
-    -e "spring.datasource.username=${RDS_USER}" \
-    -e "spring.datasource.password=${RDS_PASS}" \
     -e "server.cors-list=${CORS_LIST}" \
     -e "server.encrypt-key=${AES_ENCRYPT_KEY}" \
-    -e "hts.scrap-host=${HTS_SCRAP_DOMAIN}" \
-    -e "hts.search-host=${HTS_SEARCH_DOMAIN}" \
-    -e "hts.front-end.cert-join-url=${HTS_FRONT_END_CERT_JOIN_URL}" \
-    -e "hts.front-end.cert-password-url=${HTS_FRONT_END_CERT_PASSWORD_URL}" \
     -e "webhook.synology.url=${SYNOLOGY_HOOK_URL}" \
     -e "webhook.synology.api=${SYNOLOGY_HOOK_API}" \
     -e "webhook.synology.method=${SYNOLOGY_HOOK_METHOD}" \
@@ -91,7 +84,7 @@ docker run -d -p ${PORT}:${PORT} \
 # 시놀로지 웹훅 배포 완료 알림
 curl -X POST 'https://illunex.synology.me:52582/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token='${SYNOLOGY_HOOK_TOKEN} \
 -H 'Content-Type: application/x-www-form-urlencoded' \
--d 'payload={"text":"@channel [EM-STOCK] ('${APP_NAME}') 배포 완료"}'
+-d 'payload={"text":"@channel [EM-SAAS] ('${APP_NAME}') 배포 완료"}'
 
 # docker logs show
 docker logs -f ${APP_NAME}

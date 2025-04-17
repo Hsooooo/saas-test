@@ -41,8 +41,8 @@ public class TokenProvider {
                          @Value("${jwt.refresh-token-expiration:86400}") int refreshExpireSeconds) {
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(Objects.requireNonNull(secretKey, "`jwt.secret` must be required")));
         this.jwtParser = Jwts.parserBuilder().setSigningKey(key).build();
-        this.accessExpireSeconds = 1000 * accessExpireSeconds;
-        this.refreshExpireSeconds = 1000 * refreshExpireSeconds;
+        this.accessExpireSeconds = accessExpireSeconds;
+        this.refreshExpireSeconds = refreshExpireSeconds;
     }
 
     // 엑세스 토큰 생성
@@ -56,7 +56,7 @@ public class TokenProvider {
                 .claim(AUTHORITIES_KEY, authorities)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + accessExpireSeconds))
+                .setExpiration(new Date(System.currentTimeMillis() + accessExpireSeconds * 1000))
                 .compact();
     }
 
@@ -71,7 +71,7 @@ public class TokenProvider {
                 .claim(AUTHORITIES_KEY, authorities)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + refreshExpireSeconds))
+                .setExpiration(new Date(System.currentTimeMillis() + refreshExpireSeconds * 1000))
                 .compact();
     }
 

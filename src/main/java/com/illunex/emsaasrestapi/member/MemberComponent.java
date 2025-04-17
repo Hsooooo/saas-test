@@ -2,11 +2,14 @@ package com.illunex.emsaasrestapi.member;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
+
+import static com.illunex.emsaasrestapi.common.code.EnumCode.Member.StateCd.*;
 
 @Component
 public class MemberComponent {
@@ -17,7 +20,7 @@ public class MemberComponent {
      * @throws CustomException
      */
     public void checkMemberState(String stateCd) throws CustomException {
-        switch(Objects.requireNonNull(EnumCode.Member.StateCd.codeToEnum(stateCd))) {
+        switch(Objects.requireNonNull(BaseCodeEnum.fromCode(EnumCode.Member.StateCd.class, stateCd))) {
             // 미인증
             case Wait -> throw new CustomException(ErrorCode.MEMBER_STATE_WAIT);
             // 정지

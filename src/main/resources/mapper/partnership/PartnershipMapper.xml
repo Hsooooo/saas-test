@@ -37,4 +37,20 @@
             now()
         )
     </insert>
+
+    <select id="selectByMember" resultType="PartnershipVO">
+        SELECT p.idx,
+               p.name,
+               p.domain,
+               p.image_url,
+               p.image_path,
+               p.comment,
+               p.update_date,
+               p.create_date
+          FROM partnership p
+          JOIN partnership_member pm ON p.idx = pm.partnership_idx
+         WHERE pm.member_idx = #{memberIdx}
+    </select>
+
+
 </mapper>

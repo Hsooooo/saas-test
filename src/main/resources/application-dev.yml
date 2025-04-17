@@ -6,7 +6,7 @@ jwt:
 server:
   version: 1.0.0
   cors-list: ${cors-list}
-  port: 10321
+  port: 10350
   encrypt-key: ${enctype-key}           # 최대32자리(256bit/32byte)
 
 logging:
@@ -19,9 +19,9 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: ${rds-url}
-    username: ${rds-user}
-    password: ${rds-pass}
+    url: jdbc:mariadb://172.19.0.100:3306/em_saas
+    username: root
+    password: Illunex123!
   servlet:
     multipart:
       max-file-size: 20MB
@@ -36,17 +36,11 @@ spring:
     open-in-view: false
   sql:
     init:
-      schema-locations: classpath*:db/dev/schema.sql,
-        classpath*:db/common/alter_table.sql
-      data-locations: classpath*:db/common/code.sql
+      schema-locations: classpath*:db/dev/schema.sql
+        # classpath*:db/common/alter_table.sql
+      # data-locations: classpath*:db/common/code.sql
       mode: always
 
-hts:
-  scrap-host: ${hts-scrap-domain}
-  search-host: ${hts-search-domain}
-  front-end:
-    cert-join-url: ${cert-join-url}                                       # 회원가입 인증 URL
-    cert-password-url: ${cert-password-url}                               # 비밀번호 변경 URL
 webhook:
   synology:
     url: ${synology-hook-url}
