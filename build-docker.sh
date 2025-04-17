@@ -7,13 +7,13 @@ ACTIVE="dev"
 PORT="10350"
 NETWORK="database-network"
 source ./yaml.sh
-source ../documents/em-saas-rest-api/em-stock-key
-source ../documents/em-saas-rest-api/em-stock-environments
+source ../documents/em-saas-rest-api/em-saas-key
+source ../documents/em-saas-rest-api/em-saas-environments
 
 # 시놀로지 웹훅 배포 시작 알림
 curl -X POST 'https://illunex.synology.me:52582/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token='${SYNOLOGY_HOOK_TOKEN} \
 -H 'Content-Type: application/x-www-form-urlencoded' \
--d 'payload={"text":"@channel [EM-STOCK] ('${APP_NAME}') 배포 시작"}'
+-d 'payload={"text":"@channel [EM-SAAS] ('${APP_NAME}') 배포 시작"}'
 
 # Execute
 create_variables ./src/main/resources/application-dev.yml
@@ -87,7 +87,7 @@ docker run -d -p ${PORT}:${PORT} \
 # 시놀로지 웹훅 배포 완료 알림
 curl -X POST 'https://illunex.synology.me:52582/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token='${SYNOLOGY_HOOK_TOKEN} \
 -H 'Content-Type: application/x-www-form-urlencoded' \
--d 'payload={"text":"@channel [EM-STOCK] ('${APP_NAME}') 배포 완료"}'
+-d 'payload={"text":"@channel [EM-SAAS] ('${APP_NAME}') 배포 완료"}'
 
 # docker logs show
 docker logs -f ${APP_NAME}
