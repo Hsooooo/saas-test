@@ -78,5 +78,5 @@ test {
 
 springBoot {
     buildInfo()
-    mainClass = "com.illunex.emsaasrestapi.EmSaasResApiApplication"
+    mainClass = "com.illunex.emsaasrestapi.EmSaasRestApiApplication"
 }
