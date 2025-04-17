@@ -1,99 +1,114 @@
 package com.illunex.emsaasrestapi.project;
 
+import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
-import com.illunex.emsaasrestapi.common.Utils;
-import com.illunex.emsaasrestapi.project.document.Edge;
-import com.illunex.emsaasrestapi.project.document.Node;
+import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.project.document.Project;
 import com.illunex.emsaasrestapi.project.document.ProjectId;
-import com.mongodb.client.result.DeleteResult;
+import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
+import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.modelmapper.ModelMapper;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-
 @Slf4j
 @RequiredArgsConstructor
 @Service
 public class ProjectService {
+
     private final MongoTemplate mongoTemplate;
+    private final ModelMapper modelMapper;
 
-    public CustomResponse<?> testMongoDB() {
+    /**
+     * 프로젝트 생성
+     * @param project
+     * @return
+     */
+    public CustomResponse<?> createProject(RequestProjectDTO.Project project) throws CustomException {
 //        mongoTemplate.find(Query.query(Criteria.where("idx").is(1)), RequestProjectDTO.Project.class);
-        Project findProject = mongoTemplate.findById(ProjectId.builder()
-                        .projectIdx(1L)
-                        .partnershipIdx(1L)
-                        .build(),
-                Project.class);
-        DeleteResult deleteResult = null;
-        if(findProject != null) {
-             deleteResult = mongoTemplate.remove(findProject);
-            log.info(Utils.getLogMaker(Utils.eLogType.USER), "delete count : " + deleteResult.getDeletedCount());
+
+        // Document 맵핑
+        Project mappingProject = modelMapper.map(project, Project.class);
+
+        mongoTemplate.insert(mappingProject);
+
+//        List<Project> result = mongoTemplate.find(Query.query(Criteria.where("nodeList").elemMatch(Criteria.where("nodeType").is("Company"))), Project.class);
+
+        Project result = mongoTemplate.findOne(Query.query(Criteria.where("projectId").is(project.getProjectId())), Project.class);
+
+        if(result == null) {
+            throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
         }
-        // 프로젝트 생성
-        Project project = Project.builder()
-                .projectId(ProjectId.builder()
-                        .projectIdx(1L)
-                        .partnershipIdx(1L)
-                        .build())
-                .nodeList(new ArrayList<>())
-                .edgeList(new ArrayList<>())
-                .build();
-        // 노드 생성
-        Node node1 = Node.builder()
-                .nodeType("Company")
-                .fieldName("CompanyName")
-                .fieldType("String")
-                .build();
-        Node node2 = Node.builder()
-                .nodeType("Company")
-                .fieldName("CompanyName")
-                .fieldType("String")
-                .build();
-        // 노드 추가
-        project.getNodeList().add(node1);
-        project.getNodeList().add(node2);
 
-        // 엣지 생성
-        Edge edge1 = Edge.builder()
-                .edgeType("CompanyLink")
-                .srcNodeType("Company")
-                .srcFieldName("cpIdx_1")
-                .destNodeType("Company")
-                .destFieldName("cpIdx_2")
-                .labelFieldName("buy")
-                .labelFieldType("Integer")
-                .unit("$")
-                .color("FF0000")
-                .useDirection(true)
-                .weight(false)
+        return CustomResponse.builder()
+                .data(modelMapper.map(result, ResponseProjectDTO.Project.class))
                 .build();
-        Edge edge2 = Edge.builder()
-                .edgeType("CompanyLink")
-                .srcNodeType("Company")
-                .srcFieldName("cpIdx_2")
-                .destNodeType("Company")
-                .destFieldName("cpIdx_1")
-                .labelFieldName("sell")
-                .labelFieldType("Integer")
-                .unit("$")
-                .color("FF0000")
-                .useDirection(true)
-                .weight(false)
+    }
+
+    /**
+     * 프로젝트 삭제
+     * @param projectId
+     * @return
+     */
+    public CustomResponse<?> deleteProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
+        // 프로젝트 조회
+        Project findProject = mongoTemplate.findById(projectId, Project.class);
+        if(findProject == null) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
+
+        return CustomResponse.builder()
+                .data(mongoTemplate.remove(findProject))
                 .build();
-        // 엣지 추가
-        project.getEdgeList().add(edge1);
-        project.getEdgeList().add(edge2);
+    }
 
-        mongoTemplate.insert(project);
+    /**
+     * 프로젝트 조회
+     * @param projectIdx
+     * @param partnershipIdx
+     * @return
+     */
+    public CustomResponse<?> getProject(Integer projectIdx, Integer partnershipIdx) throws CustomException {
+        // 프로젝트 조회
+        Query query = Query.query(Criteria.where("projectId.projectIdx").is(projectIdx).and("projectId.partnershipIdx").is(partnershipIdx));
+        Project findProject = mongoTemplate.findOne(query, Project.class);
+        if(findProject == null) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
 
-        List<Project> result = mongoTemplate.find(Query.query(Criteria.where("nodeList").elemMatch(Criteria.where("nodeType").is("Company"))), Project.class);
+        ResponseProjectDTO.Project response = modelMapper.map(findProject, ResponseProjectDTO.Project.class);
+
+        return CustomResponse.builder()
+                .data(response)
+                .build();
+    }
+
+    /**
+     * 프로젝트 한번에 수정
+     * @param project
+     * @return
+     */
+    public CustomResponse<?> replaceProject(RequestProjectDTO.Project project) throws CustomException {
+        // 프로젝트 조회
+        Project targetProject = mongoTemplate.findById(project.getProjectId(), Project.class);
+        if(targetProject == null) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
+
+        // 데이터 맵핑
+        Project replaceProject = modelMapper.map(project, Project.class);
+
+        // 데이터 덮어쓰기
+        UpdateResult result = mongoTemplate.replace(Query.query(Criteria.where("projectId").is(project.getProjectId())), replaceProject);
+
+        if(result.getModifiedCount() == 0) {
+            throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
+        }
 
         return CustomResponse.builder()
                 .data(result)

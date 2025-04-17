@@ -15,7 +15,10 @@ import java.util.List;
 public class Project {
     @Id
     private ProjectId projectId;
+    private String title;
+    private String content;
     private List<Node> nodeList;
     private List<Edge> edgeList;
     private List<NodeSize> nodeSizeList;
+    private List<Property> propertyList;
 }

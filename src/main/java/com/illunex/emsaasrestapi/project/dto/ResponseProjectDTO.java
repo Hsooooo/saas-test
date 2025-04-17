@@ -4,16 +4,13 @@ import lombok.*;
 
 import java.util.List;
 
-public class RequestProjectDTO {
+public class ResponseProjectDTO {
 
     /**
      * 프로젝트 설정 요청 구조
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Project {
         private ProjectId projectId;            // 프로젝트 번호, 파트너쉽 번호
         private String title;                   // 프로젝트 제목
@@ -28,9 +25,7 @@ public class RequestProjectDTO {
      * 프로젝트 ID 정보
      */
     @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Setter
     public static class ProjectId {
         private Long projectIdx;
         private Long partnershipIdx;
@@ -40,9 +35,7 @@ public class RequestProjectDTO {
      * 노드 정보
      */
     @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Setter
     public static class Node {
         private String nodeType;
         private String fieldName;
@@ -53,9 +46,7 @@ public class RequestProjectDTO {
      * 엣지 정보
      */
     @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Setter
     public static class Edge {
         private String edgeType;
         private String srcNodeType;
@@ -75,9 +66,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class NodeSize {
         private String categoryName;
         private List<Item> itemList;
@@ -88,9 +76,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Item {
         private String label;
         private String nodeType;
@@ -104,9 +89,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Model {
         private String label;
         private String color;
@@ -119,9 +101,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Property {
         private String NodeType;
         private String labelTitleFieldName;
@@ -136,9 +115,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Field {
         private String label;
         private String fieldName;

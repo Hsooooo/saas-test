@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 @Slf4j
-@RestControllerAdvice("com.illunex.emstockrestapi")
+@RestControllerAdvice("com.illunex.emsaasrestapi")
 public class ExceptionResponseHandler {
 
     @ResponseStatus(HttpStatus.OK)

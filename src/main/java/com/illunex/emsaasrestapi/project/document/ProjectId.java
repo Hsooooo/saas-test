@@ -10,6 +10,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @AllArgsConstructor
 @Document(collection = "projectId")
 public class ProjectId {
-    private Long projectIdx;
-    private Long partnershipIdx;
+    private Integer projectIdx;
+    private Integer partnershipIdx;
 }
