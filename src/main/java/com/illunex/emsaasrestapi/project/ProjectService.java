@@ -4,17 +4,24 @@ import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.project.document.Project;
-import com.illunex.emsaasrestapi.project.document.ProjectId;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -47,6 +54,98 @@ public class ProjectService {
 
         return CustomResponse.builder()
                 .data(modelMapper.map(result, ResponseProjectDTO.Project.class))
+                .build();
+    }
+
+    /**
+     * 단일 엑셀 파일 업로드
+     * @param projectIdx
+     * @param excelFile
+     * @return
+     */
+    public CustomResponse<?> uploadSingleExcelFile(Integer projectIdx, MultipartFile excelFile) throws CustomException, IOException {
+        // 확장자 체크
+        String ext = FilenameUtils.getExtension(excelFile.getOriginalFilename());
+        if(!ext.equals("xlsx") && !ext.equals("xls")) {
+            throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_EXTENSION);
+        }
+
+        Workbook workbook = null;
+        if (ext.equals("xlsx")) {
+            workbook = new XSSFWorkbook(excelFile.getInputStream());
+        } else {
+            workbook = new HSSFWorkbook(excelFile.getInputStream());
+        }
+
+        ResponseProjectDTO.ExcelData excelData = ResponseProjectDTO.ExcelData.builder()
+                .sheetList(new ArrayList<>())
+                .build();
+        // 시트명 목록
+//        List<String> sheetList = new ArrayList<>();
+
+        // 탭 읽기
+        for(int sheetCnt = 0; sheetCnt < workbook.getNumberOfSheets(); sheetCnt++) {
+            // Cell 목록
+            List<String> cellList = new ArrayList<>();
+            // Row 데이터 정보
+            List<LinkedHashMap<String, Object>> rowList = new ArrayList<>();
+
+            Sheet workSheet = workbook.getSheetAt(sheetCnt);
+            // 데이터 개수 체크
+            if(workSheet.getLastRowNum() <= 1) {
+                // row 데이터 없음
+                workbook.close();
+                throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_ROW_EMPTY);
+            }
+
+            // 첫번째 행에서 컬럼명 추출
+            Row firstRow = workSheet.getRow(0);
+            if(firstRow == null) {
+                // column 데이터 없음
+                workbook.close();
+                throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+            }
+
+            // Cell, Row 최대 개수 저장
+            int totalCellCnt = firstRow.getLastCellNum();
+            int totalRowCnt = workSheet.getLastRowNum();
+
+            // 첫번째 행에 컬럼 수 만큼 컬럼명 추출
+            for(int cellCnt = 0; cellCnt < totalCellCnt; cellCnt++) {
+                if(firstRow.getCell(cellCnt).getStringCellValue().isEmpty()) {
+                    // 셀에 빈값이면 컬럼 총개수 감소
+                    totalCellCnt--;
+                } else {
+                    cellList.add(firstRow.getCell(cellCnt).getStringCellValue());
+                }
+            }
+
+            // 컬럼명과 1:1로 매칭하여 데이터 정제
+            // 행별 컬럼 수만큼 반복적으로
+            for(int rowCnt = 1; rowCnt < totalRowCnt; rowCnt++) {
+                Row row = workSheet.getRow(rowCnt);
+                if(row == null) {
+                    // 열 데이터가 없으면 종료
+                    break;
+                }
+                LinkedHashMap<String, Object> dataMap = new LinkedHashMap<>();
+                for (int cellCnt = 0; cellCnt < cellList.size(); cellCnt++) {
+                    dataMap.put(cellList.get(cellCnt), getColumnData(row.getCell(cellCnt)));
+                }
+                rowList.add(dataMap);
+            }
+
+            // 엑셀 데이터에 시트별로 저장
+            excelData.getSheetList()
+                    .add(ResponseProjectDTO.Sheet.builder()
+                            .sheetName(workSheet.getSheetName())
+                            .cellList(cellList)
+                            .rowList(rowList)
+                            .build());
+        }
+
+        return CustomResponse.builder()
+                .data(excelData)
                 .build();
     }
 
@@ -113,5 +212,43 @@ public class ProjectService {
         return CustomResponse.builder()
                 .data(result)
                 .build();
+    }
+
+    /**
+     * cell 타입에 맞게 데이터 반환
+     * @param cell
+     * @return
+     * @throws CustomException
+     */
+    private Object getColumnData(Cell cell) throws CustomException {
+        if(cell == null) {
+            return "";
+        }
+        switch (cell.getCellType()) {
+            case STRING -> {
+                return cell.getStringCellValue();
+            }
+            case NUMERIC -> {
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue();
+                } else {
+                    return cell.getNumericCellValue();
+                }
+            }
+            case BOOLEAN -> {
+                return cell.getBooleanCellValue();
+            }
+            // 수식 셀은 getCellFormula() 또는 evaluate 사용
+            case FORMULA -> {
+                return cell.getCellFormula();
+            }
+            case BLANK -> {
+                return "";
+            }
+            case ERROR -> {
+                return cell.getErrorCellValue();
+            }
+            default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.project.dto;
 
 import lombok.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public class ResponseProjectDTO {
@@ -132,5 +133,31 @@ public class ResponseProjectDTO {
         private String label;
         private String fieldName;
         private String fieldType;
+    }
+
+    /**
+     * 프로젝트 엑셀 데이터 정보
+     */
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    public static class ExcelData {
+        List<Sheet> sheetList;
+    }
+
+    /**
+     * 시트 정보
+     */
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    public static class Sheet {
+        String sheetName;
+        // Cell 목록
+        List<String> cellList;
+        // Row 데이터 정보
+        List<LinkedHashMap<String, Object>> rowList;
     }
 }

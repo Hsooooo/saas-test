@@ -5,6 +5,9 @@ import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,6 +23,18 @@ public class ProjectController {
     @PostMapping()
     public CustomResponse<?> createProject(@RequestBody RequestProjectDTO.Project project) throws CustomException {
         return projectService.createProject(project);
+    }
+
+    /**
+     * 프로젝트 데이터 엑셀 파일 업로드
+     * @param projectIdx
+     * @param excelFile
+     * @return
+     */
+    @PostMapping("upload/single")
+    public CustomResponse<?> uploadSingleExcelFile(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                             @RequestPart(name = "excel") MultipartFile excelFile) throws CustomException, IOException {
+        return projectService.uploadSingleExcelFile(projectIdx, excelFile);
     }
 
     /**

@@ -39,6 +39,14 @@ public enum ErrorCode {
     PARTNERSHIP_DOMAIN_DUPLICATE(401, "중복되는 도메인입니다."),
     PARTNERSHIP_INVALID_MEMBER(402, "유효한 파트너쉽 회원이 아닙니다."),
     PARTNERSHIP_MEMBER_DUPLICATE_EMAIL(403, "동일한 이메일로 초대된 회원이 있습니다."),
+
+    /**
+     * 프로젝트
+     */
+    PROJECT_INVALID_FILE_EXTENSION(500, "지원되지 않는 확장자 입니다."),
+    PROJECT_INVALID_FILE_DATA_EMPTY(501, "데이터가 없습니다."),
+    PROJECT_INVALID_FILE_DATA_ROW_EMPTY(502, "행의 데이터가 없습니다."),
+    PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY(503, "열의 데이터가 없습니다."),
     ;
 
     private final int status;
