@@ -1,5 +1,5 @@
 jwt:
-  secret: emstockrestapi0624emstockrestapi0624emstockrestapi0624emstockrestapi0624emstockrestapi0624emstockrestapi0624
+  secret: emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308
   access-token-expiration: 1800                  # accessToken 유효시간(초) - 30분
   refresh-token-expiration: 86400                # refreshToken 유효시간(초) - 24시간
 
@@ -40,6 +40,15 @@ spring:
         # classpath*:db/common/alter_table.sql
       # data-locations: classpath*:db/common/code.sql
       mode: always
+  data:
+    mongodb:
+      host: 172.19.0.103
+      port: 27017
+      username: root
+      password: Illunex123!
+      database: em_saas
+      authentication-database: admin
+      auto-index-creation: true
 
 webhook:
   synology:
@@ -50,5 +59,3 @@ webhook:
     scrap:
       token: ${synology-hook-scrap-token}
     use: true
-debug:
-  mode: ${debug_mode}

@@ -60,5 +60,3 @@ webhook:
     scrap:
       token: ""
     use: false
-debug:
-  mode: true
