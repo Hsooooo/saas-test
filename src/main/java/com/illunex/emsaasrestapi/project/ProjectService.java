@@ -37,8 +37,11 @@ public class ProjectService {
      * @return
      */
     public CustomResponse<?> createProject(RequestProjectDTO.Project project) throws CustomException {
-//        mongoTemplate.find(Query.query(Criteria.where("idx").is(1)), RequestProjectDTO.Project.class);
+        // TODO: RDB 처리 부분
 
+
+        // MongoDB 처리 부분
+//        mongoTemplate.find(Query.query(Criteria.where("idx").is(1)), RequestProjectDTO.Project.class);
         // Document 맵핑
         Project mappingProject = modelMapper.map(project, Project.class);
 
@@ -66,7 +69,7 @@ public class ProjectService {
     public CustomResponse<?> uploadSingleExcelFile(Integer projectIdx, MultipartFile excelFile) throws CustomException, IOException {
         // 확장자 체크
         String ext = FilenameUtils.getExtension(excelFile.getOriginalFilename());
-        if(!ext.equals("xlsx") && !ext.equals("xls")) {
+        if(ext == null || !ext.equals("xlsx") && !ext.equals("xls")) {
             throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_EXTENSION);
         }
 

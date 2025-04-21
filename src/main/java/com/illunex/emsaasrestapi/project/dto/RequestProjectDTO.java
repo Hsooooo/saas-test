@@ -32,8 +32,9 @@ public class RequestProjectDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ProjectId {
-        private Long projectIdx;
-        private Long partnershipIdx;
+        private Integer projectCategoryIdx;
+        private Integer projectIdx;
+        private Integer partnershipIdx;
     }
 
     /**
