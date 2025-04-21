@@ -241,6 +241,19 @@ public class EnumCode {
         }
     }
 
+    public static class Project {
+        @Getter
+        @AllArgsConstructor
+        public enum StatusCd implements BaseCodeEnum {
+            MongoDB("PJS0001", "임시저장(MongoDB)"),
+            Rdb("PJS0002", "저장(RDB)"),
+            Neo4j("PJS0003", "저장(Neo4j)");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
 
 //
 //    // 이메일

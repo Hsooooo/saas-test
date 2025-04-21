@@ -16,7 +16,7 @@ public class Project {
     @Id
     private ProjectId projectId;
     private String title;
-    private String content;
+    private String description;
     private List<Node> nodeList;
     private List<Edge> edgeList;
     private List<NodeSize> nodeSizeList;

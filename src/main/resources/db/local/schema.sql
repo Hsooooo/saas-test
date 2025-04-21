@@ -181,3 +181,57 @@ create index if not exists partnership_idx
 create index if not exists partnership_member_idx
     on em_saas.partnership_invited_member (partnership_member_idx);
 
+CREATE TABLE IF NOT EXISTS `em_saas`.`project_category` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '카테고리번호',
+    `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽번호',
+    `name` VARCHAR(255) NULL DEFAULT NULL COMMENT '카테고리명' COLLATE 'utf8mb4_general_ci',
+    `sort` INT(11) NULL DEFAULT NULL COMMENT '정렬순서',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `fk_project_category_partnership_idx` (`partnership_idx`) USING BTREE,
+    CONSTRAINT `fk_project_category_partnership_idx` FOREIGN KEY (`partnership_idx`) REFERENCES `partnership` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='프로젝트 카테고리 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`project` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트번호',
+    `project_category_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 카테고리번호',
+    `title` VARCHAR(50) NULL DEFAULT NULL COMMENT '제목' COLLATE 'utf8mb4_general_ci',
+    `description` VARCHAR(200) NULL DEFAULT NULL COMMENT '내용(최대 200자)' COLLATE 'utf8mb4_general_ci',
+    `status_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '프로젝트상태(code테이블)' COLLATE 'utf8mb4_general_ci',
+    `image_url` VARCHAR(255) NULL DEFAULT NULL COMMENT '프로젝트 이미지 URL' COLLATE 'utf8mb4_general_ci',
+    `image_path` VARCHAR(255) NULL DEFAULT NULL COMMENT '프로젝트 이미지 경로' COLLATE 'utf8mb4_general_ci',
+    `node_cnt` INT(11) NULL DEFAULT '0' COMMENT '노드 개수',
+    `edge_cnt` INT(11) NULL DEFAULT '0' COMMENT '엣지 개수',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `status_cd` (`status_cd`) USING BTREE,
+    INDEX `fk_project_project_category_idx` (`project_category_idx`) USING BTREE,
+    CONSTRAINT `fk_project_project_category_idx` FOREIGN KEY (`project_category_idx`) REFERENCES `project_category` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='프로젝트 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `project_member` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로제거트 구성원 번호',
+    `project_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 번호',
+    `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 회원번호',
+    `type_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '사용자 구분(code테이블)' COLLATE 'utf8mb4_general_ci',
+    `disable_functions` VARCHAR(1024) NULL DEFAULT NULL COMMENT '사용제한 프로젝트 기능들(code 쉼표 구분)' COLLATE 'utf8mb4_general_ci',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `type_cd` (`type_cd`) USING BTREE,
+    INDEX `fk_project_member_project_idx` (`project_idx`) USING BTREE,
+    INDEX `fk_project_member_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
+    CONSTRAINT `fk_project_member_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+    CONSTRAINT `fk_project_member_project_idx` FOREIGN KEY (`project_idx`) REFERENCES `project` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='프로젝트 구성원'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;

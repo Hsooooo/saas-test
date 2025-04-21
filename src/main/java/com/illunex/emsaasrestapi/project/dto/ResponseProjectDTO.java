@@ -15,7 +15,7 @@ public class ResponseProjectDTO {
     public static class Project {
         private ProjectId projectId;            // 프로젝트 번호, 파트너쉽 번호
         private String title;                   // 프로젝트 제목
-        private String content;                 // 프로젝트 내용
+        private String description;             // 프로젝트 내용
         private List<Node> nodeList;            // 노드정보
         private List<Edge> edgeList;            // 엣지정보
         private List<NodeSize> nodeSizeList;    // 노드사이즈정보
