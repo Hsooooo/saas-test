@@ -42,6 +42,8 @@ dependencies {
     implementation 'org.mariadb.jdbc:mariadb-java-client'
     implementation 'org.modelmapper:modelmapper:3.1.0'
 
+    implementation 'org.apache.poi:poi:5.4.1'
+
     // jwt 설정
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
