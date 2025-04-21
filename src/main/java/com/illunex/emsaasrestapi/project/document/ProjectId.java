@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @AllArgsConstructor
 @Document(collection = "projectId")
 public class ProjectId {
+    private Integer projectCategoryIdx;
     private Integer projectIdx;
     private Integer partnershipIdx;
 }
