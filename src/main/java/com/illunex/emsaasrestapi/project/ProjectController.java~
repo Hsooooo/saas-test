@@ -97,7 +97,7 @@ public class ProjectController {
     }
 
     /**
-     * 프로젝트 카테고리 수정
+     * 카테고리 수정
      * @param projectCategory
      * @return
      * @throws CustomException

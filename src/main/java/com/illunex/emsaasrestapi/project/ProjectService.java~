@@ -281,87 +281,6 @@ public class ProjectService {
     }
 
     /**
-     * 프로젝트 카테고리 조회
-     * @param ProjectCategory
-     * @return
-     */
-    public CustomResponse<?> getCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
-
-        //TODO: 파트너쉽 id 가져오는 부분 있어야함
-        Integer partnershipIdx = 1111;
-        List<ProjectCategoryVO> categoryList = projectCategoryMapper.findByPartnershipIdx(partnershipIdx);
-
-
-        List<ResponseProjectDTO.ProjectCategory> result = categoryList.stream()
-                .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class))
-                .collect(Collectors.toList());
-
-        //카테고리별 프로젝트 개수 세팅
-        for(ResponseProjectDTO.ProjectCategory res : result){
-            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getCategoryIdx());
-            res.setProjectCnt(cnt);
-        }
-
-        return CustomResponse.builder()
-                .data(result)
-                .build();
-    }
-
-    /**
-     * 프로젝트 카테고리 추가
-     * @param ProjectCategory
-     * @return
-     */
-    @Transactional
-    public CustomResponse<?> saveCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
-
-        Integer sort = projectCategoryMapper.findMaxSort();
-
-        //TODO: 파트너쉽도 넣어줘야함
-        Integer partnershipIdx = 111;
-
-        ProjectCategoryVO vo = ProjectCategoryVO.builder()
-                .partnershipIdx(partnershipIdx)
-                .name(ProjectCategory.getName())
-                .sort(sort)
-                .build();
-
-        vo = projectCategoryMapper.save(vo);
-
-        ResponseProjectDTO.ProjectCategory result = modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class);
-
-        return CustomResponse.builder()
-                .data(result)
-                .build();
-    }
-
-    /**
-     * 프로젝트 카테고리 수정
-     * @param ProjectCategory
-     * @return
-     */
-    @Transactional
-    public CustomResponse<?> updateCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
-
-        //TODO: 파트너쉽 넣어줘야함
-        Integer partnershipIdx = 111;
-
-        ProjectCategoryVO vo = ProjectCategoryVO.builder()
-                                    .idx(ProjectCategory.getProjectCategoryId())
-                                    .partnershipIdx(partnershipIdx)
-                                    .name(ProjectCategory.getName())
-                                    .build();
-
-        projectCategoryMapper.update(vo);
-
-        ResponseProjectDTO.ProjectCategory result = modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class);
-
-        return CustomResponse.builder()
-                .data(result)
-                .build();
-    }
-
-    /**
      * 프로젝트 카테고리 삭제
      * @param projectCategoryIdx
      * @return
@@ -371,7 +290,6 @@ public class ProjectService {
         ProjectCategoryVO targetProjectCategory = projectCategoryMapper.selectByProjectCategoryIdx(projectCategoryIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
-        // TODO[JCW]: 외래키 delete 확인, 안되면 프로젝트 삭제 수동 추가해야됨
         projectCategoryMapper.deleteByProjectCategoryIdx(projectCategoryIdx);
 
         return CustomResponse.builder()
@@ -399,4 +317,89 @@ public class ProjectService {
                 .data(null)
                 .build();
     }
+
+
+
+    /**
+     * 카테고리 조회
+     * @param ProjectCategory
+     * @return
+     */
+    public CustomResponse<?> getCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
+
+        //TODO: 파트너쉽 id 가져오는 부분 있어야함
+        Integer partnershipIdx = 1111;
+        List<ProjectCategoryVO> categoryList = projectCategoryMapper.findByPartnershipIdx(partnershipIdx);
+
+
+        List<ResponseProjectDTO.ProjectCategory> result = categoryList.stream()
+                .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class))
+                .collect(Collectors.toList());
+
+        //카테고리별 프로젝트 개수 세팅
+        for(ResponseProjectDTO.ProjectCategory res : result){
+            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getCategoryIdx());
+            res.setProjectCnt(cnt);
+        }
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
+    /**
+     * 카테고리 추가
+     * @param ProjectCategory
+     * @return
+     */
+    @Transactional
+    public CustomResponse<?> saveCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
+
+        Integer sort = projectCategoryMapper.findMaxSort();
+
+        //TODO: 파트너쉽도 넣어줘야함
+        Integer partnershipIdx = 111;
+
+        ProjectCategoryVO vo = ProjectCategoryVO.builder()
+                .partnershipIdx(partnershipIdx)
+                .name(ProjectCategory.getName())
+                .sort(sort)
+                .build();
+
+        vo = projectCategoryMapper.save(vo);
+
+        ResponseProjectDTO.ProjectCategory result = modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class);
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
+
+    /**
+     * 카테고리 수정
+     * @param ProjectCategory
+     * @return
+     */
+    @Transactional
+    public CustomResponse<?> updateCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
+
+        //TODO: 파트너쉽 넣어줘야함
+        Integer partnershipIdx = 111;
+
+        ProjectCategoryVO vo = ProjectCategoryVO.builder()
+                                    .idx(ProjectCategory.getProjectCategoryId())
+                                    .partnershipIdx(partnershipIdx)
+                                    .name(ProjectCategory.getName())
+                                    .build();
+
+        projectCategoryMapper.update(vo);
+
+        ResponseProjectDTO.ProjectCategory result = modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class);
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
 }
