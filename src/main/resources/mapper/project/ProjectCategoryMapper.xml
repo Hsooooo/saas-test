@@ -58,9 +58,9 @@
         WHERE idx = #{projectCategoryIdx}
     </delete>
 
-    <update id="updateSortByProjectCategory" parameterType="RequestProjectDTO.ProjectCategory">
+    <update id="updateSortByProjectCategory" parameterType="ProjectCategoryVO">
         UPDATE project_category
         SET sort = #{sort}
-        WHERE idx = #{projectCategoryId}
+        WHERE idx = #{idx}
     </update>
 </mapper>

@@ -75,36 +75,38 @@ public class ProjectController {
 
 
     /**
-     * 카테고리 조회
-     * @param category
+     * 프로젝트 카테고리 조회
+     * @param projectCategory
      * @return
      * @throws CustomException
      */
     @GetMapping("/category")
-    public CustomResponse<?> getCategory(@RequestBody RequestProjectDTO.Category category) throws CustomException {
-        return projectService.getCategory(category);
+    public CustomResponse<?> getCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
+        return projectService.getCategory(projectCategory);
     }
 
     /**
-     * 카테고리 추가
-     * @param category
+     * 프로젝트 카테고리 추가
+     * @param projectCategory
      * @return
      * @throws CustomException
      */
     @PostMapping("/category")
-    public CustomResponse<?> saveCategory(@RequestBody RequestProjectDTO.Category category) throws CustomException {
-        return projectService.saveCategory(category);
+    public CustomResponse<?> saveCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
+        return projectService.saveCategory(projectCategory);
     }
 
     /**
      * 카테고리 수정
-     * @param category
+     * @param projectCategory
      * @return
      * @throws CustomException
      */
     @PostMapping("/category")
-    public CustomResponse<?> updateCategory(@RequestBody RequestProjectDTO.Category category) throws CustomException {
-        return projectService.updateCategory(category);
+    public CustomResponse<?> updateCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
+        return projectService.updateCategory(projectCategory);
+    }
+
     /**
      * 프로젝트 카테고리 삭제
      * @param projectCategoryIdx

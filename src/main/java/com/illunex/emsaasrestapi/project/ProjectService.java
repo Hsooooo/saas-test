@@ -308,7 +308,9 @@ public class ProjectService {
             ProjectCategoryVO targetProjectCategory = projectCategoryMapper.selectByProjectCategoryIdx(projectCategory.getProjectCategoryId())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
-            projectCategoryMapper.updateSortByProjectCategory(projectCategory);
+            targetProjectCategory.setSort(projectCategory.getSort());
+
+            projectCategoryMapper.updateSortByProjectCategory(targetProjectCategory);
         }
 
         return CustomResponse.builder()
@@ -320,22 +322,22 @@ public class ProjectService {
 
     /**
      * 카테고리 조회
-     * @param category
+     * @param ProjectCategory
      * @return
      */
-    public CustomResponse<?> getCategory(RequestProjectDTO.Category category) throws CustomException {
+    public CustomResponse<?> getCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
 
         //TODO: 파트너쉽 id 가져오는 부분 있어야함
         Integer partnershipIdx = 1111;
         List<ProjectCategoryVO> categoryList = projectCategoryMapper.findByPartnershipIdx(partnershipIdx);
 
 
-        List<ResponseProjectDTO.Category> result = categoryList.stream()
-                .map(vo -> modelMapper.map(vo, ResponseProjectDTO.Category.class))
+        List<ResponseProjectDTO.ProjectCategory> result = categoryList.stream()
+                .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class))
                 .collect(Collectors.toList());
 
         //카테고리별 프로젝트 개수 세팅
-        for(ResponseProjectDTO.Category res : result){
+        for(ResponseProjectDTO.ProjectCategory res : result){
             Integer cnt = projectMapper.countByProjectCategoryIdx(res.getCategoryIdx());
             res.setProjectCnt(cnt);
         }
@@ -347,11 +349,11 @@ public class ProjectService {
 
     /**
      * 카테고리 추가
-     * @param category
+     * @param ProjectCategory
      * @return
      */
     @Transactional
-    public CustomResponse<?> saveCategory(RequestProjectDTO.Category category) throws CustomException {
+    public CustomResponse<?> saveCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
 
         Integer sort = projectCategoryMapper.findMaxSort();
 
@@ -360,13 +362,13 @@ public class ProjectService {
 
         ProjectCategoryVO vo = ProjectCategoryVO.builder()
                 .partnershipIdx(partnershipIdx)
-                .name(category.getCategoryName())
+                .name(ProjectCategory.getName())
                 .sort(sort)
                 .build();
 
         vo = projectCategoryMapper.save(vo);
 
-        ResponseProjectDTO.Category result = modelMapper.map(vo, ResponseProjectDTO.Category.class);
+        ResponseProjectDTO.ProjectCategory result = modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class);
 
         return CustomResponse.builder()
                 .data(result)
@@ -376,24 +378,24 @@ public class ProjectService {
 
     /**
      * 카테고리 수정
-     * @param category
+     * @param ProjectCategory
      * @return
      */
     @Transactional
-    public CustomResponse<?> updateCategory(RequestProjectDTO.Category category) throws CustomException {
+    public CustomResponse<?> updateCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
 
         //TODO: 파트너쉽 넣어줘야함
         Integer partnershipIdx = 111;
 
         ProjectCategoryVO vo = ProjectCategoryVO.builder()
-                                    .idx(category.getCategoryIdx())
+                                    .idx(ProjectCategory.getProjectCategoryId())
                                     .partnershipIdx(partnershipIdx)
-                                    .name(category.getCategoryName())
+                                    .name(ProjectCategory.getName())
                                     .build();
 
         projectCategoryMapper.update(vo);
 
-        ResponseProjectDTO.Category result = modelMapper.map(vo, ResponseProjectDTO.Category.class);
+        ResponseProjectDTO.ProjectCategory result = modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class);
 
         return CustomResponse.builder()
                 .data(result)
