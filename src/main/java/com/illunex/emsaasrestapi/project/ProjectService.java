@@ -321,12 +321,44 @@ public class ProjectService {
         Integer sort = projectCategoryMapper.findMaxSort();
 
         //TODO: 파트너쉽도 넣어줘야함
-        ProjectCategoryVO vo = new ProjectCategoryVO();
-        vo.setPartnershipIdx(11111);
-        vo.setName(category.getCategoryName());
-        vo.setSort(sort);
+        Integer partnershipIdx = 111;
 
-        ProjectCategoryVO result = projectCategoryMapper.save(vo);
+        ProjectCategoryVO vo = ProjectCategoryVO.builder()
+                .partnershipIdx(partnershipIdx)
+                .name(category.getCategoryName())
+                .sort(sort)
+                .build();
+
+        vo = projectCategoryMapper.save(vo);
+
+        ResponseProjectDTO.Category result = modelMapper.map(vo, ResponseProjectDTO.Category.class);
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
+
+    /**
+     * 카테고리 수정
+     * @param category
+     * @return
+     */
+    @Transactional
+    public CustomResponse<?> updateCategory(RequestProjectDTO.Category category) throws CustomException {
+
+        //TODO: 파트너쉽 넣어줘야함
+        Integer partnershipIdx = 111;
+
+        ProjectCategoryVO vo = ProjectCategoryVO.builder()
+                                    .idx(category.getCategoryIdx())
+                                    .partnershipIdx(partnershipIdx)
+                                    .name(category.getCategoryName())
+                                    .build();
+
+        projectCategoryMapper.update(vo);
+
+        ResponseProjectDTO.Category result = modelMapper.map(vo, ResponseProjectDTO.Category.class);
 
         return CustomResponse.builder()
                 .data(result)

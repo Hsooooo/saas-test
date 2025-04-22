@@ -94,4 +94,15 @@ public class ProjectController {
     public CustomResponse<?> saveCategory(@RequestBody RequestProjectDTO.Category category) throws CustomException {
         return projectService.saveCategory(category);
     }
+
+    /**
+     * 카테고리 수정
+     * @param category
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/category")
+    public CustomResponse<?> updateCategory(@RequestBody RequestProjectDTO.Category category) throws CustomException {
+        return projectService.updateCategory(category);
+    }
 }

@@ -168,7 +168,7 @@ public class RequestProjectDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Category {
-        private String categoryIdx;     //"전체" 이면 전체조회
+        private Integer categoryIdx;
         private String categoryName;
     }
 }
