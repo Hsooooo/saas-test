@@ -10,4 +10,31 @@
     </insert>
 
 
+    <select id="findByPartnershipIdx" parameterType="ProjectCategoryVO" resultType="ProjectCategoryVO">
+        SELECT * FROM project_category
+        WHERE partnership_idx = #{partnershipIdx}
+    </select>
+
+    <select id="findMaxSort" parameterType="Integer" resultType="ProjectCategoryVO">
+        SELECT max(sort) FROM project_category
+        FOR UPDATE
+    </select>
+
+    <insert id="save" parameterType="ProjectCategoryVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO project_category (
+            partnership_idx,
+            name,
+            sort,
+            update_date,
+            create_date
+        ) VALUES (
+             #{partnershipIdx},
+             #{name},
+             #{sort},
+             NOW(),
+             NOW()
+         )
+    </insert>
+
+
 </mapper>

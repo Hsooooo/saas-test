@@ -3,7 +3,6 @@ package com.illunex.emsaasrestapi.project;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
-import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.document.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
@@ -11,7 +10,6 @@ import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
-import com.illunex.emsaasrestapi.project.vo.CategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
@@ -26,11 +24,13 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -291,12 +291,9 @@ public class ProjectService {
     public CustomResponse<?> getCategory(RequestProjectDTO.Category category) throws CustomException {
 
         //TODO: 파트너쉽 id 가져오는 부분 있어야함
-        List<ProjectCategoryVO> categoryList = new ArrayList();
-        if(category.getCategoryIdx().equals("전체")){
-            categoryList = projectCategoryMapper.findAll();
-        }else{
-            categoryList = projectCategoryMapper.findByPartnershipIdx(Integer.parseInt(category.getCategoryIdx()));
-        }
+        Integer partnershipIdx = 1111;
+        List<ProjectCategoryVO> categoryList = projectCategoryMapper.findByPartnershipIdx(partnershipIdx);
+
 
         List<ResponseProjectDTO.Category> result = categoryList.stream()
                 .map(vo -> modelMapper.map(vo, ResponseProjectDTO.Category.class))
@@ -318,14 +315,15 @@ public class ProjectService {
      * @param category
      * @return
      */
+    @Transactional
     public CustomResponse<?> saveCategory(RequestProjectDTO.Category category) throws CustomException {
 
         Integer sort = projectCategoryMapper.findMaxSort();
 
         //TODO: 파트너쉽도 넣어줘야함
         ProjectCategoryVO vo = new ProjectCategoryVO();
-        vo.setName(category.getCategoryName());
         vo.setPartnershipIdx(11111);
+        vo.setName(category.getCategoryName());
         vo.setSort(sort);
 
         ProjectCategoryVO result = projectCategoryMapper.save(vo);

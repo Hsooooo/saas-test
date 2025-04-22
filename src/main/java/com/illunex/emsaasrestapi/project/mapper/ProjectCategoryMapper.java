@@ -8,9 +8,8 @@ import java.util.List;
 @Mapper
 public interface ProjectCategoryMapper {
 
-    List<ProjectCategoryVO> findAll();
-    List<ProjectCategoryVO> findByPartnershipIdx(Integer idx);
-    ProjectCategoryVO save(ProjectCategoryVO vo);
+    List<ProjectCategoryVO> findByPartnershipIdx(Integer partnershipIdx);
     Integer findMaxSort();
+    ProjectCategoryVO save(ProjectCategoryVO vo);
 
 }
