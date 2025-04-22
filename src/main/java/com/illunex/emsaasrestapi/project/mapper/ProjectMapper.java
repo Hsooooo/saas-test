@@ -9,4 +9,5 @@ import java.util.List;
 public interface ProjectMapper {
     Integer insertProjectVO(ProjectVO projectVO);
     Integer countByProjectCategoryIdx(Integer idx);
+    Integer updateProjectCategoryIdx(ProjectVO projectVO);
 }

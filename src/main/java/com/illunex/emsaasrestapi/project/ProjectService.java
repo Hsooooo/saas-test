@@ -5,6 +5,7 @@ import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.document.Project;
+import com.illunex.emsaasrestapi.project.document.ProjectId;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
@@ -23,6 +24,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -409,6 +411,34 @@ public class ProjectService {
 
         return CustomResponse.builder()
                 .data(null)
+                .build();
+    }
+
+
+
+    /**
+     * 프로젝트 카테고리 이동
+     * @param projectId
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> moveProject(List<RequestProjectDTO.ProjectId> projectId) throws CustomException {
+
+
+
+        for(RequestProjectDTO.ProjectId dto : projectId){
+            //maraiDB
+            ProjectVO projectVO = ProjectVO.builder()
+                    .idx(dto.getProjectIdx())
+                    .projectCategoryIdx(dto.getProjectCategoryIdx())
+                    .build();
+
+            projectMapper.updateProjectCategoryIdx(projectVO);
+        }
+
+        return CustomResponse.builder()
+                .data(null)
+                .message("카테고리 이동 되었습니다.")
                 .build();
     }
 }

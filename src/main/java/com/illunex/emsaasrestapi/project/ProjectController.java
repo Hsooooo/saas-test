@@ -126,4 +126,26 @@ public class ProjectController {
     public CustomResponse<?> updateProjectCategorySort(@RequestBody List<RequestProjectDTO.ProjectCategory> projectCategoryList) throws CustomException {
         return projectService.updateProjectCategorySort(projectCategoryList);
     }
+
+
+    /**
+     * 프로젝트 카테고리 이동
+     * @param projectId
+     * @return
+     * @throws CustomException
+     */
+    @PatchMapping("/move")
+    public CustomResponse<?> moveProject(@RequestBody List<RequestProjectDTO.ProjectId> projectId) throws CustomException {
+        return projectService.moveProject(projectId);
+    }
+
+
+
+
+
+
+
+
+
+
 }

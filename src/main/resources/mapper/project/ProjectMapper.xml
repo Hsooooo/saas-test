@@ -34,4 +34,10 @@
         WHERE project_category_idx = #{idx}
     </select>
 
+    <update id="updateProjectCategoryIdx" parameterType="ProjectVO">
+        UPDATE project
+        SET projectCategoryIdx = #{projectCategoryIdx}
+        WHERE idx = #{idx}
+    </update>
+
 </mapper>
