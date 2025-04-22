@@ -10,5 +10,7 @@ public interface ProjectCategoryMapper {
 
     List<ProjectCategoryVO> findAll();
     List<ProjectCategoryVO> findByPartnershipIdx(Integer idx);
+    ProjectCategoryVO save(ProjectCategoryVO vo);
+    Integer findMaxSort();
 
 }

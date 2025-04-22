@@ -314,16 +314,21 @@ public class ProjectService {
     }
 
     /**
-     * 카테고리 조회
+     * 카테고리 추가
      * @param category
      * @return
      */
     public CustomResponse<?> saveCategory(RequestProjectDTO.Category category) throws CustomException {
 
-        ProjectCategoryVO vo = new ProjectCategoryVO();
-        vo.set
+        Integer sort = projectCategoryMapper.findMaxSort();
 
-        projectCategoryMapper.save(category);
+        //TODO: 파트너쉽도 넣어줘야함
+        ProjectCategoryVO vo = new ProjectCategoryVO();
+        vo.setName(category.getCategoryName());
+        vo.setPartnershipIdx(11111);
+        vo.setSort(sort);
+
+        ProjectCategoryVO result = projectCategoryMapper.save(vo);
 
         return CustomResponse.builder()
                 .data(result)
