@@ -284,13 +284,12 @@ public class ProjectService {
 
     /**
      * 프로젝트 카테고리 조회
-     * @param ProjectCategory
      * @return
      */
     public CustomResponse<?> getProjectCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
 
         //TODO: 파트너쉽 id 가져오는 부분 있어야함
-        Integer partnershipIdx = 1111;
+        Integer partnershipIdx = 1;
         List<ProjectCategoryVO> categoryList = projectCategoryMapper.findByPartnershipIdx(partnershipIdx);
 
 

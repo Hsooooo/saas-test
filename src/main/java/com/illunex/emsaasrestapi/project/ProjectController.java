@@ -75,7 +75,6 @@ public class ProjectController {
 
     /**
      * 프로젝트 카테고리 조회
-     * @param projectCategory
      * @return
      * @throws CustomException
      */

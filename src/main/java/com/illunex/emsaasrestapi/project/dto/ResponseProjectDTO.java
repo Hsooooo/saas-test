@@ -169,6 +169,7 @@ public class ResponseProjectDTO {
     @Setter
     @Builder
     @AllArgsConstructor
+    @NoArgsConstructor
     public static class ProjectCategory {
         Integer categoryIdx; //카테고리idx
         String name;        //카테고리명
