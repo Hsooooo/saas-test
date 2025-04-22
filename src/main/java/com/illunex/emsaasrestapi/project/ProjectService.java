@@ -343,7 +343,7 @@ public class ProjectService {
     public CustomResponse<?> updateCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
 
         //TODO: 파트너쉽 넣어줘야함
-        Integer partnershipIdx = 111;
+        Integer partnershipIdx = 1;
 
         ProjectCategoryVO vo = ProjectCategoryVO.builder()
                                     .idx(ProjectCategory.getProjectCategoryIdx())

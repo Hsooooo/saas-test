@@ -44,7 +44,6 @@
     <update id="update" parameterType="ProjectCategoryVO">
         UPDATE project_category
         SET
-            partnership_idx = #{partnershipIdx},
             name = #{name},
             update_date = NOW()
         WHERE
