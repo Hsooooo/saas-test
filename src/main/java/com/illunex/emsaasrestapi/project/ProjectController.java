@@ -76,13 +76,12 @@ public class ProjectController {
 
     /**
      * 프로젝트 카테고리 조회
-     * @param projectCategory
      * @return
      * @throws CustomException
      */
     @GetMapping("/category")
-    public CustomResponse<?> getCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
-        return projectService.getCategory(projectCategory);
+    public CustomResponse<?> getCategory() throws CustomException {
+        return projectService.getCategory();
     }
 
     /**
@@ -102,7 +101,7 @@ public class ProjectController {
      * @return
      * @throws CustomException
      */
-    @PostMapping("/category")
+    @PatchMapping("/category")
     public CustomResponse<?> updateCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
         return projectService.updateCategory(projectCategory);
     }
