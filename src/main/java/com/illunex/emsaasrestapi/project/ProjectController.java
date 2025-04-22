@@ -75,12 +75,23 @@ public class ProjectController {
 
     /**
      * 카테고리 조회
-     * @param project
+     * @param category
      * @return
      * @throws CustomException
      */
     @GetMapping("/category")
     public CustomResponse<?> getCategory(@RequestBody RequestProjectDTO.Category category) throws CustomException {
         return projectService.getCategory(category);
+    }
+
+    /**
+     * 카테고리 추가
+     * @param category
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/category")
+    public CustomResponse<?> saveCategory(@RequestBody RequestProjectDTO.Category category) throws CustomException {
+        return projectService.saveCategory(category);
     }
 }

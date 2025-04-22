@@ -12,6 +12,7 @@ import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import com.illunex.emsaasrestapi.project.vo.CategoryVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -289,19 +291,39 @@ public class ProjectService {
     public CustomResponse<?> getCategory(RequestProjectDTO.Category category) throws CustomException {
 
         //TODO: 파트너쉽 id 가져오는 부분 있어야함
-        List<CategoryVO> categoryList = new ArrayList();
+        List<ProjectCategoryVO> categoryList = new ArrayList();
         if(category.getCategoryIdx().equals("전체")){
             categoryList = projectCategoryMapper.findAll();
         }else{
             categoryList = projectCategoryMapper.findByPartnershipIdx(Integer.parseInt(category.getCategoryIdx()));
         }
 
+        List<ResponseProjectDTO.Category> result = categoryList.stream()
+                .map(vo -> modelMapper.map(vo, ResponseProjectDTO.Category.class))
+                .collect(Collectors.toList());
 
-        for(){
-
+        //카테고리별 프로젝트 개수 세팅
+        for(ResponseProjectDTO.Category res : result){
+            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getCategoryIdx());
+            res.setProjectCnt(cnt);
         }
 
-        ResponseProjectDTO.Category result = modelMapper.map(category, ResponseProjectDTO.Category.class);
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
+    /**
+     * 카테고리 조회
+     * @param category
+     * @return
+     */
+    public CustomResponse<?> saveCategory(RequestProjectDTO.Category category) throws CustomException {
+
+        ProjectCategoryVO vo = new ProjectCategoryVO();
+        vo.set
+
+        projectCategoryMapper.save(category);
 
         return CustomResponse.builder()
                 .data(result)

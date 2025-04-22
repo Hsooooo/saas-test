@@ -1,6 +1,6 @@
 package com.illunex.emsaasrestapi.project.mapper;
 
-import com.illunex.emsaasrestapi.project.vo.CategoryVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;
@@ -8,7 +8,7 @@ import java.util.List;
 @Mapper
 public interface ProjectCategoryMapper {
 
-    List<CategoryVO> findAll();
-    List<CategoryVO> findByPartnershipIdx(Integer idx);
+    List<ProjectCategoryVO> findAll();
+    List<ProjectCategoryVO> findByPartnershipIdx(Integer idx);
 
 }

@@ -170,9 +170,9 @@ public class ResponseProjectDTO {
     @Builder
     @AllArgsConstructor
     public static class Category {
-        String categoryIdx; //카테고리idx
+        Integer categoryIdx; //카테고리idx
         String name;        //카테고리명
-        String projectCnt;  //프로젝트 숫자
+        Integer projectCnt;  //프로젝트 숫자
         Integer sort;        //정렬순서
     }
 }
