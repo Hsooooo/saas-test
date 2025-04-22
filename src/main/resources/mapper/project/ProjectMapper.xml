@@ -29,4 +29,9 @@
         </selectKey>
     </insert>
 
+    <select id="countByProjectCategoryIdx" parameterType="Integer" resultType="Integer">
+        SELECT COUNT(*) FROM project
+        WHERE project_category_idx = #{idx}
+    </select>
+
 </mapper>

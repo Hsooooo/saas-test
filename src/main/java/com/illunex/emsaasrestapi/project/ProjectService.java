@@ -282,13 +282,12 @@ public class ProjectService {
 
     /**
      * 프로젝트 카테고리 조회
-     * @param ProjectCategory
      * @return
      */
-    public CustomResponse<?> getCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
+    public CustomResponse<?> getCategory() throws CustomException {
 
         //TODO: 파트너쉽 id 가져오는 부분 있어야함
-        Integer partnershipIdx = 1111;
+        Integer partnershipIdx = 1;
         List<ProjectCategoryVO> categoryList = projectCategoryMapper.findByPartnershipIdx(partnershipIdx);
 
 
@@ -347,7 +346,7 @@ public class ProjectService {
         Integer partnershipIdx = 111;
 
         ProjectCategoryVO vo = ProjectCategoryVO.builder()
-                                    .idx(ProjectCategory.getProjectCategoryId())
+                                    .idx(ProjectCategory.getProjectCategoryIdx())
                                     .partnershipIdx(partnershipIdx)
                                     .name(ProjectCategory.getName())
                                     .build();
@@ -387,7 +386,7 @@ public class ProjectService {
      */
     public CustomResponse<?> updateProjectCategorySort(List<RequestProjectDTO.ProjectCategory> projectCategoryList) throws CustomException {
         for (RequestProjectDTO.ProjectCategory projectCategory : projectCategoryList) {
-            ProjectCategoryVO targetProjectCategory = projectCategoryMapper.selectByProjectCategoryIdx(projectCategory.getProjectCategoryId())
+            ProjectCategoryVO targetProjectCategory = projectCategoryMapper.selectByProjectCategoryIdx(projectCategory.getProjectCategoryIdx())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
             targetProjectCategory.setSort(projectCategory.getSort());
