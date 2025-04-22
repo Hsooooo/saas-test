@@ -4,10 +4,29 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.illunex.emsaasrestapi.project.mapper.ProjectMapper">
-
-    <insert id="insertLoginHistory" parameterType="ProjectVO" useGeneratedKeys="true" keyProperty="idx">
-
+    <insert id="insertProjectVO" parameterType="ProjectVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO project (
+            project_category_idx,
+            title,
+            description,
+            status_cd,
+            node_cnt,
+            edge_cnt,
+            update_date,
+            create_date
+        ) VALUES (
+            #{projectCategoryIdx},
+            #{title},
+            #{description},
+            #{statusCd},
+            0,
+            0,
+            now(),
+            now()
+        )
+        <selectKey resultType="int" keyProperty="idx" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
     </insert>
-
 
 </mapper>

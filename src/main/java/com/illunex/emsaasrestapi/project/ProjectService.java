@@ -3,9 +3,13 @@ package com.illunex.emsaasrestapi.project;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.document.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,12 +25,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
 @Service
 public class ProjectService {
+    private final ProjectMapper projectMapper;
 
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
@@ -37,27 +43,39 @@ public class ProjectService {
      * @return
      */
     public CustomResponse<?> createProject(RequestProjectDTO.Project project) throws CustomException {
-        // TODO: RDB 처리 부분
-
-
-        // MongoDB 처리 부분
-//        mongoTemplate.find(Query.query(Criteria.where("idx").is(1)), RequestProjectDTO.Project.class);
-        // Document 맵핑
-        Project mappingProject = modelMapper.map(project, Project.class);
-
-        mongoTemplate.insert(mappingProject);
-
-//        List<Project> result = mongoTemplate.find(Query.query(Criteria.where("nodeList").elemMatch(Criteria.where("nodeType").is("Company"))), Project.class);
-
-        Project result = mongoTemplate.findOne(Query.query(Criteria.where("projectId").is(project.getProjectId())), Project.class);
-
-        if(result == null) {
-            throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
-        }
-
-        return CustomResponse.builder()
-                .data(modelMapper.map(result, ResponseProjectDTO.Project.class))
+        // RDB 처리 부분
+        ProjectVO projectVO = ProjectVO.builder()
+                .projectCategoryIdx(project.getProjectId().getProjectCategoryIdx())
+                .title(project.getTitle())
+                .description(project.getDescription())
+                .statusCd(EnumCode.Project.StatusCd.MongoDB.getCode())
                 .build();
+        // 프로젝트 저장
+        int insertCnt = projectMapper.insertProjectVO(projectVO);
+
+        if(insertCnt > 0) {
+            // MongoDB 처리 부분
+//            mongoTemplate.find(Query.query(Criteria.where("idx").is(1)), RequestProjectDTO.Project.class);
+            // Document 맵핑
+            Project mappingProject = modelMapper.map(project, Project.class);
+            // projectIdx 업데이트
+            mappingProject.getProjectId().setProjectIdx(projectVO.getIdx());
+
+            mongoTemplate.insert(mappingProject);
+
+//            List<Project> result = mongoTemplate.find(Query.query(Criteria.where("nodeList").elemMatch(Criteria.where("nodeType").is("Company"))), Project.class);
+
+            Project result = mongoTemplate.findOne(Query.query(Criteria.where("projectId").is(mappingProject.getProjectId())), Project.class);
+
+            if (result == null) {
+                throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
+            }
+
+            return CustomResponse.builder()
+                    .data(modelMapper.map(result, ResponseProjectDTO.Project.class))
+                    .build();
+        }
+        throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
     }
 
     /**

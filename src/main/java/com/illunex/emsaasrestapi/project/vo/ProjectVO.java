@@ -1,17 +1,19 @@
 package com.illunex.emsaasrestapi.project.vo;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.apache.ibatis.type.Alias;
 
 import java.time.ZonedDateTime;
 
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Alias("ProjectVO")
 public class ProjectVO {
     private Integer idx;
-    private Integer partnershipCategoryIdx;
+    private Integer projectCategoryIdx;
     private String title;
     private String description;
     private String statusCd;

@@ -35,12 +35,14 @@ spring:
     open-in-view: false
   sql:
     init:
-#      schema-locations: classpath*:db/local/drop.sql,
-#        classpath*:db/local/schema.sql,
-#        classpath*:db/common/alter_table.sql
-#      data-locations: classpath*:db/common/code.sql,
-#        classpath*:db/local/data.sql
-      mode: always
+      schema-locations:
+        - classpath*:db/local/drop.sql
+        - classpath*:db/local/schema.sql
+#        - classpath*:db/common/alter_table.sql
+      data-locations:
+        - classpath*:db/common/code.sql,
+        - classpath*:db/local/data.sql
+    mode: always
   data:
     mongodb:
       host: localhost
