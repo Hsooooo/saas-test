@@ -101,7 +101,7 @@ public class ProjectController {
      * @return
      * @throws CustomException
      */
-    @PostMapping("/category")
+    @PatchMapping("/category")
     public CustomResponse<?> updateCategory(@RequestBody RequestProjectDTO.Category category) throws CustomException {
         return projectService.updateCategory(category);
     }

@@ -11,6 +11,6 @@ public interface ProjectCategoryMapper {
     List<ProjectCategoryVO> findByPartnershipIdx(Integer partnershipIdx);
     Integer findMaxSort();
     ProjectCategoryVO save(ProjectCategoryVO vo);
-    ProjectCategoryVO update(ProjectCategoryVO vo);
+    void update(ProjectCategoryVO vo);
 
 }

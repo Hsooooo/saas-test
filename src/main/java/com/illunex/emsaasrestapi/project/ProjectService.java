@@ -344,7 +344,6 @@ public class ProjectService {
      * @param category
      * @return
      */
-    @Transactional
     public CustomResponse<?> updateCategory(RequestProjectDTO.Category category) throws CustomException {
 
         //TODO: 파트너쉽 넣어줘야함
