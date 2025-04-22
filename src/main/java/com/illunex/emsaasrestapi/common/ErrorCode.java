@@ -47,6 +47,8 @@ public enum ErrorCode {
     PROJECT_INVALID_FILE_DATA_EMPTY(501, "데이터가 없습니다."),
     PROJECT_INVALID_FILE_DATA_ROW_EMPTY(502, "행의 데이터가 없습니다."),
     PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY(503, "열의 데이터가 없습니다."),
+
+    PROJECT_CATEGORY_INVALID_SORT_ORDER(550, "요청된 정렬 순서가 올바르지 않습니다."),
     ;
 
     private final int status;

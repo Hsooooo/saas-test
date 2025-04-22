@@ -73,15 +73,14 @@ public class ProjectController {
         return projectService.replaceProject(project);
     }
 
-
     /**
      * 프로젝트 카테고리 조회
      * @return
      * @throws CustomException
      */
     @GetMapping("/category")
-    public CustomResponse<?> getCategory() throws CustomException {
-        return projectService.getCategory();
+    public CustomResponse<?> getProjectCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
+        return projectService.getProjectCategory(projectCategory);
     }
 
     /**
@@ -91,8 +90,8 @@ public class ProjectController {
      * @throws CustomException
      */
     @PostMapping("/category")
-    public CustomResponse<?> saveCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
-        return projectService.saveCategory(projectCategory);
+    public CustomResponse<?> saveProjectCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
+        return projectService.saveProjectCategory(projectCategory);
     }
 
     /**
@@ -126,5 +125,38 @@ public class ProjectController {
     @PatchMapping("/category/sort")
     public CustomResponse<?> updateProjectCategorySort(@RequestBody List<RequestProjectDTO.ProjectCategory> projectCategoryList) throws CustomException {
         return projectService.updateProjectCategorySort(projectCategoryList);
+    }
+
+    /**
+     * 프로젝트 카테고리 이동
+     * @param project
+     * @return
+     * @throws CustomException
+     */
+    @PatchMapping("/move")
+    public CustomResponse<?> moveProject(@RequestBody RequestProjectDTO.Project project) throws CustomException {
+        return projectService.moveProject(project);
+    }
+
+    /**
+     * 프로젝트 삭제
+     * @param projectIdx
+     * @return
+     * @throws CustomException
+     */
+    @DeleteMapping("/delete")
+    public CustomResponse<?> deleteProject(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        return projectService.deleteProject(projectIdx);
+    }
+
+    /**
+     * 프로젝트 복제
+     * @param projectIdx
+     * @return
+     * @throws CustomException
+     */
+    @PutMapping("/copy")
+    public CustomResponse<?> copyProject(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        return projectService.copyProject(projectIdx);
     }
 }

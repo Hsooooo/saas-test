@@ -159,9 +159,6 @@ public class RequestProjectDTO {
         private String fieldType;
     }
 
-    /**
-     * 프로젝트 카테고리 정보
-     */
     @Getter
     @Setter
     @Builder
