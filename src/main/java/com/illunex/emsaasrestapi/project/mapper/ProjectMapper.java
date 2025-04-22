@@ -8,4 +8,5 @@ import java.util.List;
 @Mapper
 public interface ProjectMapper {
     Integer insertProjectVO(ProjectVO projectVO);
+    Integer countByProjectCategoryIdx(Integer idx);
 }

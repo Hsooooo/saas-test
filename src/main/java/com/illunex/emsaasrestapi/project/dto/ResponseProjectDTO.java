@@ -161,4 +161,18 @@ public class ResponseProjectDTO {
         // Row 데이터 정보
         List<LinkedHashMap<String, Object>> rowList;
     }
+
+    /**
+     * 카테고리 조회
+     */
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    public static class Category {
+        Integer categoryIdx; //카테고리idx
+        String name;        //카테고리명
+        Integer projectCnt;  //프로젝트 숫자
+        Integer sort;        //정렬순서
+    }
 }

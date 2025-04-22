@@ -3,13 +3,13 @@ package com.illunex.emsaasrestapi.project;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
-import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.document.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
@@ -24,11 +24,14 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -36,6 +39,7 @@ import java.util.*;
 public class ProjectService {
     private final ProjectMapper projectMapper;
     private final ProjectCategoryMapper projectCategoryMapper;
+    private final ProjectMemberMapper projectMemberMapper;
 
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
@@ -311,4 +315,89 @@ public class ProjectService {
                 .data(null)
                 .build();
     }
+
+
+
+    /**
+     * 카테고리 조회
+     * @param category
+     * @return
+     */
+    public CustomResponse<?> getCategory(RequestProjectDTO.Category category) throws CustomException {
+
+        //TODO: 파트너쉽 id 가져오는 부분 있어야함
+        Integer partnershipIdx = 1111;
+        List<ProjectCategoryVO> categoryList = projectCategoryMapper.findByPartnershipIdx(partnershipIdx);
+
+
+        List<ResponseProjectDTO.Category> result = categoryList.stream()
+                .map(vo -> modelMapper.map(vo, ResponseProjectDTO.Category.class))
+                .collect(Collectors.toList());
+
+        //카테고리별 프로젝트 개수 세팅
+        for(ResponseProjectDTO.Category res : result){
+            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getCategoryIdx());
+            res.setProjectCnt(cnt);
+        }
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
+    /**
+     * 카테고리 추가
+     * @param category
+     * @return
+     */
+    @Transactional
+    public CustomResponse<?> saveCategory(RequestProjectDTO.Category category) throws CustomException {
+
+        Integer sort = projectCategoryMapper.findMaxSort();
+
+        //TODO: 파트너쉽도 넣어줘야함
+        Integer partnershipIdx = 111;
+
+        ProjectCategoryVO vo = ProjectCategoryVO.builder()
+                .partnershipIdx(partnershipIdx)
+                .name(category.getCategoryName())
+                .sort(sort)
+                .build();
+
+        vo = projectCategoryMapper.save(vo);
+
+        ResponseProjectDTO.Category result = modelMapper.map(vo, ResponseProjectDTO.Category.class);
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
+
+    /**
+     * 카테고리 수정
+     * @param category
+     * @return
+     */
+    @Transactional
+    public CustomResponse<?> updateCategory(RequestProjectDTO.Category category) throws CustomException {
+
+        //TODO: 파트너쉽 넣어줘야함
+        Integer partnershipIdx = 111;
+
+        ProjectCategoryVO vo = ProjectCategoryVO.builder()
+                                    .idx(category.getCategoryIdx())
+                                    .partnershipIdx(partnershipIdx)
+                                    .name(category.getCategoryName())
+                                    .build();
+
+        projectCategoryMapper.update(vo);
+
+        ResponseProjectDTO.Category result = modelMapper.map(vo, ResponseProjectDTO.Category.class);
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
 }
