@@ -158,4 +158,17 @@ public class RequestProjectDTO {
         private String fieldName;
         private String fieldType;
     }
+
+    /**
+     * 카테고리 요청
+     */
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Category {
+        private String categoryIdx;     //"전체" 이면 전체조회
+        private String categoryName;
+    }
 }

@@ -8,7 +8,10 @@ import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.document.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.vo.CategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +36,8 @@ import java.util.*;
 @Service
 public class ProjectService {
     private final ProjectMapper projectMapper;
+    private final ProjectCategoryMapper projectCategoryMapper;
+    private final ProjectMemberMapper projectMemberMapper;
 
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
@@ -272,4 +277,35 @@ public class ProjectService {
             default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
         }
     }
+
+
+
+
+    /**
+     * 카테고리 조회
+     * @param category
+     * @return
+     */
+    public CustomResponse<?> getCategory(RequestProjectDTO.Category category) throws CustomException {
+
+        //TODO: 파트너쉽 id 가져오는 부분 있어야함
+        List<CategoryVO> categoryList = new ArrayList();
+        if(category.getCategoryIdx().equals("전체")){
+            categoryList = projectCategoryMapper.findAll();
+        }else{
+            categoryList = projectCategoryMapper.findByPartnershipIdx(Integer.parseInt(category.getCategoryIdx()));
+        }
+
+
+        for(){
+
+        }
+
+        ResponseProjectDTO.Category result = modelMapper.map(category, ResponseProjectDTO.Category.class);
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
 }

@@ -71,4 +71,16 @@ public class ProjectController {
     public CustomResponse<?> replaceProject(@RequestBody RequestProjectDTO.Project project) throws CustomException {
         return projectService.replaceProject(project);
     }
+
+
+    /**
+     * 카테고리 조회
+     * @param project
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/category")
+    public CustomResponse<?> getCategory(@RequestBody RequestProjectDTO.Category category) throws CustomException {
+        return projectService.getCategory(category);
+    }
 }
