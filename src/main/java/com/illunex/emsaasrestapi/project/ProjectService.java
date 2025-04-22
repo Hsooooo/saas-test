@@ -31,7 +31,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -285,7 +287,7 @@ public class ProjectService {
      * @param ProjectCategory
      * @return
      */
-    public CustomResponse<?> getCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
+    public CustomResponse<?> getProjectCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
 
         //TODO: 파트너쉽 id 가져오는 부분 있어야함
         Integer partnershipIdx = 1111;
@@ -313,7 +315,7 @@ public class ProjectService {
      * @return
      */
     @Transactional
-    public CustomResponse<?> saveCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
+    public CustomResponse<?> saveProjectCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
 
         Integer sort = projectCategoryMapper.findMaxSort();
 
@@ -347,7 +349,7 @@ public class ProjectService {
         Integer partnershipIdx = 111;
 
         ProjectCategoryVO vo = ProjectCategoryVO.builder()
-                                    .idx(ProjectCategory.getProjectCategoryId())
+                                    .idx(ProjectCategory.getProjectCategoryIdx())
                                     .partnershipIdx(partnershipIdx)
                                     .name(ProjectCategory.getName())
                                     .build();
@@ -368,7 +370,7 @@ public class ProjectService {
      */
     public CustomResponse<?> deleteProjectCategory(Integer projectCategoryIdx) throws CustomException {
         // 프로젝트 카테고리 조회
-        ProjectCategoryVO targetProjectCategory = projectCategoryMapper.selectByProjectCategoryIdx(projectCategoryIdx)
+        projectCategoryMapper.selectByProjectCategoryIdx(projectCategoryIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
         // TODO[JCW]: 외래키 delete 확인, 안되면 프로젝트 삭제 수동 추가해야됨
@@ -386,8 +388,19 @@ public class ProjectService {
      * @throws CustomException
      */
     public CustomResponse<?> updateProjectCategorySort(List<RequestProjectDTO.ProjectCategory> projectCategoryList) throws CustomException {
+        // 요청된 정렬 순서가 올바른지 확인
+        int size = projectCategoryList.size();
+        Set<Integer> sortSet = projectCategoryList.stream()
+                .map(RequestProjectDTO.ProjectCategory::getSort)
+                .collect(Collectors.toSet());
+
+        if (sortSet.size() != size || !sortSet.containsAll(IntStream.rangeClosed(1, size).boxed().collect(Collectors.toSet()))) {
+            throw new CustomException(ErrorCode.PROJECT_CATEGORY_INVALID_SORT_ORDER);
+        }
+
+        // 정렬 순서 업데이트
         for (RequestProjectDTO.ProjectCategory projectCategory : projectCategoryList) {
-            ProjectCategoryVO targetProjectCategory = projectCategoryMapper.selectByProjectCategoryIdx(projectCategory.getProjectCategoryId())
+            ProjectCategoryVO targetProjectCategory = projectCategoryMapper.selectByProjectCategoryIdx(projectCategory.getProjectCategoryIdx())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
             targetProjectCategory.setSort(projectCategory.getSort());

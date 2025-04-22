@@ -166,6 +166,8 @@ public class RequestProjectDTO {
     @AllArgsConstructor
     public static class ProjectCategory {
         private Integer projectCategoryIdx;
-        private String projectCategoryName;
+        private Integer partnershipIdx;
+        private String name;
+        private Integer sort;
     }
 }
