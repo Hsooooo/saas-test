@@ -16,5 +16,5 @@ public interface ProjectCategoryMapper {
     ProjectCategoryVO update(ProjectCategoryVO vo);
     Optional<ProjectCategoryVO> selectByProjectCategoryIdx(Integer projectCategoryIdx);
     Integer deleteByProjectCategoryIdx(Integer projectCategoryIdx);
-    Integer updateSortByProjectCategory(ProjectCategoryVO projectCategory);
+    Integer updateSortByProjectCategory(RequestProjectDTO.ProjectCategory projectCategory);
 }

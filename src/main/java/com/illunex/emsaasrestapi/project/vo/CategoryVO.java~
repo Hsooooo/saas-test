@@ -1,0 +1,4 @@
+package com.illunex.emsaasrestapi.project.vo;
+
+public class CategoryVO {
+}

@@ -159,16 +159,15 @@ public class RequestProjectDTO {
         private String fieldType;
     }
 
-    /**
-     * 카테고리 요청
-     */
     @Getter
     @Setter
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Category {
-        private Integer categoryIdx;
-        private String categoryName;
+    public static class ProjectCategory {
+        private Integer projectCategoryId;
+        private Integer partnershipIdx;
+        private String name;
+        private Integer sort;
     }
 }

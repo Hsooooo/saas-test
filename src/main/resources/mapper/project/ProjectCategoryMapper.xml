@@ -9,6 +9,11 @@
 
     </insert>
 
+    <select id="selectByProjectCategoryIdx" parameterType="int" resultType="ProjectCategoryVO">
+        SELECT *
+        FROM project_category
+        where idx = #{projectCategoryIdx}
+    </select>
 
     <select id="findByPartnershipIdx" parameterType="ProjectCategoryVO" resultType="ProjectCategoryVO">
         SELECT * FROM project_category
@@ -47,4 +52,15 @@
     </update>
 
 
+    <delete id="deleteByProjectCategoryIdx" parameterType="int">
+        DELETE
+        FROM project_category
+        WHERE idx = #{projectCategoryIdx}
+    </delete>
+
+    <update id="updateSortByProjectCategory" parameterType="ProjectCategoryVO">
+        UPDATE project_category
+        SET sort = #{sort}
+        WHERE idx = #{idx}
+    </update>
 </mapper>
