@@ -193,6 +193,9 @@ public class ProjectService {
             throw new CustomException(ErrorCode.COMMON_EMPTY);
         }
 
+        //maria삭제
+        projectMapper.deleteByIdx(projectId.getProjectIdx());
+
         return CustomResponse.builder()
                 .data(mongoTemplate.remove(findProject))
                 .build();

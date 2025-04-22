@@ -40,4 +40,10 @@
         WHERE idx = #{idx}
     </update>
 
+    <delete id="deleteByIdx" parameterType="Integer">
+        DELETE project
+        WHERE idx = #{idx}
+    </delete>
+
+
 </mapper>
