@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -70,5 +71,21 @@ public class ProjectController {
     @PutMapping()
     public CustomResponse<?> replaceProject(@RequestBody RequestProjectDTO.Project project) throws CustomException {
         return projectService.replaceProject(project);
+    }
+
+    /**
+     * 프로젝트 카테고리 삭제
+     * @param projectCategoryIdx
+     * @return
+     * @throws CustomException
+     */
+    @DeleteMapping("/category")
+    public CustomResponse<?> deleteProjectCategory(@RequestParam(name = "projectCategoryIdx") Integer projectCategoryIdx) throws CustomException {
+        return projectService.deleteProjectCategory(projectCategoryIdx);
+    }
+
+    @PatchMapping("/category/sort")
+    public CustomResponse<?> updateProjectCategorySort(@RequestBody List<RequestProjectDTO.ProjectCategory> projectCategoryList) throws CustomException {
+        return projectService.updateProjectCategorySort(projectCategoryList);
     }
 }

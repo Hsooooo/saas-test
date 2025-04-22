@@ -9,5 +9,21 @@
 
     </insert>
 
+    <select id="selectByProjectCategoryIdx" parameterType="int" resultType="ProjectCategoryVO">
+        SELECT *
+        FROM project_category
+        where idx = #{projectCategoryIdx}
+    </select>
 
+    <delete id="deleteByProjectCategoryIdx" parameterType="int">
+        DELETE
+        FROM project_category
+        WHERE idx = #{projectCategoryIdx}
+    </delete>
+
+    <update id="updateSortByProjectCategory" parameterType="RequestProjectDTO.ProjectCategory">
+        UPDATE project_category
+        SET sort = #{sort}
+        WHERE idx = #{projectCategoryId}
+    </update>
 </mapper>

@@ -8,7 +8,9 @@ import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.document.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ import java.util.*;
 @Service
 public class ProjectService {
     private final ProjectMapper projectMapper;
+    private final ProjectCategoryMapper projectCategoryMapper;
 
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
@@ -271,5 +274,41 @@ public class ProjectService {
             }
             default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
         }
+    }
+
+    /**
+     * 프로젝트 카테고리 삭제
+     * @param projectCategoryIdx
+     * @return
+     */
+    public CustomResponse<?> deleteProjectCategory(Integer projectCategoryIdx) throws CustomException {
+        // 프로젝트 카테고리 조회
+        ProjectCategoryVO targetProjectCategory = projectCategoryMapper.selectByProjectCategoryIdx(projectCategoryIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+
+        projectCategoryMapper.deleteByProjectCategoryIdx(projectCategoryIdx);
+
+        return CustomResponse.builder()
+                .data(null)
+                .build();
+    }
+
+    /**
+     * 프로젝트 카테고리 정렬 순서 업데이트
+     * @param projectCategoryList
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> updateProjectCategorySort(List<RequestProjectDTO.ProjectCategory> projectCategoryList) throws CustomException {
+        for (RequestProjectDTO.ProjectCategory projectCategory : projectCategoryList) {
+            ProjectCategoryVO targetProjectCategory = projectCategoryMapper.selectByProjectCategoryIdx(projectCategory.getProjectCategoryId())
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+
+            projectCategoryMapper.updateSortByProjectCategory(projectCategory);
+        }
+
+        return CustomResponse.builder()
+                .data(null)
+                .build();
     }
 }
