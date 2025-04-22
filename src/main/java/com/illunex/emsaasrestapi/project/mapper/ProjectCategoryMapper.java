@@ -11,9 +11,9 @@ import java.util.Optional;
 public interface ProjectCategoryMapper {
 
     List<ProjectCategoryVO> findByPartnershipIdx(Integer partnershipIdx);
-    Integer findMaxSort();
-    ProjectCategoryVO save(ProjectCategoryVO vo);
-    ProjectCategoryVO update(ProjectCategoryVO vo);
+    Integer findMaxSort(Integer partnershipIdx);
+    Integer save(ProjectCategoryVO vo);
+    Integer update(ProjectCategoryVO vo);
     Optional<ProjectCategoryVO> selectByProjectCategoryIdx(Integer projectCategoryIdx);
     Integer deleteByProjectCategoryIdx(Integer projectCategoryIdx);
     Integer updateSortByProjectCategory(ProjectCategoryVO projectCategory);

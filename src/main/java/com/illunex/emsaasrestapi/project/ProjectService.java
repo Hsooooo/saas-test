@@ -286,7 +286,7 @@ public class ProjectService {
      * 프로젝트 카테고리 조회
      * @return
      */
-    public CustomResponse<?> getProjectCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
+    public CustomResponse<?> getProjectCategory() throws CustomException {
 
         //TODO: 파트너쉽 id 가져오는 부분 있어야함
         Integer partnershipIdx = 1;
@@ -316,10 +316,10 @@ public class ProjectService {
     @Transactional
     public CustomResponse<?> saveProjectCategory(RequestProjectDTO.ProjectCategory ProjectCategory) throws CustomException {
 
-        Integer sort = projectCategoryMapper.findMaxSort();
-
         //TODO: 파트너쉽도 넣어줘야함
-        Integer partnershipIdx = 111;
+        Integer partnershipIdx = 1;
+
+        Integer sort = projectCategoryMapper.findMaxSort(partnershipIdx);
 
         ProjectCategoryVO vo = ProjectCategoryVO.builder()
                 .partnershipIdx(partnershipIdx)
@@ -327,7 +327,7 @@ public class ProjectService {
                 .sort(sort)
                 .build();
 
-        vo = projectCategoryMapper.save(vo);
+        projectCategoryMapper.save(vo);
 
         ResponseProjectDTO.ProjectCategory result = modelMapper.map(vo, ResponseProjectDTO.ProjectCategory.class);
 

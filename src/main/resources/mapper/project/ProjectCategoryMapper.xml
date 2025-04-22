@@ -20,8 +20,9 @@
         WHERE partnership_idx = #{partnershipIdx}
     </select>
 
-    <select id="findMaxSort" parameterType="Integer" resultType="ProjectCategoryVO">
-        SELECT max(sort) FROM project_category
+    <select id="findMaxSort" parameterType="Integer" resultType="Integer">
+        SELECT max(sort)+1 FROM project_category
+        WHERE partnership_idx = #{partnershipIdx}
         FOR UPDATE
     </select>
 
