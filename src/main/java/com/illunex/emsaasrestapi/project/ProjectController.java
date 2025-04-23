@@ -92,43 +92,10 @@ public class ProjectController {
      * @throws CustomException
      */
     @PostMapping("/category")
-    public CustomResponse<?> saveProjectCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
-        return projectService.saveProjectCategory(projectCategory);
+    public CustomResponse<?> updateProjectCategory(@RequestBody RequestProjectDTO.ProjectCategoryModify projectCategoryModify,
+                                                   @AuthenticationPrincipal User user) throws CustomException {
+        return projectService.updateProjectCategory(projectCategoryModify, user);
     }
-
-    /**
-     * 프로젝트 카테고리 수정
-     * @param projectCategory
-     * @return
-     * @throws CustomException
-     */
-    @PatchMapping("/category")
-    public CustomResponse<?> updateCategory(@RequestBody RequestProjectDTO.ProjectCategory projectCategory) throws CustomException {
-        return projectService.updateCategory(projectCategory);
-    }
-
-    /**
-     * 프로젝트 카테고리 삭제
-     * @param projectCategoryIdx
-     * @return
-     * @throws CustomException
-     */
-    @DeleteMapping("/category")
-    public CustomResponse<?> deleteProjectCategory(@RequestParam(name = "projectCategoryIdx") Integer projectCategoryIdx) throws CustomException {
-        return projectService.deleteProjectCategory(projectCategoryIdx);
-    }
-
-    /**
-     * 프로젝트 카테고리 정렬 순서 업데이트
-     * @param projectCategoryList
-     * @return
-     * @throws CustomException
-     */
-    @PatchMapping("/category/sort")
-    public CustomResponse<?> updateProjectCategorySort(@RequestBody List<RequestProjectDTO.ProjectCategory> projectCategoryList) throws CustomException {
-        return projectService.updateProjectCategorySort(projectCategoryList);
-    }
-
 
     /**
      * 프로젝트 카테고리 이동
@@ -150,19 +117,5 @@ public class ProjectController {
     @GetMapping("/select")
     public CustomResponse<?> selectProject(@RequestBody RequestProjectDTO.ProjectId projectId) throws CustomException {
         return projectService.selectProject(projectId);
-    }
-
-
-
-
-
-
-
-
-
-
-    public CustomResponse<?> updateProjectCategory(@RequestBody RequestProjectDTO.ProjectCategoryModify projectCategoryModify,
-                                                   @AuthenticationPrincipal User user) throws CustomException {
-        return projectService.updateProjectCategory(projectCategoryModify, user);
     }
 }

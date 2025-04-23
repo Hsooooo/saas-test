@@ -41,21 +41,14 @@
         WHERE project_category_idx = #{projectCategoryIdx}
     </select>
 
-    <update id="updateCategoryByProjectCategoryIdx" parameterType="Integer">
-        Update project
-        SET project_category_idx = 0
-        WHERE project_category_idx = #{projectCategoryIdx}
-    </update>
-    <update id="updateProjectCategoryIdx" parameterType="ProjectVO">
+    <update id="updateProjectCategoryIdxByProjectVO" parameterType="ProjectVO">
         UPDATE project
-        SET projectCategoryIdx = #{projectCategoryIdx}
+        SET project_category_idx = #{projectCategoryIdx}
         WHERE idx = #{idx}
     </update>
 
     <delete id="deleteByIdx" parameterType="Integer">
-        DELETE project
+        DELETE FROM project
         WHERE idx = #{idx}
     </delete>
-
-
 </mapper>

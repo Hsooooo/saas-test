@@ -356,10 +356,7 @@ public class ProjectService {
                     ProjectCategoryVO defaultCategory = projectCategoryVOList.stream()
                             .filter(category -> category.getName().equals("미분류")).findFirst()
                             .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
-                    for (ProjectVO projectVO : projectVOList) {
-                        projectVO.setProjectCategoryIdx(defaultCategory.getIdx());
-                        projectMapper.updateProjectCategoryIdxByProjectVO(projectVO);
-                    }
+                    projectMapper.updateCategoryByProjectCategoryIdx(defaultCategory.getIdx());
                 }
                 projectCategoryMapper.deleteByIdx(idx);
             }
@@ -396,7 +393,7 @@ public class ProjectService {
                     .projectCategoryIdx(dto.getProjectCategoryIdx())
                     .build();
 
-            projectMapper.updateProjectCategoryIdxByProjectVO(projectVO);
+            projectMapper.updateProjectCategoryIdx(projectVO);
         }
 
         return CustomResponse.builder()
@@ -419,7 +416,7 @@ public class ProjectService {
         Integer partnershipIdx = 1;
 
         // 프로젝트 조회
-        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdx(projectId.getProjectCategoryIdx());
+        List<ProjectVO> projectList = projectMapper.selectByProjectCategoryIdx(projectId.getProjectCategoryIdx());
 
         List<ResponseProjectDTO.ProjectPreview> result = projectList.stream()
                 .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectPreview.class))
@@ -430,12 +427,14 @@ public class ProjectService {
             List<PartnershipMemberPreviewVO> memberList = partnershipMemberMapper.selectAllByProjectIdx(dto.getProjectIdx());
             List<ResponsePartnershipDTO.MemberPreview> memberPreview = memberList.stream()
                     .map(vo -> ResponsePartnershipDTO.MemberPreview.builder()
-                            .memberIdx(vo.getIdx())
-                            .name(vo.getName())
-                            .profileImageUrl(vo.getProfileImageUrl())
-                            .profileImagePath(vo.getProfileImagePath())
-                            .build()
-                    ).toList();
+                                            .memberIdx(vo.getIdx())
+                                            .name(vo.getName())
+                                            .profileImageUrl(vo.getProfileImageUrl())
+                                            .profileImagePath(vo.getProfileImagePath())
+                                            .build()
+                    )
+                    .toList();
+
             dto.setMember(memberPreview);
         }
 
