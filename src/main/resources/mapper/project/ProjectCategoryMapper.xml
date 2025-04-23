@@ -4,28 +4,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper">
-
-    <insert id="insertLoginHistory" parameterType="ProjectCategoryVO" useGeneratedKeys="true" keyProperty="idx">
-
-    </insert>
-
-    <select id="selectByProjectCategoryIdx" parameterType="int" resultType="ProjectCategoryVO">
-        SELECT *
-        FROM project_category
-        where idx = #{projectCategoryIdx}
-    </select>
-
-    <select id="findByPartnershipIdx" parameterType="ProjectCategoryVO" resultType="ProjectCategoryVO">
-        SELECT * FROM project_category
-        WHERE partnership_idx = #{partnershipIdx}
-    </select>
-
-    <select id="findMaxSort" parameterType="Integer" resultType="ProjectCategoryVO">
-        SELECT max(sort) FROM project_category
-        FOR UPDATE
-    </select>
-
-    <insert id="save" parameterType="ProjectCategoryVO" useGeneratedKeys="true" keyProperty="idx">
+    <insert id="insertByProjectCategoryVO" parameterType="ProjectCategoryVO" useGeneratedKeys="true" keyProperty="idx">
         INSERT INTO project_category (
             partnership_idx,
             name,
@@ -33,33 +12,35 @@
             update_date,
             create_date
         ) VALUES (
-             #{partnershipIdx},
-             #{name},
-             #{sort},
-             NOW(),
-             NOW()
-         )
+            #{partnershipIdx},
+            #{name},
+            #{sort},
+            now(),
+            now()
+        )
+        <selectKey resultType="int" keyProperty="idx" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
     </insert>
 
-    <update id="update" parameterType="ProjectCategoryVO">
+    <select id="selectAllByPartnershipIdx" parameterType="Integer" resultType="ProjectCategoryVO">
+        SELECT
+            *
+        FROM project_category
+        WHERE partnership_idx = #{partnershipIdx}
+    </select>
+
+    <update id="updateByProjectCategoryVO" parameterType="ProjectCategoryVO">
         UPDATE project_category
         SET
             name = #{name},
-            update_date = NOW()
-        WHERE
-            idx = #{idx}
-    </update>
-
-
-    <delete id="deleteByProjectCategoryIdx" parameterType="int">
-        DELETE
-        FROM project_category
-        WHERE idx = #{projectCategoryIdx}
-    </delete>
-
-    <update id="updateSortByProjectCategory" parameterType="ProjectCategoryVO">
-        UPDATE project_category
-        SET sort = #{sort}
+            sort = #{sort},
+            update_date = now()
         WHERE idx = #{idx}
     </update>
+
+    <delete id="deleteByIdx" parameterType="Integer">
+        DELETE FROM project_category
+        WHERE idx = #{idx}
+    </delete>
 </mapper>

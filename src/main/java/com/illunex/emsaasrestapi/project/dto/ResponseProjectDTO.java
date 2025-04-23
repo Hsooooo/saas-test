@@ -171,9 +171,9 @@ public class ResponseProjectDTO {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class ProjectCategory {
-        Integer categoryIdx; //카테고리idx
-        String name;        //카테고리명
-        Integer projectCnt;  //프로젝트 숫자
-        Integer sort;        //정렬순서
+        Integer projectCategoryIdx; //카테고리idx
+        String name;                //카테고리명
+        Integer sort;               //정렬순서
+        Integer projectCnt;         //프로젝트 숫자
     }
 }

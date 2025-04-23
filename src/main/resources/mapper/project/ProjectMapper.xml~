@@ -47,9 +47,10 @@
         WHERE project_category_idx = #{projectCategoryIdx}
     </delete>
 
-    <update id="updateCategoryByProjectCategoryIdx" parameterType="Integer">
+    <update id="updateDefaultCategoryByProjectCategoryIdx" parameterType="Integer">
         Update project
         SET project_category_idx = 0
         WHERE project_category_idx = #{projectCategoryIdx}
+        AND 
     </update>
 </mapper>

@@ -9,4 +9,7 @@ import java.util.List;
 public interface ProjectMapper {
     Integer insertProjectVO(ProjectVO projectVO);
     Integer countByProjectCategoryIdx(Integer idx);
+    Integer deleteByProjectCategoryIdx(Integer projectCategoryIdx);
+    List<ProjectVO> selectAllByProjectCategoryIdx(Integer projectCategoryIdx);
+    Integer updateDefaultCategoryByProjectCategoryIdx(Integer projectCategoryIdx);
 }
