@@ -1,5 +1,6 @@
 package com.illunex.emsaasrestapi.project.dto;
 
+import com.illunex.emsaasrestapi.project.document.DataRowId;
 import lombok.*;
 
 import java.util.LinkedHashMap;
@@ -141,25 +142,33 @@ public class ResponseProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @AllArgsConstructor
-    public static class ExcelData {
-        List<Sheet> sheetList;
+    public static class Data {
+        private List<DataSheet> dataSheetList;
     }
 
     /**
-     * 시트 정보
+     * 프로젝트 엑셀 시트 정보
      */
     @Getter
     @Setter
-    @Builder
-    @AllArgsConstructor
-    public static class Sheet {
-        String sheetName;
+    public static class DataSheet {
+        private Integer projectIdx;
+        private String sheetName;
         // Cell 목록
-        List<String> cellList;
+        private List<String> cellList;
         // Row 데이터 정보
-        List<LinkedHashMap<String, Object>> rowList;
+        private List<DataRow> dataRowList;
+    }
+
+    /**
+     * 프로젝트 엑셀 시트별 데이터 정보
+     */
+    @Getter
+    @Setter
+    public static class DataRow {
+        private DataRowId dataRowId;
+        // Row 데이터 정보
+        private LinkedHashMap<String, Object> dataRow;
     }
 
     /**
@@ -171,9 +180,9 @@ public class ResponseProjectDTO {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class ProjectCategory {
-        Integer categoryIdx; //카테고리idx
-        String name;        //카테고리명
-        Integer projectCnt;  //프로젝트 숫자
-        Integer sort;        //정렬순서
+        private Integer categoryIdx; //카테고리idx
+        private String name;        //카테고리명
+        private Integer projectCnt;  //프로젝트 숫자
+        private Integer sort;        //정렬순서
     }
 }
