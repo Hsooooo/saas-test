@@ -320,7 +320,7 @@ public class ProjectService {
 
         // 카테고리별 프로젝트 개수 세팅
         for(ResponseProjectDTO.ProjectCategory res : result){
-            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getProjectCategoryIdx());
+            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getIdx());
             res.setProjectCnt(cnt);
         }
 
@@ -356,7 +356,10 @@ public class ProjectService {
                     ProjectCategoryVO defaultCategory = projectCategoryVOList.stream()
                             .filter(category -> category.getName().equals("미분류")).findFirst()
                             .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
-                    projectMapper.updateCategoryByProjectCategoryIdx(defaultCategory.getIdx());
+                    for (ProjectVO projectVO : projectVOList) {
+                        projectVO.setProjectCategoryIdx(defaultCategory.getIdx());
+                        projectMapper.updateProjectCategoryIdxByProjectVO(projectVO);
+                    }
                 }
                 projectCategoryMapper.deleteByIdx(idx);
             }
@@ -372,8 +375,17 @@ public class ProjectService {
             }
         }
 
+        List<ProjectCategoryVO> result = projectCategoryMapper.selectAllByPartnershipIdx(partnershipVO.getIdx());
+        List<ResponseProjectDTO.ProjectCategory> response = modelMapper
+                .map(result, new TypeToken<List<ResponseProjectDTO.ProjectCategory>>() {}.getType());
+
+        for (ResponseProjectDTO.ProjectCategory projectCategory : response) {
+            Integer cnt = projectMapper.countByProjectCategoryIdx(projectCategory.getIdx());
+            projectCategory.setProjectCnt(cnt);
+        }
+
         return CustomResponse.builder()
-                .data(null)
+                .data(response)
                 .build();
     }
 
@@ -393,7 +405,7 @@ public class ProjectService {
                     .projectCategoryIdx(dto.getProjectCategoryIdx())
                     .build();
 
-            projectMapper.updateProjectCategoryIdx(projectVO);
+            projectMapper.updateProjectCategoryIdxByProjectVO(projectVO);
         }
 
         return CustomResponse.builder()
@@ -416,7 +428,7 @@ public class ProjectService {
         Integer partnershipIdx = 1;
 
         // 프로젝트 조회
-        List<ProjectVO> projectList = projectMapper.selectByProjectCategoryIdx(projectId.getProjectCategoryIdx());
+        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdx(projectId.getProjectCategoryIdx());
 
         List<ResponseProjectDTO.ProjectPreview> result = projectList.stream()
                 .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectPreview.class))
@@ -427,14 +439,12 @@ public class ProjectService {
             List<PartnershipMemberPreviewVO> memberList = partnershipMemberMapper.selectAllByProjectIdx(dto.getProjectIdx());
             List<ResponsePartnershipDTO.MemberPreview> memberPreview = memberList.stream()
                     .map(vo -> ResponsePartnershipDTO.MemberPreview.builder()
-                                            .memberIdx(vo.getIdx())
-                                            .name(vo.getName())
-                                            .profileImageUrl(vo.getProfileImageUrl())
-                                            .profileImagePath(vo.getProfileImagePath())
-                                            .build()
-                    )
-                    .toList();
-
+                            .memberIdx(vo.getIdx())
+                            .name(vo.getName())
+                            .profileImageUrl(vo.getProfileImageUrl())
+                            .profileImagePath(vo.getProfileImagePath())
+                            .build()
+                    ).toList();
             dto.setMember(memberPreview);
         }
 

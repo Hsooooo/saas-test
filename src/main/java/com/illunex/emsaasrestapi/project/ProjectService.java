@@ -320,7 +320,7 @@ public class ProjectService {
 
         // 카테고리별 프로젝트 개수 세팅
         for(ResponseProjectDTO.ProjectCategory res : result){
-            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getProjectCategoryIdx());
+            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getIdx());
             res.setProjectCnt(cnt);
         }
 
@@ -375,8 +375,21 @@ public class ProjectService {
             }
         }
 
+        // 추가 및 수정 완료된 카테고리 리스트를 재조회
+        List<ProjectCategoryVO> result = projectCategoryMapper.selectAllByPartnershipIdx(partnershipVO.getIdx());
+
+        // response DTO 맵핑
+        List<ResponseProjectDTO.ProjectCategory> response = modelMapper
+                .map(result, new TypeToken<List<ResponseProjectDTO.ProjectCategory>>() {}.getType());
+
+        // 카테고리별 프로젝트 개수 세팅
+        for (ResponseProjectDTO.ProjectCategory projectCategory : response) {
+            Integer cnt = projectMapper.countByProjectCategoryIdx(projectCategory.getIdx());
+            projectCategory.setProjectCnt(cnt);
+        }
+
         return CustomResponse.builder()
-                .data(null)
+                .data(response)
                 .build();
     }
 

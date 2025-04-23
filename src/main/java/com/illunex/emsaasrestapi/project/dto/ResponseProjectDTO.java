@@ -175,10 +175,12 @@ public class ResponseProjectDTO {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class ProjectCategory {
-        Integer projectCategoryIdx; //카테고리idx
-        String name;                //카테고리명
-        Integer sort;               //정렬순서
-        Integer projectCnt;         //프로젝트 숫자
+        Integer idx;                // 카테고리 Idx
+        String name;                // 카테고리명
+        Integer sort;               // 정렬순서
+        ZonedDateTime updateDate;   // 수정일
+        ZonedDateTime createDate;   // 생성일
+        Integer projectCnt;         // 프로젝트 개수
     }
 
 
