@@ -347,7 +347,7 @@ public class ProjectService {
                     ProjectCategoryVO defaultCategory = projectCategoryVOList.stream()
                             .filter(category -> category.getName().equals("미분류")).findFirst()
                             .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
-                    projectMapper.updateDefaultCategoryByProjectCategoryIdx(defaultCategory.getIdx());
+                    projectMapper.updateCategoryByProjectCategoryIdx(defaultCategory.getIdx());
                 }
                 projectCategoryMapper.deleteByIdx(idx);
             }

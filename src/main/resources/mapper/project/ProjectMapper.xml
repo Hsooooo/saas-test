@@ -41,12 +41,6 @@
         WHERE project_category_idx = #{projectCategoryIdx}
     </select>
 
-    <delete id="deleteByProjectCategoryIdx" parameterType="Integer">
-        DELETE
-        FROM project
-        WHERE project_category_idx = #{projectCategoryIdx}
-    </delete>
-
     <update id="updateCategoryByProjectCategoryIdx" parameterType="Integer">
         Update project
         SET project_category_idx = 0
