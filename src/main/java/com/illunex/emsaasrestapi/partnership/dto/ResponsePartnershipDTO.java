@@ -21,4 +21,13 @@ public class ResponsePartnershipDTO {
         private String result;
         private String reason;
     }
+
+    @Builder
+    @Getter
+    public static class MemberPreview {
+        private Integer memberIdx;
+        private String name;
+        private String profileImageUrl;
+        private String profileImagePath;
+    }
 }

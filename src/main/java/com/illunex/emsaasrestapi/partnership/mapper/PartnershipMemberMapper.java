@@ -1,9 +1,12 @@
 package com.illunex.emsaasrestapi.partnership.mapper;
 
+import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipInvitedMemberVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import org.apache.ibatis.annotations.Mapper;
 
+import java.util.List;
 import java.util.Optional;
 
 @Mapper
@@ -14,4 +17,5 @@ public interface PartnershipMemberMapper {
     Optional<PartnershipMemberVO> selectPartnershipMemberByMemberIdx(Integer partnershipIdx, Integer memberIdx);
     Boolean existsInvitedMember(Integer partnershipIdx, String email);
     void insertInvitedMember(PartnershipInvitedMemberVO partnershipInvitedMemberVO);
+    List<PartnershipMemberPreviewVO> selectAllByProjectIdx(Integer projectIdx);
 }

@@ -6,6 +6,11 @@ import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
+import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
+import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
@@ -43,6 +48,7 @@ public class ProjectService {
     private final ProjectMapper projectMapper;
     private final ProjectCategoryMapper projectCategoryMapper;
     private final PartnershipMapper partnershipMapper;
+    private final PartnershipMemberMapper partnershipMemberMapper;
 
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
@@ -191,6 +197,9 @@ public class ProjectService {
         if(findProject == null) {
             throw new CustomException(ErrorCode.COMMON_EMPTY);
         }
+
+        //maria삭제
+        projectMapper.deleteByIdx(projectId.getProjectIdx());
 
         return CustomResponse.builder()
                 .data(mongoTemplate.remove(findProject))
@@ -365,6 +374,73 @@ public class ProjectService {
 
         return CustomResponse.builder()
                 .data(null)
+                .build();
+    }
+
+
+
+    /**
+     * 프로젝트 카테고리 이동
+     * @param projectId
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> moveProject(List<RequestProjectDTO.ProjectId> projectId) throws CustomException {
+        for(RequestProjectDTO.ProjectId dto : projectId){
+            //maraiDB
+            ProjectVO projectVO = ProjectVO.builder()
+                    .idx(dto.getProjectIdx())
+                    .projectCategoryIdx(dto.getProjectCategoryIdx())
+                    .build();
+
+            projectMapper.updateProjectCategoryIdx(projectVO);
+        }
+
+        return CustomResponse.builder()
+                .data(null)
+                .message("카테고리 이동 되었습니다.")
+                .build();
+    }
+
+
+
+    /**
+     * 카테고리별 프로젝트 단순 내용 조회
+     * @param projectId
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> selectProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
+
+        //TODO[pyj]: 파트너쉽 정보 필요
+        Integer partnershipIdx = 1;
+
+        // 프로젝트 조회
+        List<ProjectVO> projectList = projectMapper.selectByProjectCategoryIdx(projectId.getProjectCategoryIdx());
+
+        List<ResponseProjectDTO.ProjectPreview> result = projectList.stream()
+                .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectPreview.class))
+                .toList();
+
+        //구성원 조회
+        for(ResponseProjectDTO.ProjectPreview dto : result){
+            List<PartnershipMemberPreviewVO> memberList = partnershipMemberMapper.selectAllByProjectIdx(dto.getProjectIdx());
+            List<ResponsePartnershipDTO.MemberPreview> memberPreview = memberList.stream()
+                    .map(vo -> ResponsePartnershipDTO.MemberPreview.builder()
+                                            .memberIdx(vo.getIdx())
+                                            .name(vo.getName())
+                                            .profileImageUrl(vo.getProfileImageUrl())
+                                            .profileImagePath(vo.getProfileImagePath())
+                                            .build()
+                    )
+                    .toList();
+
+            dto.setMember(memberPreview);
+        }
+
+
+        return CustomResponse.builder()
+                .data(result)
                 .build();
     }
 }

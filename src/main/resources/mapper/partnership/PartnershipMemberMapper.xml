@@ -98,4 +98,22 @@
        )
     </insert>
 
+    <select id="selectAllByProjectIdx" parameterType="Integer" resultType="PartnershipMemberPreviewVO">
+        SELECT
+            pm.idx,
+            m.name,
+            pm.profile_image_url,
+            pm.profile_image_path
+        FROM
+            partnership_member pm
+        LEFT JOIN member m ON m.idx = pm.member_idx
+        WHERE idx IN
+              (
+                  (SELECT partnership_member_idx
+                   FROM project_member
+                   WHERE project_idx = #{projectIdx}
+                  )
+              )
+    </select>
+
 </mapper>

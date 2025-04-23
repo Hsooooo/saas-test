@@ -46,4 +46,16 @@
         SET project_category_idx = 0
         WHERE project_category_idx = #{projectCategoryIdx}
     </update>
+    <update id="updateProjectCategoryIdx" parameterType="ProjectVO">
+        UPDATE project
+        SET projectCategoryIdx = #{projectCategoryIdx}
+        WHERE idx = #{idx}
+    </update>
+
+    <delete id="deleteByIdx" parameterType="Integer">
+        DELETE project
+        WHERE idx = #{idx}
+    </delete>
+
+
 </mapper>
