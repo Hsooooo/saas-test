@@ -8,7 +8,7 @@ import java.time.ZonedDateTime;
 
 @Getter
 @Setter
-@Alias("PartnershipPreviewVO")
+@Alias("PartnershipMemberPreviewVO")
 public class PartnershipMemberPreviewVO {
     //파트너쉽 회원 idx
     private Integer idx;
