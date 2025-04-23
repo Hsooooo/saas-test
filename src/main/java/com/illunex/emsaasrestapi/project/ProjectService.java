@@ -1,22 +1,25 @@
 package com.illunex.emsaasrestapi.project;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
-import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.Project;
+import com.illunex.emsaasrestapi.project.document.ProjectId;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
@@ -27,11 +30,13 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -39,7 +44,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -47,6 +51,7 @@ import java.util.stream.Collectors;
 public class ProjectService {
     private final ProjectMapper projectMapper;
     private final ProjectCategoryMapper projectCategoryMapper;
+    private final ProjectMemberMapper projectMemberMapper;
     private final PartnershipMapper partnershipMapper;
     private final PartnershipMemberMapper partnershipMemberMapper;
 
@@ -299,19 +304,7 @@ public class ProjectService {
      * @throws CustomException
      */
     public CustomResponse<?> getProjectCategory(User user) throws CustomException {
-        // TODO[JCW] : partnershipId를 어디서 가져올 것인지 정해야함. parameter or userDetailService
-//        if (user == null) {
-//            throw new CustomException(ErrorCode.COMMON_FAIL_AUTHENTICATION);
-//        }
-//
-//        String email = user.getUsername();
-//        String domain = email.split("@")[1];
-
-        // 테스트를 위한 임시 선언
-        String domain = "1";
-
-        PartnershipVO partnershipVO = partnershipMapper.selectByDomain(domain)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+        PartnershipVO partnershipVO = getPartnershipVOFromUser(user);
 
         Integer partnershipIdx = partnershipVO.getIdx();
         List<ProjectCategoryVO> projectCategoryVOList = projectCategoryMapper.selectAllByPartnershipIdx(partnershipIdx);
@@ -330,19 +323,7 @@ public class ProjectService {
     }
 
     public CustomResponse<?> updateProjectCategory(RequestProjectDTO.ProjectCategoryModify projectCategoryModify, User user) throws CustomException {
-        // TODO[JCW] : partnershipId를 어디서 가져올 것인지 정해야함. parameter or userDetailService
-//        if (user == null) {
-//            throw new CustomException(ErrorCode.COMMON_FAIL_AUTHENTICATION);
-//        }
-//
-//        String email = user.getUsername();
-//        String domain = email.split("@")[1];
-
-        // 테스트를 위한 임시 선언
-        String domain = "1";
-
-        PartnershipVO partnershipVO = partnershipMapper.selectByDomain(domain)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+        PartnershipVO partnershipVO = getPartnershipVOFromUser(user);
 
         List<ProjectCategoryVO> projectCategoryVOList = modelMapper.map(projectCategoryModify.getProjectCategoryList(), new TypeToken<List<ProjectCategoryVO>>() {}.getType());
 
@@ -456,5 +437,69 @@ public class ProjectService {
         return CustomResponse.builder()
                 .data(result)
                 .build();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public CustomResponse<?> copyProject(List<RequestProjectDTO.ProjectId> projectIds) throws CustomException, JsonProcessingException {
+        for(RequestProjectDTO.ProjectId projectId : projectIds){
+            // 프로젝트 조회
+            ProjectVO projectVO = projectMapper.selectByIdx(projectId.getProjectIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+
+            // Maria 프로젝트 복제
+            projectVO.setIdx(null);
+            int insertCnt = projectMapper.insertProjectVO(projectVO);
+            if (insertCnt == 0) {
+                throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
+            }
+
+            // Maria 프로젝트 멤버 복제
+            List<ProjectMemberVO> projectMemberList = projectMemberMapper.selectAllByProjectIdx(projectId.getProjectIdx());
+            for (ProjectMemberVO projectMemberVO : projectMemberList) {
+                projectMemberVO.setIdx(null);
+                int insertMemberCnt = projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
+                if (insertMemberCnt == 0) {
+                    throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
+                }
+            }
+
+            // TODO[JCW] : 노드 및 엣지 추가 필요
+
+            // MongoDB 조회
+            Project findProject = mongoTemplate.findById(projectId, Project.class);
+            if(findProject == null) {
+                throw new CustomException(ErrorCode.COMMON_EMPTY);
+            }
+
+            // MongoDB 복제
+            ObjectMapper mapper = new ObjectMapper();
+            Project copiedProject = mapper.readValue(mapper.writeValueAsString(findProject), Project.class);
+
+            // 복제된 프로젝트 Idx 삽입
+            copiedProject.getProjectId().setProjectIdx(projectVO.getIdx());
+
+            // MongoDB 저장
+            mongoTemplate.save(copiedProject);
+        }
+
+        return CustomResponse.builder()
+                .data(null)
+                .build();
+    }
+
+    private PartnershipVO getPartnershipVOFromUser(User user) throws CustomException {
+        // TODO[JCW] : partnershipId를 어디서 가져올 것인지 정해야함. parameter or userDetailService
+//        if (user == null) {
+//            throw new CustomException(ErrorCode.COMMON_FAIL_AUTHENTICATION);
+//        }
+//
+//        String email = user.getUsername();
+//        String domain = email.split("@")[1];
+
+        // 테스트를 위한 임시 선언
+        String domain = "1";
+
+        return partnershipMapper.selectByDomain(domain)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
     }
 }

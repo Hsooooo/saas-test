@@ -51,4 +51,11 @@
         DELETE FROM project
         WHERE idx = #{idx}
     </delete>
+
+    <select id="selectByIdx" parameterType="Integer" resultType="ProjectVO">
+        SELECT
+            *
+        FROM project
+        WHERE idx = #{idx}
+    </select>
 </mapper>

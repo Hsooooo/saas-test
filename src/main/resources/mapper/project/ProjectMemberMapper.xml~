@@ -21,10 +21,6 @@
             now(),
             now()
         )
-
-        <selectKey resultType="int" keyProperty="idx" order="AFTER">
-            SELECT LAST_INSERT_ID()
-        </selectKey>
     </insert>
 
     <select id="selectAllByProjectIdx" parameterType="Integer" resultType="ProjectMemberVO">

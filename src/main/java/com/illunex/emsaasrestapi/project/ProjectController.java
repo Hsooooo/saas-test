@@ -1,5 +1,6 @@
 package com.illunex.emsaasrestapi.project;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
@@ -117,5 +118,16 @@ public class ProjectController {
     @GetMapping("/select")
     public CustomResponse<?> selectProject(@RequestBody RequestProjectDTO.ProjectId projectId) throws CustomException {
         return projectService.selectProject(projectId);
+    }
+
+    /**
+     * 프로젝트 복제
+     * @param projectIds
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/copy")
+    public CustomResponse<?> copyProject(@RequestBody List<RequestProjectDTO.ProjectId> projectIds) throws CustomException, JsonProcessingException {
+        return projectService.copyProject(projectIds);
     }
 }
