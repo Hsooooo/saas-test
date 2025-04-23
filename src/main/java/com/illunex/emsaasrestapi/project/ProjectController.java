@@ -139,6 +139,17 @@ public class ProjectController {
         return projectService.moveProject(projectId);
     }
 
+    /**
+     * 카테고리별 프로젝트 단순 내용 조회
+     * @param projectId
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/select")
+    public CustomResponse<?> selectProject(@RequestBody RequestProjectDTO.ProjectId projectId) throws CustomException {
+        return projectService.selectProject(projectId);
+    }
+
 
 
 
