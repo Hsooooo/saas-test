@@ -107,7 +107,7 @@
         FROM
             partnership_member pm
         LEFT JOIN member m ON m.idx = pm.member_idx
-        WHERE idx IN
+        WHERE pm.idx IN
               (
                   (SELECT partnership_member_idx
                    FROM project_member

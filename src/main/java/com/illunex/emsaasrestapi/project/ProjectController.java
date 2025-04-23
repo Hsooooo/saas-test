@@ -76,27 +76,6 @@ public class ProjectController {
         return projectService.replaceProject(project);
     }
 
-    /**
-     * 프로젝트 카테고리 조회
-     * @return
-     * @throws CustomException
-     */
-    @GetMapping("/category")
-    public CustomResponse<?> getProjectCategory(@AuthenticationPrincipal User user) throws CustomException {
-        return projectService.getProjectCategory(user);
-    }
-
-    /**
-     * 프로젝트 카테고리 추가, 수정, 삭제
-     * @param projectCategoryModify
-     * @return
-     * @throws CustomException
-     */
-    @PostMapping("/category")
-    public CustomResponse<?> updateProjectCategory(@RequestBody RequestProjectDTO.ProjectCategoryModify projectCategoryModify,
-                                                   @AuthenticationPrincipal User user) throws CustomException {
-        return projectService.updateProjectCategory(projectCategoryModify, user);
-    }
 
     /**
      * 프로젝트 카테고리 이동
@@ -116,7 +95,7 @@ public class ProjectController {
      * @throws CustomException
      */
     @GetMapping("/select")
-    public CustomResponse<?> selectProject(@RequestBody RequestProjectDTO.ProjectId projectId) throws CustomException {
+    public CustomResponse<?> selectProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
         return projectService.selectProject(projectId);
     }
 

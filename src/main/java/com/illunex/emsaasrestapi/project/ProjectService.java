@@ -12,13 +12,11 @@ import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
 import com.illunex.emsaasrestapi.project.document.Project;
-import com.illunex.emsaasrestapi.project.document.ProjectId;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
-import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
+import com.illunex.emsaasrestapi.category.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
-import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
@@ -29,15 +27,12 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modelmapper.ModelMapper;
-import org.modelmapper.TypeToken;
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -297,82 +292,6 @@ public class ProjectService {
         }
     }
 
-    /**
-     * 프로젝트 카테고리 조회
-     * @param user
-     * @return
-     * @throws CustomException
-     */
-    public CustomResponse<?> getProjectCategory(User user) throws CustomException {
-        PartnershipVO partnershipVO = getPartnershipVOFromUser(user);
-
-        Integer partnershipIdx = partnershipVO.getIdx();
-        List<ProjectCategoryVO> projectCategoryVOList = projectCategoryMapper.selectAllByPartnershipIdx(partnershipIdx);
-
-        List<ResponseProjectDTO.ProjectCategory> result = modelMapper.map(projectCategoryVOList, new TypeToken<List<ResponseProjectDTO.ProjectCategory>>() {}.getType());
-
-        // 카테고리별 프로젝트 개수 세팅
-        for(ResponseProjectDTO.ProjectCategory res : result){
-            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getIdx());
-            res.setProjectCnt(cnt);
-        }
-
-        return CustomResponse.builder()
-                .data(result)
-                .build();
-    }
-
-    public CustomResponse<?> updateProjectCategory(RequestProjectDTO.ProjectCategoryModify projectCategoryModify, User user) throws CustomException {
-        PartnershipVO partnershipVO = getPartnershipVOFromUser(user);
-
-        List<ProjectCategoryVO> projectCategoryVOList = modelMapper.map(projectCategoryModify.getProjectCategoryList(), new TypeToken<List<ProjectCategoryVO>>() {}.getType());
-
-        // 카테고리 삭제
-        if (!CollectionUtils.isEmpty(projectCategoryModify.getDeleteCategoryIds())) {
-            for (Integer idx : projectCategoryModify.getDeleteCategoryIds()) {
-                // 삭제되는 카테고리에 포함된 프로젝트는 기본 카테고리로 넣어줌
-                List<ProjectVO> projectVOList = projectMapper.selectAllByProjectCategoryIdx(idx);
-                if (!CollectionUtils.isEmpty(projectVOList)) {
-                    // TODO[JCW] : 기본 카테고리를 어떻게 잡을지 정해야됨
-                    ProjectCategoryVO defaultCategory = projectCategoryVOList.stream()
-                            .filter(category -> category.getName().equals("미분류")).findFirst()
-                            .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
-                    for (ProjectVO projectVO : projectVOList) {
-                        projectVO.setProjectCategoryIdx(defaultCategory.getIdx());
-                        projectMapper.updateProjectCategoryIdxByProjectVO(projectVO);
-                    }
-                }
-                projectCategoryMapper.deleteByIdx(idx);
-            }
-        }
-
-        // 카테고리 추가 & 수정
-        for (ProjectCategoryVO projectCategoryVO : projectCategoryVOList) {
-            if (projectCategoryVO.getIdx() == null) {
-                projectCategoryVO.setPartnershipIdx(partnershipVO.getIdx());
-                projectCategoryMapper.insertByProjectCategoryVO(projectCategoryVO);
-            } else {
-                projectCategoryMapper.updateByProjectCategoryVO(projectCategoryVO);
-            }
-        }
-
-        // 추가 및 수정 완료된 카테고리 리스트를 재조회
-        List<ProjectCategoryVO> result = projectCategoryMapper.selectAllByPartnershipIdx(partnershipVO.getIdx());
-
-        // response DTO 맵핑
-        List<ResponseProjectDTO.ProjectCategory> response = modelMapper
-                .map(result, new TypeToken<List<ResponseProjectDTO.ProjectCategory>>() {}.getType());
-
-        // 카테고리별 프로젝트 개수 세팅
-        for (ResponseProjectDTO.ProjectCategory projectCategory : response) {
-            Integer cnt = projectMapper.countByProjectCategoryIdx(projectCategory.getIdx());
-            projectCategory.setProjectCnt(cnt);
-        }
-
-        return CustomResponse.builder()
-                .data(response)
-                .build();
-    }
 
 
 

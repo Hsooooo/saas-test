@@ -1,6 +1,6 @@
-package com.illunex.emsaasrestapi.project.mapper;
+package com.illunex.emsaasrestapi.category.mapper;
 
-import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
+import com.illunex.emsaasrestapi.category.vo.ProjectCategoryVO;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;

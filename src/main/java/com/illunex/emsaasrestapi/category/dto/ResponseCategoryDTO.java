@@ -1,19 +1,19 @@
-package com.illunex.emsaasrestapi.project.dto;
+package com.illunex.emsaasrestapi.category.dto;
 
+import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import lombok.*;
 
+import java.time.ZonedDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 
-public class RequestProjectDTO {
+public class ResponseCategoryDTO {
 
     /**
      * 프로젝트 설정 요청 구조
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Project {
         private ProjectId projectId;            // 프로젝트 번호, 파트너쉽 번호
         private String title;                   // 프로젝트 제목
@@ -28,9 +28,7 @@ public class RequestProjectDTO {
      * 프로젝트 ID 정보
      */
     @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Setter
     public static class ProjectId {
         private Integer projectCategoryIdx;
         private Integer projectIdx;
@@ -41,9 +39,7 @@ public class RequestProjectDTO {
      * 노드 정보
      */
     @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Setter
     public static class Node {
         private String nodeType;
         private String fieldName;
@@ -54,9 +50,7 @@ public class RequestProjectDTO {
      * 엣지 정보
      */
     @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Setter
     public static class Edge {
         private String edgeType;
         private String srcNodeType;
@@ -76,9 +70,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class NodeSize {
         private String categoryName;
         private List<Item> itemList;
@@ -102,9 +93,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Item {
         private String label;
         private String nodeType;
@@ -118,9 +106,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Model {
         private String label;
         private String color;
@@ -133,9 +118,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Property {
         private String NodeType;
         private String labelTitleFieldName;
@@ -150,9 +132,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Field {
         private String label;
         private String fieldName;
@@ -160,27 +139,68 @@ public class RequestProjectDTO {
     }
 
     /**
-     * 프로젝트 카테고리 정보
+     * 프로젝트 엑셀 데이터 정보
      */
     @Getter
     @Setter
     @Builder
-    @NoArgsConstructor
     @AllArgsConstructor
-    public static class ProjectCategory {
-        private Integer projectCategoryIdx;
-        private Integer partnershipIdx;
-        private String name;
-        private Integer sort;
+    public static class ExcelData {
+        List<Sheet> sheetList;
     }
 
+    /**
+     * 시트 정보
+     */
     @Getter
     @Setter
     @Builder
-    @NoArgsConstructor
     @AllArgsConstructor
-    public static class ProjectCategoryModify {
-        private List<ProjectCategory> projectCategoryList;  // 카테고리 리스트
-        private List<Integer> deleteCategoryIds;            // 삭제할 프로젝트 카테고리 idx 리스트
+    public static class Sheet {
+        String sheetName;
+        // Cell 목록
+        List<String> cellList;
+        // Row 데이터 정보
+        List<LinkedHashMap<String, Object>> rowList;
+    }
+
+    /**
+     * 카테고리 조회
+     */
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ProjectCategory {
+        Integer idx;                // 카테고리 Idx
+        String name;                // 카테고리명
+        Integer sort;               // 정렬순서
+        ZonedDateTime updateDate;   // 수정일
+        ZonedDateTime createDate;   // 생성일
+        Integer projectCnt;         // 프로젝트 개수
+    }
+
+
+    /**
+     * 카테고리의 프로젝트들 조회
+     */
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ProjectPreview {
+        Integer categoryIdx;    //카테고리idx
+        Integer projectIdx;     //프로젝트idx
+        String title;           //프로젝트명
+        Integer nodeCnt;        //노드개수
+        Integer edgeCnt;        //엣지개수
+        String imageUrl;        //이미지url
+        String imagePath;       //이미지 경로
+        ZonedDateTime createDate;     //생성일
+        ZonedDateTime updateDate;     //수정일
+        String statusCd;        //상태
+        List<ResponsePartnershipDTO.MemberPreview> member;        //프로젝트 구성원
     }
 }
