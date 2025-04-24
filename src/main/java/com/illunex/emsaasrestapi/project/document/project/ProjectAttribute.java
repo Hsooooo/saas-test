@@ -10,12 +10,12 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "property")
-public class Property {
-    private String NodeType;
+@Document(collection = "project_attribute")
+public class ProjectAttribute {
+    private String nodeType;
     private String labelTitleFieldName;
     private String labelContentFieldName;
     private List<String> labelKeywordList;
     private String keywordSplitValue;
-    private List<Field> fieldList;
+    private List<ProjectAttributeField> projectAttributeFieldList;
 }

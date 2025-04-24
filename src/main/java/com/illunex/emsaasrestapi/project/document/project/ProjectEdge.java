@@ -8,8 +8,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "edge")
-public class Edge {
+@Document(collection = "project_edge")
+public class ProjectEdge {
     private String edgeType;
     private String srcNodeType;
     private String srcFieldName;

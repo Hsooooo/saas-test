@@ -8,8 +8,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "model")
-public class Model {
+@Document(collection = "project_item_model")
+public class ProjectItemModel {
     private String label;
     private String color;
     private Integer start;

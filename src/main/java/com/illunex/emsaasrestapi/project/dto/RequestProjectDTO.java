@@ -1,6 +1,5 @@
 package com.illunex.emsaasrestapi.project.dto;
 
-import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import lombok.*;
 import org.springframework.data.domain.PageRequest;
 
@@ -20,10 +19,10 @@ public class RequestProjectDTO {
         private ProjectId projectId;            // 프로젝트 번호, 파트너쉽 번호
         private String title;                   // 프로젝트 제목
         private String description;             // 프로젝트 내용
-        private List<Node> nodeList;            // 노드정보
-        private List<Edge> edgeList;            // 엣지정보
-        private List<NodeSize> nodeSizeList;    // 노드사이즈정보
-        private List<Property> propertyList;    // 속성정보
+        private List<ProjectNode> projectNodeList;            // 노드정보
+        private List<ProjectEdge> projectEdgeList;            // 엣지정보
+        private List<ProjectNodeSize> projectNodeSizeList;    // 노드사이즈정보
+        private List<ProjectAttribute> projectAttributeList;    // 속성정보
     }
 
     /**
@@ -47,7 +46,7 @@ public class RequestProjectDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Node {
+    public static class ProjectNode {
         private String nodeType;
         private String fieldName;
         private String fieldType;
@@ -60,7 +59,7 @@ public class RequestProjectDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Edge {
+    public static class ProjectEdge {
         private String edgeType;
         private String srcNodeType;
         private String srcFieldName;
@@ -82,9 +81,9 @@ public class RequestProjectDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class NodeSize {
+    public static class ProjectNodeSize {
         private String categoryName;
-        private List<Item> itemList;
+        private List<ProjectItem> projectItemList;
     }
 
     /**
@@ -95,9 +94,9 @@ public class RequestProjectDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Filter {
+    public static class ProjectFilter {
         private String categoryName;
-        private List<Item> itemList;
+        private List<ProjectItem> projectItemList;
     }
 
     /**
@@ -108,12 +107,12 @@ public class RequestProjectDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Item {
+    public static class ProjectItem {
         private String label;
         private String nodeType;
         private String fieldName;
         private String fieldType;
-        private List<Model> modelList;
+        private List<ProjectItemModel> projectItemModelList;
     }
 
     /**
@@ -124,7 +123,7 @@ public class RequestProjectDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Model {
+    public static class ProjectItemModel {
         private String label;
         private String color;
         private Integer start;
@@ -139,13 +138,13 @@ public class RequestProjectDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Property {
-        private String NodeType;
+    public static class ProjectAttribute {
+        private String nodeType;
         private String labelTitleFieldName;
         private String labelContentFieldName;
         private List<String> labelKeywordList;
         private String keywordSplitValue;
-        private List<Field> fieldList;
+        private List<ProjectAttributeField> projectAttributeFieldList;
     }
 
     /**
@@ -156,15 +155,12 @@ public class RequestProjectDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Field {
+    public static class ProjectAttributeField {
         private String label;
         private String fieldName;
         private String fieldType;
     }
 
-    /**
-     * 필드 정보
-     */
     @Getter
     @Setter
     @Builder

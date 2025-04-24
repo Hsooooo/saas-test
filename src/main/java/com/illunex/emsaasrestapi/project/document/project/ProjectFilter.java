@@ -10,8 +10,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "filter")
-public class Filter {
+@Document(collection = "project_filter")
+public class ProjectFilter {
     private String categoryName;
-    private List<Item> itemList;
+    private List<ProjectItem> projectItemList;
 }

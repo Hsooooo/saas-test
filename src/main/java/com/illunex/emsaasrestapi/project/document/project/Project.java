@@ -17,9 +17,9 @@ public class Project {
     private ProjectId projectId;
     private String title;
     private String description;
-    private List<Node> nodeList;
-    private List<Edge> edgeList;
-    private List<NodeSize> nodeSizeList;
-    private List<Filter> filterList;
-    private List<Property> propertyList;
+    private List<ProjectNode> projectNodeList;
+    private List<ProjectEdge> projectEdgeList;
+    private List<ProjectNodeSize> projectNodeSizeList;
+    private List<ProjectFilter> projectFilterList;
+    private List<ProjectAttribute> projectAttributeList;
 }

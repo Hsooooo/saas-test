@@ -10,8 +10,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "node_size")
-public class NodeSize {
+@Document(collection = "project_node_size")
+public class ProjectNodeSize {
     private String categoryName;
-    private List<Item> itemList;
+    private List<ProjectItem> projectItemList;
 }
