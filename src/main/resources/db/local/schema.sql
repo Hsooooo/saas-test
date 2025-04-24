@@ -199,6 +199,7 @@ ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS `em_saas`.`project` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트번호',
     `project_category_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 카테고리번호',
+    `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 번호',
     `title` VARCHAR(50) NULL DEFAULT NULL COMMENT '제목' COLLATE 'utf8mb4_general_ci',
     `description` VARCHAR(200) NULL DEFAULT NULL COMMENT '내용(최대 200자)' COLLATE 'utf8mb4_general_ci',
     `status_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '프로젝트상태(code테이블)' COLLATE 'utf8mb4_general_ci',
@@ -208,6 +209,7 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project` (
     `edge_cnt` INT(11) NULL DEFAULT '0' COMMENT '엣지 개수',
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    `delete_date` DATETIME NULL DEFAULT NULL COMMENT '삭제일',
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `status_cd` (`status_cd`) USING BTREE,
     INDEX `fk_project_project_category_idx` (`project_category_idx`) USING BTREE,

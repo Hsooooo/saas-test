@@ -381,7 +381,7 @@ public class ProjectService {
         Integer partnershipIdx = 1;
 
         // 프로젝트 조회
-        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdx(projectId.getProjectCategoryIdx(), projectId.getPartnershipIdx());
+        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdxAndPartnerShipIdx(projectId.getProjectCategoryIdx(), projectId.getPartnershipIdx());
 
         List<ResponseProjectDTO.ProjectPreview> result = projectList.stream()
                 .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectPreview.class))
