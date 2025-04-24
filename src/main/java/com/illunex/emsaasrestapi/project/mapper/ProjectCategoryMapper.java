@@ -9,6 +9,6 @@ import java.util.List;
 public interface ProjectCategoryMapper {
     Integer insertByProjectCategoryVO(ProjectCategoryVO projectCategoryVO);
     Integer updateByProjectCategoryVO(ProjectCategoryVO projectCategoryVO);
-    Integer deleteByProjectCategoryVO(ProjectCategoryVO projectCategoryVO);
+    Integer deleteByIdx(Integer idx);
     List<ProjectCategoryVO> selectAllByPartnershipIdx(Integer partnershipIdx);
 }

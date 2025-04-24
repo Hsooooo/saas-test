@@ -1,4 +1,4 @@
-package com.illunex.emsaasrestapi.project.document;
+package com.illunex.emsaasrestapi.project.document.data;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;

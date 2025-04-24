@@ -1,8 +1,5 @@
-package com.illunex.emsaasrestapi.category;
+package com.illunex.emsaasrestapi.project;
 
-import com.illunex.emsaasrestapi.category.dto.RequestCategoryDTO;
-import com.illunex.emsaasrestapi.category.mapper.ProjectCategoryMapper;
-import com.illunex.emsaasrestapi.category.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
@@ -11,6 +8,9 @@ import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
+import com.illunex.emsaasrestapi.project.dto.RequestProjectCategoryDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -24,7 +24,7 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 @Service
-public class CategoryService {
+public class ProjectCategoryService {
     private final ProjectMapper projectMapper;
     private final ProjectCategoryMapper projectCategoryMapper;
     private final PartnershipMapper partnershipMapper;
@@ -63,7 +63,7 @@ public class CategoryService {
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> updateProjectCategory(RequestCategoryDTO.ProjectCategoryModify projectCategoryModify, User user) throws CustomException {
+    public CustomResponse<?> updateProjectCategory(RequestProjectCategoryDTO.ProjectCategoryModify projectCategoryModify, User user) throws CustomException {
         PartnershipVO partnershipVO = getPartnershipVOFromUser(user);
 
         List<ProjectCategoryVO> projectCategoryVOList = modelMapper.map(projectCategoryModify.getProjectCategoryList(), new TypeToken<List<ProjectCategoryVO>>() {}.getType());

@@ -1,4 +1,4 @@
-package com.illunex.emsaasrestapi.projectCategory.dto;
+package com.illunex.emsaasrestapi.project.dto;
 
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import lombok.*;

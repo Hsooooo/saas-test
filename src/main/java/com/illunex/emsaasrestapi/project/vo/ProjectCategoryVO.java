@@ -8,6 +8,8 @@ import java.time.ZonedDateTime;
 @Getter
 @Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @Alias("ProjectCategoryVO")
 public class ProjectCategoryVO {
     private Integer idx;

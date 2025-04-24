@@ -1,8 +1,8 @@
-package com.illunex.emsaasrestapi.projectCategory;
+package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
-import com.illunex.emsaasrestapi.projectCategory.dto.RequestProjectCategoryDTO;
+import com.illunex.emsaasrestapi.project.dto.RequestProjectCategoryDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;

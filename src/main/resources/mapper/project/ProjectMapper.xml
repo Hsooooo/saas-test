@@ -6,6 +6,7 @@
 <mapper namespace="com.illunex.emsaasrestapi.project.mapper.ProjectMapper">
     <insert id="insertByProjectVO" parameterType="ProjectVO" useGeneratedKeys="true" keyProperty="idx">
         INSERT INTO project (
+            partnership_idx,
             project_category_idx,
             title,
             description,
@@ -13,8 +14,9 @@
             node_cnt,
             edge_cnt,
             update_date,
-            create_date,
+            create_date
         ) VALUES (
+            #{partnershipIdx},
             #{projectCategoryIdx},
             #{title},
             #{description},

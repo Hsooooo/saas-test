@@ -11,11 +11,14 @@ import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
-import com.illunex.emsaasrestapi.project.document.Project;
-import com.illunex.emsaasrestapi.project.document.*;
+import com.illunex.emsaasrestapi.project.document.data.Data;
+import com.illunex.emsaasrestapi.project.document.data.DataRow;
+import com.illunex.emsaasrestapi.project.document.data.DataRowId;
+import com.illunex.emsaasrestapi.project.document.data.DataSheet;
+import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
-import com.illunex.emsaasrestapi.projectCategory.mapper.ProjectCategoryMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
@@ -67,6 +70,7 @@ public class ProjectService {
         // TODO 2. 해당 프로젝트 권한 여부 체크
         // RDB 처리 부분
         ProjectVO projectVO = ProjectVO.builder()
+                .partnershipIdx(project.getProjectId().getPartnershipIdx())
                 .projectCategoryIdx(project.getProjectId().getProjectCategoryIdx())
                 .title(project.getTitle())
                 .description(project.getDescription())
@@ -101,6 +105,84 @@ public class ProjectService {
                     .build();
         }
         throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * 프로젝트 조회
+     * @param projectIdx
+     * @param partnershipIdx
+     * @return
+     */
+    public CustomResponse<?> getProject(Integer projectIdx, Integer partnershipIdx) throws CustomException {
+        // TODO 1. 파트너쉽에 속한 회원 여부 체크
+        // TODO 2. 해당 프로젝트 권한 여부 체크
+        // 3. 프로젝트 조회
+        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.partnershipIdx").is(partnershipIdx));
+        Project findProject = mongoTemplate.findOne(query, Project.class);
+        if(findProject == null) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
+
+        ResponseProjectDTO.Project response = modelMapper.map(findProject, ResponseProjectDTO.Project.class);
+
+        return CustomResponse.builder()
+                .data(response)
+                .build();
+    }
+
+    /**
+     * 프로젝트 한번에 수정
+     * @param project
+     * @return
+     */
+    public CustomResponse<?> replaceProject(RequestProjectDTO.Project project) throws CustomException {
+        // 프로젝트 조회
+        Project targetProject = mongoTemplate.findById(project.getProjectId(), Project.class);
+        if(targetProject == null) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
+
+        // 데이터 맵핑
+        Project replaceProject = modelMapper.map(project, Project.class);
+
+        // 데이터 덮어쓰기
+        UpdateResult result = mongoTemplate.replace(Query.query(Criteria.where("projectId").is(project.getProjectId())), replaceProject);
+
+        if(result.getModifiedCount() == 0) {
+            throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
+        }
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
+    /**
+     * 프로젝트 삭제
+     * @param projectId
+     * @return
+     */
+    public CustomResponse<?> deleteProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
+        // TODO 1. 파트너쉽에 속한 회원 여부 체크
+        // TODO 2. 해당 프로젝트 권한 여부 체크
+        // 3. RDB 프로젝트 조회
+        ProjectVO projectVO = projectMapper.selectByProjectCategoryIdxAndProjectIdx(projectId.getProjectCategoryIdx(), projectId.getProjectIdx());
+        // 4. MongoDB 프로젝트 조회
+        Project findProject = mongoTemplate.findById(projectId, Project.class);
+        if(projectVO == null || findProject == null) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
+        // 5. RDB 삭제
+        int deleteCnt = projectMapper.deleteByProjectCategoryIdxAndProjectIdx(projectId.getProjectCategoryIdx(), projectId.getProjectIdx());
+        // 6. MongoDB 삭제
+        DeleteResult deleteResult = mongoTemplate.remove(findProject);
+
+        //maria삭제
+        projectMapper.deleteByIdx(projectId.getProjectIdx());
+
+        return CustomResponse.builder()
+                .data(deleteResult)
+                .build();
     }
 
     /**
@@ -218,88 +300,8 @@ public class ProjectService {
             dataSheet.setDataRowList(modelMapper.map(dataRow, new TypeToken<List<ResponseProjectDTO.DataRow>>(){}.getType()));
         });
 
-
-
         return CustomResponse.builder()
                 .data(response)
-                .build();
-    }
-
-    /**
-     * 프로젝트 삭제
-     * @param projectId
-     * @return
-     */
-    public CustomResponse<?> deleteProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
-        // TODO 1. 파트너쉽에 속한 회원 여부 체크
-        // TODO 2. 해당 프로젝트 권한 여부 체크
-        // 3. RDB 프로젝트 조회
-        ProjectVO projectVO = projectMapper.selectByProjectCategoryIdxAndProjectIdx(projectId.getProjectCategoryIdx(), projectId.getProjectIdx());
-        // 4. MongoDB 프로젝트 조회
-        Project findProject = mongoTemplate.findById(projectId, Project.class);
-        if(projectVO == null || findProject == null) {
-            throw new CustomException(ErrorCode.COMMON_EMPTY);
-        }
-        // 5. RDB 삭제
-        int deleteCnt = projectMapper.deleteByProjectCategoryIdxAndProjectIdx(projectId.getProjectCategoryIdx(), projectId.getProjectIdx());
-        // 6. MongoDB 삭제
-        DeleteResult deleteResult = mongoTemplate.remove(findProject);
-
-        //maria삭제
-        projectMapper.deleteByIdx(projectId.getProjectIdx());
-
-        return CustomResponse.builder()
-                .data(deleteResult)
-                .build();
-    }
-
-    /**
-     * 프로젝트 조회
-     * @param projectIdx
-     * @param partnershipIdx
-     * @return
-     */
-    public CustomResponse<?> getProject(Integer projectIdx, Integer partnershipIdx) throws CustomException {
-        // TODO 1. 파트너쉽에 속한 회원 여부 체크
-        // TODO 2. 해당 프로젝트 권한 여부 체크
-        // 3. 프로젝트 조회
-        Query query = Query.query(Criteria.where("projectId.projectIdx").is(projectIdx).and("projectId.partnershipIdx").is(partnershipIdx));
-        Project findProject = mongoTemplate.findOne(query, Project.class);
-        if(findProject == null) {
-            throw new CustomException(ErrorCode.COMMON_EMPTY);
-        }
-
-        ResponseProjectDTO.Project response = modelMapper.map(findProject, ResponseProjectDTO.Project.class);
-
-        return CustomResponse.builder()
-                .data(response)
-                .build();
-    }
-
-    /**
-     * 프로젝트 한번에 수정
-     * @param project
-     * @return
-     */
-    public CustomResponse<?> replaceProject(RequestProjectDTO.Project project) throws CustomException {
-        // 프로젝트 조회
-        Project targetProject = mongoTemplate.findById(project.getProjectId(), Project.class);
-        if(targetProject == null) {
-            throw new CustomException(ErrorCode.COMMON_EMPTY);
-        }
-
-        // 데이터 맵핑
-        Project replaceProject = modelMapper.map(project, Project.class);
-
-        // 데이터 덮어쓰기
-        UpdateResult result = mongoTemplate.replace(Query.query(Criteria.where("projectId").is(project.getProjectId())), replaceProject);
-
-        if(result.getModifiedCount() == 0) {
-            throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
-        }
-
-        return CustomResponse.builder()
-                .data(result)
                 .build();
     }
 

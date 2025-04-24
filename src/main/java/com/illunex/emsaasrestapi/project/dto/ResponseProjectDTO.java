@@ -1,11 +1,9 @@
 package com.illunex.emsaasrestapi.project.dto;
 
-import com.illunex.emsaasrestapi.project.document.DataRowId;
-import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
+import com.illunex.emsaasrestapi.project.document.data.DataRowId;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import lombok.*;
 
-import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO.Member;
 import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
