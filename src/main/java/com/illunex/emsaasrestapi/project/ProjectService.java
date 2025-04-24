@@ -6,11 +6,11 @@ import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
-import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import com.illunex.emsaasrestapi.project.document.data.Data;
 import com.illunex.emsaasrestapi.project.document.data.DataRow;
 import com.illunex.emsaasrestapi.project.document.data.DataRowId;
@@ -33,6 +33,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -373,17 +374,17 @@ public class ProjectService {
 
     /**
      * 카테고리별 프로젝트 단순 내용 조회
-     * @param projectId
+     * @param selectProject
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> selectProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
+    public CustomResponse<?> selectProject(RequestProjectDTO.SelectProject selectProject) throws CustomException {
 
         //TODO[pyj]: 파트너쉽 정보 필요
         Integer partnershipIdx = 1;
 
         // 프로젝트 조회
-        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdxAndPartnerShipIdx(projectId.getProjectCategoryIdx(), projectId.getPartnershipIdx());
+        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdxAndPartnerShipIdx(selectProject);
 
         List<ResponseProjectDTO.ProjectPreview> result = projectList.stream()
                 .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectPreview.class))

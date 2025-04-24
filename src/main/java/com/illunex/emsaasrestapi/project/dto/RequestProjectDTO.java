@@ -1,6 +1,8 @@
 package com.illunex.emsaasrestapi.project.dto;
 
+import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import lombok.*;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 
@@ -158,6 +160,20 @@ public class RequestProjectDTO {
         private String label;
         private String fieldName;
         private String fieldType;
+    }
+
+    /**
+     * 필드 정보
+     */
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SelectProject {
+        private Integer projectCategoryIdx;
+        private Integer partnershipIdx;
+        private PageRequest pageable;
     }
 
 }
