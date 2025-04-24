@@ -16,6 +16,7 @@ public interface ProjectMapper {
     Integer countByProjectCategoryIdx(Integer idx);
     Integer deleteByIdx(Integer idx);
     List<ProjectVO> selectAllByProjectCategoryIdx(Integer projectCategoryIdx);
+    List<ProjectVO> selectAllByProjectCategoryIdxAndPartnerShipIdx(Integer projectCategoryIdx, Integer partnershipIdx);
     Integer updateProjectCategoryIdxByProjectVO(ProjectVO projectVO);
     Optional<ProjectVO> selectByIdx(Integer idx);
 }
