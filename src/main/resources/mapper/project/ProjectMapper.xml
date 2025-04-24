@@ -4,7 +4,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.illunex.emsaasrestapi.project.mapper.ProjectMapper">
-    <insert id="insertProjectVO" parameterType="ProjectVO" useGeneratedKeys="true" keyProperty="idx">
+    <insert id="insertByProjectVO" parameterType="ProjectVO" useGeneratedKeys="true" keyProperty="idx">
         INSERT INTO project (
             project_category_idx,
             title,
@@ -28,6 +28,20 @@
             SELECT LAST_INSERT_ID()
         </selectKey>
     </insert>
+
+    <select id="selectByProjectCategoryIdxAndProjectIdx" resultType="ProjectVO">
+        SELECT
+            *
+        FROM project
+        WHERE idx = #{projectIdx}
+        AND project_category_idx = #{projectCategoryIdx}
+    </select>
+
+    <delete id="deleteByProjectCategoryIdxAndProjectIdx">
+        DELETE FROM project
+        WHERE idx = #{projectIdx}
+          AND project_category_idx = #{projectCategoryIdx}
+    </delete>
 
     <select id="countByProjectCategoryIdx" parameterType="Integer" resultType="Integer">
         SELECT COUNT(*) FROM project
