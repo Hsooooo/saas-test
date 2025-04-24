@@ -3,7 +3,7 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.illunex.emsaasrestapi.category.mapper.ProjectCategoryMapper">
+<mapper namespace="com.illunex.emsaasrestapi.projectCategory.mapper.ProjectCategoryMapper">
     <insert id="insertByProjectCategoryVO" parameterType="ProjectCategoryVO" useGeneratedKeys="true" keyProperty="idx">
         INSERT INTO project_category (
             partnership_idx,

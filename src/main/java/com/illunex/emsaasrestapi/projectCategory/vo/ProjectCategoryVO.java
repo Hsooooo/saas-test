@@ -1,4 +1,4 @@
-package com.illunex.emsaasrestapi.category.vo;
+package com.illunex.emsaasrestapi.projectCategory.vo;
 
 import lombok.*;
 import org.apache.ibatis.type.Alias;

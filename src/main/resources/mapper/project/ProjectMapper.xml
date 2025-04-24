@@ -13,7 +13,7 @@
             node_cnt,
             edge_cnt,
             update_date,
-            create_date
+            create_date,
         ) VALUES (
             #{projectCategoryIdx},
             #{title},

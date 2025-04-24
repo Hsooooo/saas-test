@@ -1,4 +1,4 @@
-package com.illunex.emsaasrestapi.category.dto;
+package com.illunex.emsaasrestapi.projectCategory.dto;
 
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import lombok.*;
@@ -7,7 +7,7 @@ import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class ResponseCategoryDTO {
+public class ResponseProjectCategoryDTO {
 
     /**
      * 프로젝트 설정 요청 구조
