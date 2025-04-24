@@ -53,6 +53,7 @@
             *
         FROM project
         WHERE project_category_idx = #{projectCategoryIdx}
+        AND delete_date is not null
     </select>
 
     <update id="updateProjectCategoryIdxByProjectVO" parameterType="ProjectVO">
@@ -61,10 +62,11 @@
         WHERE idx = #{idx}
     </update>
 
-    <delete id="deleteByIdx" parameterType="Integer">
-        DELETE FROM project
+    <update id="deleteByIdx" parameterType="Integer">
+        UPDATE FROM project
+        SET delete_date = now()
         WHERE idx = #{idx}
-    </delete>
+    </update>
 
     <select id="selectByIdx" parameterType="Integer" resultType="ProjectVO">
         SELECT
