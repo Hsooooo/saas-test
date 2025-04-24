@@ -6,8 +6,6 @@ import java.util.List;
 
 public class RequestProjectCategoryDTO {
 
-
-
     /**
      * 프로젝트 카테고리 정보
      */
