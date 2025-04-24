@@ -448,8 +448,7 @@ public class ProjectService {
             mongoTemplate.save(copiedProject);
         }
 
-        // TODO[JCW] : 리턴값 작업 필요
-        return CustomResponse.builder()
-                .build();
+        // TODO[JCW] : 리턴값은 동일한데 이렇게 해도 될까?
+        return selectProject(projectIds.get(0));
     }
 }

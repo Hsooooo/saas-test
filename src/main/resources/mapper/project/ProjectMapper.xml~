@@ -55,7 +55,7 @@
             *
         FROM project
         WHERE project_category_idx = #{projectCategoryIdx}
-        AND delete_date is null
+        AND delete_date is not null
     </select>
 
     <select id="selectAllByProjectCategoryIdxAndPartnerShipIdx" parameterType="Integer" resultType="ProjectVO">
@@ -64,7 +64,7 @@
         FROM project
         WHERE project_category_idx = #{projectCategoryIdx}
           AND partnership_idx = #{partnershipIdx}
-          AND delete_date is null
+          AND delete_date is not null
     </select>
 
     <update id="updateProjectCategoryIdxByProjectVO" parameterType="ProjectVO">
