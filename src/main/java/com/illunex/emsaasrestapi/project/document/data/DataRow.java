@@ -11,7 +11,7 @@ import java.util.LinkedHashMap;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "dataProperty")
+@Document(collection = "data_row")
 public class DataRow {
     @Id
     private DataRowId dataRowId;

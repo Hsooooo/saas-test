@@ -10,9 +10,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "dataSheet")
+@Document(collection = "data_sheet")
 public class DataSheet {
-    private Integer projectIdx;
+    private Integer sheetIdx;
     private String sheetName;
     // Cell 목록
     private List<String> cellList;

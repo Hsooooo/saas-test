@@ -8,9 +8,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "dataPropertyId")
+@Document(collection = "data_row_id")
 public class DataRowId {
     private Integer projectIdx;
-    private String sheetName;
+    private Integer sheetIdx;
     private Integer rowIdx;
 }

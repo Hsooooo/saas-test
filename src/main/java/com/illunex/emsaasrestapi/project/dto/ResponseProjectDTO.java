@@ -1,6 +1,5 @@
 package com.illunex.emsaasrestapi.project.dto;
 
-import com.illunex.emsaasrestapi.project.document.data.DataRowId;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import lombok.*;
 
@@ -145,7 +144,8 @@ public class ResponseProjectDTO {
     @Getter
     @Setter
     public static class Data {
-        private List<DataSheet> dataSheetList;
+        private Integer projectIdx;
+        private List<DataSheet> sheetList;
     }
 
     /**
@@ -154,16 +154,27 @@ public class ResponseProjectDTO {
     @Getter
     @Setter
     public static class DataSheet {
-        private Integer projectIdx;
+        private Integer sheetIdx;
         private String sheetName;
         // Cell 목록
         private List<String> cellList;
         // Row 데이터 정보
-        private List<DataRow> dataRowList;
+        private List<DataRow> rowList;
     }
 
     /**
-     * 프로젝트 엑셀 시트별 데이터 정보
+     * 프로젝트 엑셀 데이터 키
+     */
+    @Getter
+    @Setter
+    public static class DataRowId {
+        private Integer projectIdx;
+        private Integer sheetIdx;
+        private Integer rowIdx;
+    }
+
+    /**
+     * 프로젝트 엑셀 데이터 정보
      */
     @Getter
     @Setter

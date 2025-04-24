@@ -10,7 +10,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "nodeSize")
+@Document(collection = "node_size")
 public class NodeSize {
     private String categoryName;
     private List<Item> itemList;
