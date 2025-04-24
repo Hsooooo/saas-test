@@ -1,7 +1,5 @@
 package com.illunex.emsaasrestapi.project;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
@@ -10,7 +8,6 @@ import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import com.illunex.emsaasrestapi.project.document.data.Data;
 import com.illunex.emsaasrestapi.project.document.data.DataRow;
 import com.illunex.emsaasrestapi.project.document.data.DataRowId;
@@ -29,13 +26,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -314,7 +313,7 @@ public class ProjectService {
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> moveProject(List<RequestProjectDTO.ProjectId> projectId) throws CustomException {
+    public CustomResponse<?> moveProject(List<RequestProjectDTO.ProjectId> projectId) {
         for(RequestProjectDTO.ProjectId dto : projectId){
             //maraiDB
             ProjectVO projectVO = ProjectVO.builder()
@@ -335,21 +334,19 @@ public class ProjectService {
 
     /**
      * 카테고리별 프로젝트 단순 내용 조회
-     * @param projectId
+     * @param selectProject
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> selectProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
+    public CustomResponse<?> selectProject(RequestProjectDTO.SelectProject selectProject) throws CustomException {
 
         //TODO[pyj]: 파트너쉽 정보 필요
         Integer partnershipIdx = 1;
 
         // 프로젝트 조회
-        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdxAndPartnerShipIdx(projectId.getProjectCategoryIdx(), projectId.getPartnershipIdx());
+        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdxAndPartnerShipIdx(selectProject);
 
-        List<ResponseProjectDTO.ProjectPreview> result = projectList.stream()
-                .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectPreview.class))
-                .toList();
+        List<ResponseProjectDTO.ProjectPreview> result = modelMapper.map(projectList, new TypeToken<List<ResponseProjectDTO.ProjectPreview>>(){}.getType());
 
         //구성원 조회
         for(ResponseProjectDTO.ProjectPreview dto : result){
@@ -372,24 +369,27 @@ public class ProjectService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public CustomResponse<?> copyProject(List<RequestProjectDTO.ProjectId> projectIds) throws CustomException, JsonProcessingException {
+    public CustomResponse<?> copyProject(List<RequestProjectDTO.ProjectId> projectIds) throws CustomException {
         for(RequestProjectDTO.ProjectId projectId : projectIds){
-            // 프로젝트 조회
+            // MariaDB 프로젝트 조회
             ProjectVO projectVO = projectMapper.selectByIdx(projectId.getProjectIdx())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
-            // Maria 프로젝트 복제
-            projectVO.setIdx(null);
-            int insertCnt = projectMapper.insertByProjectVO(projectVO);
+
+            // MariaDB 프로젝트 복제
+            ProjectVO copiedProjectVO = modelMapper.map(projectVO, ProjectVO.class);
+            copiedProjectVO.setIdx(null);
+            int insertCnt = projectMapper.insertByProjectVO(copiedProjectVO);
             if (insertCnt == 0) {
                 throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
             }
 
-            // Maria 프로젝트 멤버 복제
+            // MariaDB 프로젝트 멤버 복제
             List<ProjectMemberVO> projectMemberList = projectMemberMapper.selectAllByProjectIdx(projectId.getProjectIdx());
             for (ProjectMemberVO projectMemberVO : projectMemberList) {
-                projectMemberVO.setIdx(null);
-                int insertMemberCnt = projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
+                ProjectMemberVO copiedProjectMemberVO = modelMapper.map(projectMemberVO, ProjectMemberVO.class);
+                copiedProjectMemberVO.setIdx(null);
+                int insertMemberCnt = projectMemberMapper.insertByProjectMemberVO(copiedProjectMemberVO);
                 if (insertMemberCnt == 0) {
                     throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
                 }
@@ -404,34 +404,15 @@ public class ProjectService {
             }
 
             // MongoDB 복제
-            ObjectMapper mapper = new ObjectMapper();
-            Project copiedProject = mapper.readValue(mapper.writeValueAsString(findProject), Project.class);
-
-            // 복제된 프로젝트 Idx 삽입
+            Project copiedProject = modelMapper.map(findProject, Project.class);
             copiedProject.getProjectId().setProjectIdx(projectVO.getIdx());
 
             // MongoDB 저장
             mongoTemplate.save(copiedProject);
         }
 
+        // TODO[JCW] : 리턴값 작업 필요
         return CustomResponse.builder()
-                .data(null)
                 .build();
-    }
-
-    private PartnershipVO getPartnershipVOFromUser(User user) throws CustomException {
-        // TODO[JCW] : partnershipId를 어디서 가져올 것인지 정해야함. parameter or userDetailService
-//        if (user == null) {
-//            throw new CustomException(ErrorCode.COMMON_FAIL_AUTHENTICATION);
-//        }
-//
-//        String email = user.getUsername();
-//        String domain = email.split("@")[1];
-
-        // 테스트를 위한 임시 선언
-        String domain = "1";
-
-        return partnershipMapper.selectByDomain(domain)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
     }
 }

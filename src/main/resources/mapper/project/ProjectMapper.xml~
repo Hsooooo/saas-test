@@ -55,23 +55,16 @@
             *
         FROM project
         WHERE project_category_idx = #{projectCategoryIdx}
-        AND delete_date is null
+        AND delete_date is not null
     </select>
 
-    <select id="selectAllByProjectCategoryIdxAndPartnerShipIdx"  resultType="ProjectVO">
+    <select id="selectAllByProjectCategoryIdxAndPartnerShipIdx" parameterType="Integer" resultType="ProjectVO">
         SELECT
             *
         FROM project
         WHERE project_category_idx = #{projectCategoryIdx}
           AND partnership_idx = #{partnershipIdx}
-          AND delete_date is null
-        <if test="pageable != null and pageable.sort != null">
-            ORDER BY
-            <foreach collection="pageable.sort.orders" item="order" separator=",">
-                ${order.property} ${order.direction}
-            </foreach>
-        </if>
-        LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
+          AND delete_date is not null
     </select>
 
     <update id="updateProjectCategoryIdxByProjectVO" parameterType="ProjectVO">

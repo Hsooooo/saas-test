@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.project;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import lombok.RequiredArgsConstructor;
@@ -88,13 +89,16 @@ public class ProjectController {
 
     /**
      * 카테고리별 프로젝트 단순 내용 조회
-     * @param projectId
+     * @param selectProject
      * @return
      * @throws CustomException
      */
     @GetMapping("/select")
-    public CustomResponse<?> selectProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
-        return projectService.selectProject(projectId);
+    public CustomResponse<?> selectProject(
+            RequestProjectDTO.SelectProject selectProject,
+            CustomPageRequest page, String[] sort) throws CustomException {
+        selectProject.setPageable(page.of(sort));
+        return projectService.selectProject(selectProject);
     }
 
     /**
