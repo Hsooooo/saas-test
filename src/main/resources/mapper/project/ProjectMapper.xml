@@ -53,6 +53,7 @@
             *
         FROM project
         WHERE project_category_idx = #{projectCategoryIdx}
+        AND partnership_idx = #{partnershipIdx}
         AND delete_date is not null
     </select>
 

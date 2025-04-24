@@ -381,7 +381,7 @@ public class ProjectService {
         Integer partnershipIdx = 1;
 
         // 프로젝트 조회
-        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdx(projectId.getProjectCategoryIdx());
+        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdx(projectId.getProjectCategoryIdx(), projectId.getPartnershipIdx());
 
         List<ResponseProjectDTO.ProjectPreview> result = projectList.stream()
                 .map(vo -> modelMapper.map(vo, ResponseProjectDTO.ProjectPreview.class))
@@ -416,7 +416,7 @@ public class ProjectService {
 
             // Maria 프로젝트 복제
             projectVO.setIdx(null);
-            int insertCnt = projectMapper.insertProjectVO(projectVO);
+            int insertCnt = projectMapper.insertByProjectVO(projectVO);
             if (insertCnt == 0) {
                 throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
             }
