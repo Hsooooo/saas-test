@@ -86,7 +86,7 @@ public class ProjectComponent {
             List<DataRow> dataRow = mongoTemplate.find(
                     Query.query(
                             Criteria.where("_id.projectIdx").is(projectIdx)
-                                    .and("_id.dataSheetIdx").is(dataSheet.getSheetIdx())
+                                    .and("_id.sheetIdx").is(dataSheet.getSheetIdx())
                     ),
                     DataRow.class
             );
