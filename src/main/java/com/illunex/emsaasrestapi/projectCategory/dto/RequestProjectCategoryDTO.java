@@ -1,10 +1,10 @@
-package com.illunex.emsaasrestapi.category.dto;
+package com.illunex.emsaasrestapi.projectCategory.dto;
 
 import lombok.*;
 
 import java.util.List;
 
-public class RequestCategoryDTO {
+public class RequestProjectCategoryDTO {
 
 
 

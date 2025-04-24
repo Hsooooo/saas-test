@@ -15,7 +15,7 @@ import com.illunex.emsaasrestapi.project.document.Project;
 import com.illunex.emsaasrestapi.project.document.*;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
-import com.illunex.emsaasrestapi.category.mapper.ProjectCategoryMapper;
+import com.illunex.emsaasrestapi.projectCategory.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;

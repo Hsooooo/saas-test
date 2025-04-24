@@ -13,6 +13,7 @@ import java.time.ZonedDateTime;
 @Alias("ProjectVO")
 public class ProjectVO {
     private Integer idx;
+    private Integer partnershipIdx;
     private Integer projectCategoryIdx;
     private String title;
     private String description;
@@ -23,4 +24,5 @@ public class ProjectVO {
     private Integer edgeCnt;
     private ZonedDateTime updateDate;
     private ZonedDateTime createDate;
+    private ZonedDateTime deleteDate;
 }
