@@ -416,7 +416,7 @@ public class ProjectService {
 
             // Maria 프로젝트 복제
             projectVO.setIdx(null);
-            int insertCnt = projectMapper.insertProjectVO(projectVO);
+            int insertCnt = projectMapper.insertByProjectVO(projectVO);
             if (insertCnt == 0) {
                 throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
             }
