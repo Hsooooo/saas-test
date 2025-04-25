@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.partnership;
 import com.illunex.emsaasrestapi.common.CurrentMember;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
+import com.illunex.emsaasrestapi.member.dto.RequestMemberDTO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.dto.PartnershipCreateDTO;
 import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
@@ -48,9 +49,10 @@ public class PartnershipController {
     }
 
     /**
-     * 파트너쉽 멤버 초대
+     * 파트너쉽 회원 초대
      * @param partnershipIdx 파트너쉽번호
-     * @param request 초대멤버목록정보
+     * @param memberVO 로그인사용자정보
+     * @param request 초대회원정보
      * @return
      * @throws CustomException
      */
@@ -61,6 +63,40 @@ public class PartnershipController {
                                                      @RequestBody @Valid RequestPartnershipDTO.InviteMember request) throws CustomException {
         return CustomResponse.builder()
                 .data(partnershipService.invitePartnershipMember(partnershipIdx, memberVO.getIdx(), request))
+                .build();
+    }
+
+    /**
+     * 내정보 조회 (파트너쉽)
+     * @param partnershipIdx 파트너쉽 번호
+     * @param memberVO 로그인사용자정보
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/{partnershipIdx}/my-info")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getMyInfo(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                       @CurrentMember MemberVO memberVO) throws CustomException {
+        return CustomResponse.builder()
+                .data(partnershipService.getMyInfo(partnershipIdx, memberVO))
+                .build();
+    }
+
+    /**
+     * 회원정보 수정
+     * @param partnershipIdx 파트너쉽 번호
+     * @param memberVO 로그인사용자정보
+     * @param updateInfo 수정데이터
+     * @return
+     * @throws CustomException
+     */
+    @PutMapping("/{partnershipIdx}/my-info")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> updateMyInfo(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                          @CurrentMember MemberVO memberVO,
+                                          @RequestBody @Valid RequestPartnershipDTO.UpdateMyInfo updateInfo) throws CustomException {
+        return CustomResponse.builder()
+                .data(partnershipService.updateMyInfo(partnershipIdx, memberVO, updateInfo))
                 .build();
     }
 }

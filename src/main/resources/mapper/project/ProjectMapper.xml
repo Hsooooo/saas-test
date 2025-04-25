@@ -4,6 +4,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.illunex.emsaasrestapi.project.mapper.ProjectMapper">
+<!--    프로젝트 생성-->
     <insert id="insertByProjectVO" parameterType="ProjectVO" useGeneratedKeys="true" keyProperty="idx">
         INSERT INTO project (
             partnership_idx,
@@ -30,7 +31,7 @@
             SELECT LAST_INSERT_ID()
         </selectKey>
     </insert>
-
+<!--    프로젝트 단일 조회-->
     <select id="selectByProjectCategoryIdxAndProjectIdx" resultType="ProjectVO">
         SELECT
             *
@@ -38,11 +39,12 @@
         WHERE idx = #{projectIdx}
         AND project_category_idx = #{projectCategoryIdx}
     </select>
-
-    <delete id="deleteByProjectCategoryIdxAndProjectIdx">
-        DELETE FROM project
+<!--    프로젝트 삭제 처리(삭제일 업데이트)-->
+    <delete id="updateByDeleteDate">
+        UPDATE project
+            SET delete_date = now()
         WHERE idx = #{projectIdx}
-          AND project_category_idx = #{projectCategoryIdx}
+        AND project_category_idx = #{projectCategoryIdx}
     </delete>
 
     <select id="countByProjectCategoryIdx" parameterType="Integer" resultType="Integer">
@@ -77,12 +79,6 @@
     <update id="updateProjectCategoryIdxByProjectVO" parameterType="ProjectVO">
         UPDATE project
         SET project_category_idx = #{projectCategoryIdx}
-        WHERE idx = #{idx}
-    </update>
-
-    <update id="deleteByIdx" parameterType="Integer">
-        UPDATE FROM project
-        SET delete_date = now()
         WHERE idx = #{idx}
     </update>
 

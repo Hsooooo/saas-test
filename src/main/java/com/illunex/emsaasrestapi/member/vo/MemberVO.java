@@ -14,6 +14,8 @@ public class MemberVO {
     private Integer idx;
     //이메일주소
     private String email;
+    //회원 이름
+    private String name;
     //회원비밀번호
     private String password;
     //프로필이미지URL

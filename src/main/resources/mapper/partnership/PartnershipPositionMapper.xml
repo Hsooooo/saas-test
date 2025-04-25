@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.partnership.mapper.PartnershipPositionMapper">
+
+    <insert id="insertByPartnershipPositionVO" parameterType="PartnershipPositionVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO partnership_position(
+            partnership_idx,
+            name,
+            sort_level,
+            update_date,
+            create_date
+        ) VALUES (
+            #{partnershipIdx},
+            #{name},
+            #{sortLevel},
+            now(),
+            now()
+        )
+    </insert>
+
+    <select id="selectByNameAndPartnershipIdx" resultType="PartnershipPositionVO">
+        SELECT idx,
+               partnership_idx,
+               name,
+               sort_level,
+               update_date,
+               create_date
+        FROM partnership_position
+        WHERE partnership_idx = #{partnershipIdx}
+          AND name = #{name}
+    </select>
+
+    <select id="selectMaxSortLevelByPartnershipIdx" resultType="Integer">
+        SELECT COALESCE(MAX(sort_level), 0) AS max_sort_level
+          FROM partnership_position
+         WHERE partnership_idx = #{partnershipIdx};
+    </select>
+
+    <select id="isDuplicateMemberByEmail" resultType="boolean">
+        SELECT COUNT(*) > 0
+          FROM partnership_member pm
+          JOIN member m ON pm.member_idx = m.idx
+         WHERE pm.partnership_idx = #{partnershipIdx}
+           AND m.email = #{email}
+    </select>
+
+    <select id="existsInvitedMember" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM partnership_invited_member
+            WHERE partnership_idx = #{partnershipIdx}
+              AND email = #{email}
+        )
+    </select>
+
+    <insert id="insertInvitedMember" parameterType="PartnershipInvitedMemberVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO partnership_invited_member (
+            email,
+            partnership_idx,
+            invited_by_partnership_member_idx,
+            member_idx,
+            partnership_member_idx,
+            invited_date,
+            joined_date
+        )
+        VALUES (
+           #{email},
+           #{partnershipIdx},
+           #{invitedByPartnershipMemberIdx},
+           #{memberIdx},
+           #{partnershipMemberIdx},
+           now(),
+           #{joinedDate}
+       )
+    </insert>
+
+    <select id="selectByIdx" resultType="PartnershipPositionVO">
+        SELECT idx,
+               partnership_idx,
+               name,
+               sort_level,
+               update_date,
+               create_date
+        FROM partnership_position
+        WHERE idx = #{idx}
+    </select>
+
+</mapper>

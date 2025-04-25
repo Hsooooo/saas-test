@@ -52,6 +52,7 @@
             state_cd,
             profile_image_url,
             profile_image_path,
+            phone,
             disable_functions,
             update_date,
             create_date
@@ -108,5 +109,18 @@
         WHERE
             pmem.project_idx = #{projectIdx}
     </select>
+
+    <update id="updatePositionIdxAndPhoneByIdx">
+        UPDATE partnership_member
+        <set>
+            <if test="positionIdx != null">
+                partnership_position_idx = #{positionIdx},
+            </if>
+            <if test="phone != null">
+                phone = #{phone},
+            </if>
+        </set>
+         WHERE idx = #{idx}
+    </update>
 
 </mapper>

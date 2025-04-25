@@ -17,6 +17,13 @@ public class RequestPartnershipDTO {
         List<InviteMemberInfo> inviteMembers;
     }
 
+    @Getter
+    public static class UpdateMyInfo {
+        private String name;
+        private String position;
+        private String phone;
+    }
+
     @Valid
     @Getter
     public static class InviteMemberInfo {

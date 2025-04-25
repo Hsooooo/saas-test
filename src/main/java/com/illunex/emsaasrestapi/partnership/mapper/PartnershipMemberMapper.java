@@ -5,6 +5,7 @@ import com.illunex.emsaasrestapi.partnership.vo.PartnershipInvitedMemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,4 +19,5 @@ public interface PartnershipMemberMapper {
     Boolean existsInvitedMember(Integer partnershipIdx, String email);
     void insertInvitedMember(PartnershipInvitedMemberVO partnershipInvitedMemberVO);
     List<PartnershipMemberVO> selectAllByProjectIdx(Integer projectIdx);
+    int updatePositionIdxAndPhoneByIdx(@Param("positionIdx") Integer positionIdx, @Param("phone") String phone, @Param("idx") Integer partnershipMemberIdx);
 }

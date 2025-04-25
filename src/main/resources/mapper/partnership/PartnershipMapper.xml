@@ -18,7 +18,20 @@
          WHERE domain = #{domain}
     </select>
 
-    <insert id="insertByPartnerJoin" parameterType="PartnershipVO" useGeneratedKeys="true" keyProperty="idx">
+    <select id="selectByIdx" resultType="PartnershipVO">
+        SELECT idx,
+               name,
+               domain,
+               image_url,
+               image_path,
+               comment,
+               update_date,
+               create_date
+          FROM partnership
+         WHERE idx = #{idx}
+    </select>
+
+    <insert id="insertByPartnershipVO" parameterType="PartnershipVO" useGeneratedKeys="true" keyProperty="idx">
         INSERT INTO partnership(
             name,
             domain,

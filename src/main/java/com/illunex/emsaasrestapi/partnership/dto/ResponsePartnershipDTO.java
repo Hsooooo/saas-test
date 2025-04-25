@@ -30,4 +30,45 @@ public class ResponsePartnershipDTO {
         private String profileImageUrl;
         private String profileImagePath;
     }
+
+    @Builder
+    @Getter
+    public static class MyInfo {
+        private PartnershipInfo partnership;
+        private MyInfoMember member;
+        private MyInfoPartnershipMember partnershipMember;
+    }
+
+    @Builder
+    @Getter
+    public static class MyInfoMember {
+        private Integer idx;
+        private String name;
+    }
+
+    @Builder
+    @Getter
+    public static class MyInfoPartnershipMember {
+        private Integer idx;
+        private String phone;
+        private PartnershipPositionInfo positionInfo;
+    }
+
+    @Builder
+    @Getter
+    public static class PartnershipPositionInfo {
+        private Integer idx;
+        private String name;
+        private Integer sortLevel;
+    }
+
+    @Builder
+    @Getter
+    public static class PartnershipInfo {
+        private Integer idx;
+        private String name;
+        private String imageUrl;
+        private String imagePath;
+        private String domain;
+    }
 }
