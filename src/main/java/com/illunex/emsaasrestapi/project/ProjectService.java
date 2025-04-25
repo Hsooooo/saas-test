@@ -1,13 +1,16 @@
 package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
+import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.data.Data;
 import com.illunex.emsaasrestapi.project.document.data.DataRow;
 import com.illunex.emsaasrestapi.project.document.data.DataRowId;
@@ -32,6 +35,8 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -330,46 +335,41 @@ public class ProjectService {
                 .build();
     }
 
-
-
     /**
      * 카테고리별 프로젝트 단순 내용 조회
-     * @param selectProject
+     * @param projectId
+     * @param pageRequest
+     * @param sort
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> selectProject(RequestProjectDTO.SelectProject selectProject) throws CustomException {
+    public CustomResponse<?> selectProject(RequestProjectDTO.ProjectId projectId, CustomPageRequest pageRequest, String[] sort) throws CustomException {
 
         //TODO[pyj]: 파트너쉽 정보 필요
         Integer partnershipIdx = 1;
 
+        Pageable pageable = pageRequest.of(sort);
         // 프로젝트 조회
-        List<ProjectVO> projectList = projectMapper.selectAllByProjectCategoryIdxAndPartnerShipIdx(selectProject);
+        List<ProjectVO> projectList = projectMapper.selectAllByProjectId(projectId, pageable);
+        Integer totalProjectList = projectMapper.countAllByProjectId(projectId);
 
         List<ResponseProjectDTO.ProjectPreview> result = modelMapper.map(projectList, new TypeToken<List<ResponseProjectDTO.ProjectPreview>>(){}.getType());
-
-        //구성원 조회
-        for(ResponseProjectDTO.ProjectPreview dto : result){
-            List<PartnershipMemberPreviewVO> memberList = partnershipMemberMapper.selectAllByProjectIdx(dto.getProjectIdx());
-            List<ResponsePartnershipDTO.MemberPreview> memberPreview = memberList.stream()
-                    .map(vo -> ResponsePartnershipDTO.MemberPreview.builder()
-                            .memberIdx(vo.getIdx())
-                            .name(vo.getName())
-                            .profileImageUrl(vo.getProfileImageUrl())
-                            .profileImagePath(vo.getProfileImagePath())
-                            .build()
-                    ).toList();
-            dto.setMember(memberPreview);
+        for(ResponseProjectDTO.ProjectPreview projectPreview : result){
+            // TODO [PYJ] : 노드 개수 추가 필요
+            // TODO [PYJ] : 엣지 개수 추가 필요
+            // 프로젝트 구성원 조회
+            List<PartnershipMemberVO> projectMemberList = partnershipMemberMapper.selectAllByProjectIdx(projectPreview.getProjectIdx());
+            List<ResponseMemberDTO.Member> members = modelMapper.map(projectMemberList, new TypeToken<List<ResponseMemberDTO.Member>>(){}.getType());
+            projectPreview.setMembers(members);
         }
 
-
         return CustomResponse.builder()
-                .data(result)
+                .data(new PageImpl<>(result, pageable, totalProjectList))
                 .build();
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public CustomResponse<?> copyProject(List<RequestProjectDTO.ProjectId> projectIds) throws CustomException {
+    public CustomResponse<?> copyProject(List<RequestProjectDTO.ProjectId> projectIds, CustomPageRequest pageRequest, String[] sort) throws CustomException {
         for(RequestProjectDTO.ProjectId projectId : projectIds){
             // MariaDB 프로젝트 조회
             ProjectVO projectVO = projectMapper.selectByIdx(projectId.getProjectIdx())
@@ -411,8 +411,23 @@ public class ProjectService {
             mongoTemplate.save(copiedProject);
         }
 
-        // TODO[JCW] : 리턴값 작업 필요
+        Pageable pageable = pageRequest.of(sort);
+        List<ProjectVO> result = projectMapper.selectAllByProjectId(projectIds.get(0), pageable);
+        Integer totalProjectList = projectMapper.countAllByProjectId(projectIds.get(0));
+
+        List<ResponseProjectDTO.ProjectPreview> response = modelMapper.map(result, new TypeToken<List<ResponseProjectDTO.ProjectPreview>>(){}.getType());
+
+        for(ResponseProjectDTO.ProjectPreview projectPreview : response){
+            // TODO [JCW] : 노드 개수 추가 필요
+            // TODO [JCW] : 엣지 개수 추가 필요
+            // 프로젝트 구성원 조회
+            List<PartnershipMemberVO> projectMemberList = partnershipMemberMapper.selectAllByProjectIdx(projectPreview.getProjectIdx());
+            List<ResponseMemberDTO.Member> members = modelMapper.map(projectMemberList, new TypeToken<List<ResponseMemberDTO.Member>>(){}.getType());
+            projectPreview.setMembers(members);
+        }
+
         return CustomResponse.builder()
+                .data(new PageImpl<>(response, pageable, totalProjectList))
                 .build();
     }
 }

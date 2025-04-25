@@ -3,7 +3,9 @@ package com.illunex.emsaasrestapi.project.mapper;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,7 +20,8 @@ public interface ProjectMapper {
     Integer countByProjectCategoryIdx(Integer idx);
     Integer deleteByIdx(Integer idx);
     List<ProjectVO> selectAllByProjectCategoryIdx(Integer projectCategoryIdx);
-    List<ProjectVO> selectAllByProjectCategoryIdxAndPartnerShipIdx(RequestProjectDTO.SelectProject selectProject);
     Integer updateProjectCategoryIdxByProjectVO(ProjectVO projectVO);
     Optional<ProjectVO> selectByIdx(Integer idx);
+    List<ProjectVO> selectAllByProjectId(@Param("projectId") RequestProjectDTO.ProjectId projectId, @Param("pageable") Pageable pageable);
+    Integer countAllByProjectId(RequestProjectDTO.ProjectId projectId);
 }

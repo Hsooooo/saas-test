@@ -65,15 +65,38 @@ public class CustomPageRequest {
         List<Sort.Order> orders = new ArrayList<>();
         for(String property : propertyArray){
             String[] sortValue = property.split(",");
+            String sortSnakeValue = changeCamelToSnakeCase(sortValue[0].trim());
             switch(sortValue[1].trim().toUpperCase(Locale.ROOT)){
                 case "ASC":
-                    orders.add(new Sort.Order(Sort.Direction.ASC, sortValue[0].trim()));
+                    orders.add(new Sort.Order(Sort.Direction.ASC, sortSnakeValue));
                     break;
                 case "DESC":
-                    orders.add(new Sort.Order(Sort.Direction.DESC, sortValue[0].trim()));
+                    orders.add(new Sort.Order(Sort.Direction.DESC, sortSnakeValue));
                     break;
             }
         }
         return Sort.by(orders);
+    }
+
+    private String changeCamelToSnakeCase(String camelCase) {
+        // . 있는 경우 / 없는 경우 나눠서 구분 할것
+        char[] chars = camelCase.toCharArray();
+        boolean isDotChar = false;
+        for (char c : chars) {
+            if (c == '.') {
+                isDotChar = true;
+                break;
+            }
+        }
+        String result = "";
+        if (isDotChar) {
+            String[] split = camelCase.split("\\.");
+            String join = split[0].concat(".");
+            String snakeCaseValue = Utils.camelCaseToSnakeCaseValue(split[1]);
+            result = join.concat(snakeCaseValue);
+        } else {
+            result = Utils.camelCaseToSnakeCaseValue(camelCase);
+        }
+        return result;
     }
 }

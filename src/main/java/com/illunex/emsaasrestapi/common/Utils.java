@@ -244,4 +244,20 @@ public class Utils {
 
         return tempPassword.toString();
     }
+
+    /**
+     * CamelCase -> snake_case 변환
+     */
+    public static String camelCaseToSnakeCaseValue(String snakeCaseValue) {
+        char[] charArray = snakeCaseValue.toCharArray();
+        StringBuilder convertValue = new StringBuilder();
+        for (int i = 0; i < charArray.length; i++) {
+            if (charArray[i] >= 'A' && charArray[i] <= 'Z' && i + 1 < charArray.length) {
+                convertValue.append("_").append((char) (charArray[i] + 32));
+            } else {
+                convertValue.append(charArray[i]);
+            }
+        }
+        return convertValue.toString();
+    }
 }

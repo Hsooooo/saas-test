@@ -92,4 +92,25 @@
         FROM project
         WHERE idx = #{idx}
     </select>
+
+    <select id="selectAllByProjectId" resultType="ProjectVO">
+        SELECT *
+        FROM project
+        WHERE partnership_idx = #{projectId.partnershipIdx}
+        AND project_category_idx = #{projectId.projectCategoryIdx}
+        <if test="pageable.sort != null and !pageable.sort.empty">
+            ORDER BY
+            <foreach item="order" collection="pageable.sort" separator=",">
+                ${order.property} ${order.direction}
+            </foreach>
+        </if>
+        LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
+    </select>
+
+    <select id="countAllByProjectId" parameterType="ProjectVO" resultType="Integer">
+        SELECT COUNT(*)
+        FROM project
+        WHERE partnership_idx = #{partnershipIdx}
+        AND project_category_idx = #{projectCategoryIdx}
+    </select>
 </mapper>
