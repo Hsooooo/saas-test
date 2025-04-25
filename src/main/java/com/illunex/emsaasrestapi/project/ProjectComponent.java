@@ -162,7 +162,7 @@ public class ProjectComponent {
                             .excelSheetIdx(sheetIdx + 1)
                             .excelSheetName(workSheet.getSheetName())
                             .excelCellList(excelCellList)
-                            .totalRowCnt(totalRowCnt - 1)
+                            .totalRowCnt(totalRowCnt)
                             .build());
         }
 
