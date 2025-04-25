@@ -1,6 +1,7 @@
 package com.illunex.emsaasrestapi.project.document.project;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Getter
@@ -10,15 +11,26 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @AllArgsConstructor
 @Document(collection = "project_edge")
 public class ProjectEdge {
+    @Comment("엣지 타입(시트명)")
     private String edgeType;
+    @Comment("시작 노드 타입")
     private String srcNodeType;
-    private String srcFieldName;
+    @Comment("시작 노드 셀명")
+    private String srcCellName;
+    @Comment("도착 노드 타입")
     private String destNodeType;
-    private String destFieldName;
-    private String labelFieldName;
-    private String labelFieldType;
+    @Comment("도착 노트 셀명")
+    private String destCellName;
+    @Comment("라벨 표시 셀명")
+    private String labelCellName;
+    @Comment("라벨 표시 셀 타입")
+    private String labelCellType;
+    @Comment("라벨 표시 단위(없으면 빈값)")
     private String unit;
+    @Comment("엣지 색상")
     private String color;
+    @Comment("엣지 방향 여부(true : 시작->도착, false : 방향 표시 x)")
     private Boolean useDirection;
+    @Comment("엣지 가중치(선 두께 표시 여부)")
     private Boolean weight;
 }

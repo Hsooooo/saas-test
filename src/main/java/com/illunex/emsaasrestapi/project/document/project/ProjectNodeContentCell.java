@@ -4,17 +4,17 @@ import lombok.*;
 import org.hibernate.annotations.Comment;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
-
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "project_filter")
-public class ProjectFilter {
-    @Comment("라벨 표시 카테고리명")
+@Document(collection = "project_node_content_cell")
+public class ProjectNodeContentCell {
+    @Comment("라벨 표시명")
     private String label;
-    @Comment("항목 정보")
-    private List<ProjectItem> projectItemList;
+    @Comment("라벨 표시 셀명")
+    private String cellName;
+    @Comment("라벨 표시 셀타입")
+    private String cellType;
 }

@@ -15,13 +15,13 @@ public class ResponseProjectDTO {
     @Getter
     @Setter
     public static class Project {
-        private ProjectId projectId;            // 프로젝트 번호, 파트너쉽 번호
-        private String title;                   // 프로젝트 제목
-        private String description;             // 프로젝트 내용
-        private List<ProjectNode> projectNodeList;            // 노드정보
-        private List<ProjectEdge> projectEdgeList;            // 엣지정보
-        private List<ProjectNodeSize> projectNodeSizeList;    // 노드사이즈정보
-        private List<ProjectAttribute> projectAttributeList;    // 속성정보
+        private ProjectId projectId;                                // 프로젝트 번호, 파트너쉽 번호
+        private String title;                                       // 프로젝트 제목
+        private String description;                                 // 프로젝트 내용
+        private List<ProjectNode> projectNodeList;                  // 노드정보
+        private List<ProjectEdge> projectEdgeList;                  // 엣지정보
+        private List<ProjectNodeSize> projectNodeSizeList;          // 노드사이즈정보
+        private List<ProjectNodeContent> projectNodeContentList;      // 속성정보
     }
 
     /**
@@ -42,8 +42,8 @@ public class ResponseProjectDTO {
     @Setter
     public static class ProjectNode {
         private String nodeType;
-        private String fieldName;
-        private String fieldType;
+        private String cellName;
+        private String cellType;
     }
 
     /**
@@ -54,11 +54,11 @@ public class ResponseProjectDTO {
     public static class ProjectEdge {
         private String edgeType;
         private String srcNodeType;
-        private String srcFieldName;
+        private String srcCellName;
         private String destNodeType;
-        private String destFieldName;
-        private String labelFieldName;
-        private String labelFieldType;
+        private String destCellName;
+        private String labelCellName;
+        private String labelCellType;
         private String unit;
         private String color;
         private Boolean useDirection;
@@ -71,8 +71,8 @@ public class ResponseProjectDTO {
     @Getter
     @Setter
     public static class ProjectNodeSize {
-        private String categoryName;
-        private List<ProjectItem> projectItemList;
+        private String labelCategory;
+        private List<RequestProjectDTO.ProjectItem> projectItemList;
     }
 
     /**
@@ -84,8 +84,8 @@ public class ResponseProjectDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ProjectFilter {
-        private String categoryName;
-        private List<ProjectItem> projectItemList;
+        private String label;
+        private List<RequestProjectDTO.ProjectItem> projectItemList;
     }
 
     /**
@@ -96,9 +96,9 @@ public class ResponseProjectDTO {
     public static class ProjectItem {
         private String label;
         private String nodeType;
-        private String fieldName;
-        private String fieldType;
-        private List<ProjectItemModel> modelList;
+        private String cellName;
+        private String cellType;
+        private List<RequestProjectDTO.ProjectItemModel> projectItemModelList;
     }
 
     /**
@@ -111,31 +111,32 @@ public class ResponseProjectDTO {
         private String color;
         private Integer start;
         private Integer end;
+        private String value;
     }
 
     /**
-     * 속성 정보
+     * 노드 속성 정보
      */
     @Getter
     @Setter
-    public static class ProjectAttribute {
+    public static class ProjectNodeContent {
         private String nodeType;
-        private String labelTitleFieldName;
-        private String labelContentFieldName;
-        private List<String> labelKeywordList;
-        private String keywordSplitValue;
-        private List<ProjectAttributeField> projectAttributeFieldList;
+        private String labelTitleCellName;
+        private String labelContentCellName;
+        private List<String> labelKeywordCellList;
+        private String keywordSplitUnit;
+        private List<ProjectNodeContentCell> projectNodeContentCellList;
     }
 
     /**
-     * 필드 정보
+     * 노드 속성 셀 정보
      */
     @Getter
     @Setter
-    public static class ProjectAttributeField {
+    public static class ProjectNodeContentCell {
         private String label;
-        private String fieldName;
-        private String fieldType;
+        private String cellName;
+        private String cellType;
     }
 
     /**
