@@ -7,13 +7,25 @@
 
 
     <select id="selectByEmail" resultType="MemberVO">
-        SELECT
-              idx,
-              email,
-              state_cd,
-              password
-        FROM member
-       WHERE email = #{email}
+        SELECT idx,
+               email,
+               name,
+               password,
+               type_cd,
+               state_cd,
+               comment,
+               last_login_date,
+               leave_date,
+               update_date,
+               create_date
+         FROM member
+        WHERE email = #{email}
     </select>
+
+    <update id="updateNameByIdx">
+        UPDATE member
+           SET name = #{name}
+         WHERE idx = #{idx}
+    </update>
 
 </mapper>

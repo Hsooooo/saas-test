@@ -1,3 +1,18 @@
+CREATE TABLE IF NOT EXISTS `em_stock`.`code`
+(
+    code        VARCHAR(7)   NOT NULL COMMENT '코드',
+    first_code  VARCHAR(3)   NULL COMMENT '첫번째 코드',
+    second_code VARCHAR(2)   NULL COMMENT '두번째 코드',
+    third_code  VARCHAR(2)   NULL COMMENT '세번째 코드',
+    code_value   VARCHAR(100) NULL COMMENT '코드 값',
+    seq         INT(11)          NULL COMMENT '코드 순서',
+    PRIMARY KEY (`code`) USING BTREE,
+    INDEX `idx_code_first_code_index_first_code` (`first_code`) USING BTREE,
+    INDEX `idx_code_first_code_index_second_code` (`second_code`) USING BTREE,
+    INDEX `idx_code_first_code_index_third_code` (`third_code`) USING BTREE
+)
+    COMMENT ='코드표';
+
 create table if not exists em_saas.license
 (
     idx          int auto_increment comment '라이센스번호'
@@ -128,6 +143,7 @@ create table if not exists em_saas.partnership_member
     state_cd                 varchar(7)                           null comment '파트너쉽 회원상태(code 테이블)',
     profile_image_url        varchar(255)                         null comment '프로필 이미지 url',
     profile_image_path       varchar(255)                         null comment '프로필 이미지 경로',
+    phone                    varchar(255)                         null comment '사용자 휴대폰 번호',
     disable_functions        varchar(1024)                        null comment '사용제한 라이센스 기능들(code 쉼표 구분)',
     update_date              datetime                             null comment '수정일',
     create_date              datetime default current_timestamp() not null comment '생성일',
@@ -180,4 +196,26 @@ create index if not exists partnership_idx
 
 create index if not exists partnership_member_idx
     on em_saas.partnership_invited_member (partnership_member_idx);
+
+create table if not exists em_saas.code
+(
+    code        varchar(7)   not null comment '코드',
+    first_code  varchar(3)   null comment '첫번째 코드',
+    second_code varchar(2)   null comment '두번째 코드',
+    third_code  varchar(2)   null comment '세번째 코드',
+    code_value  varchar(100) null comment '코드 값',
+    seq         int          null comment '코드 순서',
+    primary key (code)
+)
+    comment '코드표';
+
+create index if not exists idx_code_first_code_index_first_code
+    on em_saas.code (first_code);
+
+create index if not exists idx_code_first_code_index_second_code
+    on em_saas.code (second_code);
+
+create index if not exists idx_code_first_code_index_third_code
+    on em_saas.code (third_code);
+
 

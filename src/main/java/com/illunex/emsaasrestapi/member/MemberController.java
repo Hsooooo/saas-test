@@ -103,17 +103,7 @@ public class MemberController {
         return memberService.certificateJoin(certData);
     }
 
-    /**
-     * TODO 회원정보 수정
-     * @param updateMember
-     * @return
-     * @throws CustomException
-     */
-    @PutMapping()
-    @PreAuthorize("isAuthenticated()")
-    public CustomResponse<?> updateMember(@RequestBody RequestMemberDTO.UpdateMember updateMember) throws CustomException {
-        return memberService.updateMember(updateMember);
-    }
+
 
     /**
      * TODO 회원 프로필 이미지 수정

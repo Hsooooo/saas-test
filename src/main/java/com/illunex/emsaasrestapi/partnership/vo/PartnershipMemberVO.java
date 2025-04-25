@@ -28,6 +28,8 @@ public class PartnershipMemberVO {
     private String profileImageUrl;
     //프로필이미지경로
     private String profileImagePath;
+    //파트너쉽 회원 휴대폰번호
+    private String phone;
     //사용제한라이센스
     private String disableFunctions;
     private ZonedDateTime updateDate;

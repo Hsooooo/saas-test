@@ -9,6 +9,7 @@ import java.util.Optional;
 @Mapper
 public interface PartnershipMapper {
     Optional<PartnershipVO> selectByDomain(String domain);
-    Integer insertByPartnerJoin(PartnershipVO partnership);
+    Integer insertByPartnershipVO(PartnershipVO partnership);
     List<PartnershipVO> selectByMember(Integer memberIdx);
+    Optional<PartnershipVO> selectByIdx(Integer idx);
 }
