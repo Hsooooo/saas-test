@@ -1,4 +1,4 @@
-package com.illunex.emsaasrestapi.project.document.data;
+package com.illunex.emsaasrestapi.project.document.excel;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
@@ -11,10 +11,10 @@ import java.util.LinkedHashMap;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "data_row")
-public class DataRow {
+@Document(collection = "excel_row")
+public class ExcelRow {
     @Id
-    private DataRowId dataRowId;
+    private ExcelRowId excelRowId;
     // Row 데이터 정보
-    private LinkedHashMap<String, Object> dataRow;
+    private LinkedHashMap<String, Object> excelRow;
 }

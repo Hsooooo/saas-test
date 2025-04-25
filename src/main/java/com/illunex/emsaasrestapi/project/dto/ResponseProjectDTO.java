@@ -143,9 +143,9 @@ public class ResponseProjectDTO {
      */
     @Getter
     @Setter
-    public static class Data {
+    public static class Excel {
         private Integer projectIdx;
-        private List<DataSheet> sheetList;
+        private List<ExcelSheet> excelSheetList;
     }
 
     /**
@@ -153,13 +153,13 @@ public class ResponseProjectDTO {
      */
     @Getter
     @Setter
-    public static class DataSheet {
-        private Integer sheetIdx;
-        private String sheetName;
+    public static class ExcelSheet {
+        private Integer excelSheetIdx;
+        private String excelSheetName;
         // Cell 목록
-        private List<String> cellList;
-        // Row 데이터 정보
-        private List<DataRow> rowList;
+        private List<String> excelCellList;
+        // 엑셀 Row 목록
+        private List<ExcelRow> excelRowList;
     }
 
     /**
@@ -167,10 +167,10 @@ public class ResponseProjectDTO {
      */
     @Getter
     @Setter
-    public static class DataRowId {
+    public static class ExcelRowId {
         private Integer projectIdx;
-        private Integer sheetIdx;
-        private Integer rowIdx;
+        private Integer excelSheetIdx;
+        private Integer excelRowIdx;
     }
 
     /**
@@ -178,10 +178,10 @@ public class ResponseProjectDTO {
      */
     @Getter
     @Setter
-    public static class DataRow {
-        private DataRowId dataRowId;
+    public static class ExcelRow {
+        private ExcelRowId excelRowId;
         // Row 데이터 정보
-        private LinkedHashMap<String, Object> dataRow;
+        private LinkedHashMap<String, Object> excelRow;
     }
 
     /**

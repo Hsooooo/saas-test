@@ -1,4 +1,4 @@
-package com.illunex.emsaasrestapi.project.document.data;
+package com.illunex.emsaasrestapi.project.document.excel;
 
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -10,10 +10,10 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "data_sheet")
-public class DataSheet {
-    private Integer sheetIdx;
-    private String sheetName;
+@Document(collection = "excel_sheet")
+public class ExcelSheet {
+    private Integer excelSheetIdx;
+    private String excelSheetName;
     // Cell 목록
     private List<String> cellList;
     // Row 개수

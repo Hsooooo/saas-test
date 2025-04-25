@@ -8,10 +8,6 @@ import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberPreviewVO;
-import com.illunex.emsaasrestapi.project.document.data.Data;
-import com.illunex.emsaasrestapi.project.document.data.DataRow;
-import com.illunex.emsaasrestapi.project.document.data.DataRowId;
-import com.illunex.emsaasrestapi.project.document.data.DataSheet;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
@@ -20,16 +16,9 @@ import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
-import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -40,8 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 
 @Slf4j
@@ -163,6 +150,7 @@ public class ProjectService {
      * @param projectId
      * @return
      */
+    @Transactional
     public CustomResponse<?> deleteProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
         // TODO : 파트너쉽에 속한 회원 여부 체크
         // TODO : 해당 프로젝트 권한 여부 체크
@@ -173,16 +161,11 @@ public class ProjectService {
         if(projectVO == null || findProject == null) {
             throw new CustomException(ErrorCode.COMMON_EMPTY);
         }
-        // RDB 삭제
-        int deleteCnt = projectMapper.deleteByProjectCategoryIdxAndProjectIdx(projectId.getProjectCategoryIdx(), projectId.getProjectIdx());
-        // MongoDB 삭제
-        DeleteResult deleteResult = mongoTemplate.remove(findProject);
-
-        //maria삭제
-        projectMapper.deleteByIdx(projectId.getProjectIdx());
+        // 프로젝트 삭제일 저장
+        int deleteCnt = projectMapper.updateByDeleteDate(projectId.getProjectIdx());
 
         return CustomResponse.builder()
-                .data(deleteResult)
+                .data(deleteCnt)
                 .build();
     }
 
@@ -200,111 +183,22 @@ public class ProjectService {
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
-        // 확장자 체크
-        String ext = FilenameUtils.getExtension(excelFile.getOriginalFilename());
-        if(ext == null || !ext.equals("xlsx") && !ext.equals("xls")) {
-            throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_EXTENSION);
+        // 프로젝트 삭제 여부 확인
+        if(projectVO.getDeleteDate() == null) {
+
+            // 엑셀 파싱 및 MongoDB 저장
+            projectComponent.parseExcel(projectVO.getIdx(), excelFile);
+
+            // 응답 데이터 조회
+            ResponseProjectDTO.Excel response = projectComponent.responseProjectData(projectIdx);
+
+            return CustomResponse.builder()
+                    .data(response)
+                    .build();
         }
 
-        Workbook workbook = null;
-        if (ext.equals("xlsx")) {
-            workbook = new XSSFWorkbook(excelFile.getInputStream());
-        } else {
-            workbook = new HSSFWorkbook(excelFile.getInputStream());
-        }
-
-        Data data = Data.builder()
-                .projectIdx(projectVO.getIdx())
-                .dataSheet(new ArrayList<>())
-                .build();
-
-
-        // DataRow 데이터 삭제
-        mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(projectVO.getIdx())), DataRow.class);
-
-        // Sheet 읽기
-        for(int sheetIdx = 0; sheetIdx < workbook.getNumberOfSheets(); sheetIdx++) {
-            // Cell 목록
-            List<String> cellList = new ArrayList<>();
-
-            Sheet workSheet = workbook.getSheetAt(sheetIdx);
-            // 데이터 개수 체크
-            if(workSheet.getLastRowNum() <= 1) {
-                // row 데이터 없음
-                workbook.close();
-                throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_ROW_EMPTY);
-            }
-
-            // 첫번째 행에서 컬럼명 추출
-            Row firstRow = workSheet.getRow(0);
-            if(firstRow == null) {
-                // column 데이터 없음
-                workbook.close();
-                throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
-            }
-
-            // Cell, Row 최대 개수 추출
-            int totalCellCnt = firstRow.getLastCellNum();
-            int totalRowCnt = workSheet.getLastRowNum();
-
-            // 첫번째 행에 컬럼 수 만큼 컬럼명 추출
-            for(int cellIdx = 0; cellIdx < totalCellCnt; cellIdx++) {
-                if(firstRow.getCell(cellIdx).getStringCellValue().isEmpty()) {
-                    // 셀에 빈값이면 컬럼 총개수 감소
-                    totalCellCnt--;
-                } else {
-                    cellList.add(firstRow.getCell(cellIdx).getStringCellValue());
-                }
-            }
-
-            // 행 개수 만큼 데이터 추출
-            for(int rowIdx = 1; rowIdx < totalRowCnt; rowIdx++) {
-                Row row = workSheet.getRow(rowIdx);
-                if(row == null) {
-                    // 열 데이터가 없으면 종료
-                    totalRowCnt = rowIdx;
-                    break;
-                }
-                // 데이터 속성 생성
-                DataRow dataRow = DataRow.builder()
-                        .dataRowId(DataRowId.builder()
-                                .projectIdx(projectIdx)
-                                .sheetIdx(sheetIdx + 1)
-                                .rowIdx(rowIdx)
-                                .build())
-                        .build();
-                LinkedHashMap<String, Object> dataMap = new LinkedHashMap<>();
-                // 열 개수 만큼 데이터 추출
-                for (int cellCnt = 0; cellCnt < cellList.size(); cellCnt++) {
-                    dataMap.put(cellList.get(cellCnt), projectComponent.getExcelColumnData(row.getCell(cellCnt)));
-                }
-                dataRow.setDataRow(dataMap);
-                // 엑셀 데이터 속성 저장
-                mongoTemplate.insert(dataRow);
-            }
-
-            // 엑셀 시트별 데이터 행 추가
-            data.getDataSheet()
-                    .add(DataSheet.builder()
-                            .sheetIdx(sheetIdx + 1)
-                            .sheetName(workSheet.getSheetName())
-                            .cellList(cellList)
-                            .totalRowCnt(totalRowCnt - 1)
-                            .build());
-        }
-
-        // 엑셀 데이터 정보 삭제
-        mongoTemplate.findAndRemove(Query.query(Criteria.where("_id").is(projectVO.getIdx())), Data.class);
-
-        // 엑셀 데이터 정보 저장
-        mongoTemplate.insert(data);
-
-        // 응답 데이터 조회
-        ResponseProjectDTO.Data response = projectComponent.responseProjectData(projectIdx);
-
-        return CustomResponse.builder()
-                .data(response)
-                .build();
+        // 프로젝트 삭제 예외 응답
+        throw new CustomException(ErrorCode.PROJECT_DELETED);
     }
 
     /**

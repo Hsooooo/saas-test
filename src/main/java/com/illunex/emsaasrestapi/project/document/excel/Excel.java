@@ -1,4 +1,4 @@
-package com.illunex.emsaasrestapi.project.document.data;
+package com.illunex.emsaasrestapi.project.document.excel;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
@@ -11,9 +11,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "data")
-public class Data {
+@Document(collection = "excel")
+public class Excel {
     @Id
     private Integer projectIdx;
-    private List<DataSheet> dataSheet;
+    private List<ExcelSheet> excelSheetList;
 }
