@@ -239,7 +239,18 @@ public class ProjectService {
         List<ProjectVO> projectList = projectMapper.selectAllByProjectId(projectId, pageable);
         Integer totalProjectList = projectMapper.countAllByProjectId(projectId);
 
-        List<ResponseProjectDTO.ProjectPreview> result = modelMapper.map(projectList, new TypeToken<List<ResponseProjectDTO.ProjectPreview>>(){}.getType());
+        List<ResponseProjectDTO.ProjectPreview> result = projectList.stream().map(projectVO ->
+                ResponseProjectDTO.ProjectPreview.builder()
+                        .partnershipIdx(projectVO.getPartnershipIdx())
+                        .categoryIdx(projectVO.getProjectCategoryIdx())
+                        .projectIdx(projectVO.getIdx())
+                        .title(projectVO.getTitle())
+                        .createDate(projectVO.getCreateDate())
+                        .updateDate(projectVO.getUpdateDate())
+                        .statusCd(projectVO.getStatusCd())
+                        .build()
+        ).toList();
+
         for(ResponseProjectDTO.ProjectPreview projectPreview : result){
             // TODO [PYJ] : 노드 개수 추가 필요
             // TODO [PYJ] : 엣지 개수 추가 필요
@@ -298,10 +309,20 @@ public class ProjectService {
         }
 
         Pageable pageable = pageRequest.of(sort);
-        List<ProjectVO> result = projectMapper.selectAllByProjectId(projectIds.get(0), pageable);
         Integer totalProjectList = projectMapper.countAllByProjectId(projectIds.get(0));
 
-        List<ResponseProjectDTO.ProjectPreview> response = modelMapper.map(result, new TypeToken<List<ResponseProjectDTO.ProjectPreview>>(){}.getType());
+        List<ProjectVO> result = projectMapper.selectAllByProjectId(projectIds.get(0), pageable);
+        List<ResponseProjectDTO.ProjectPreview> response = result.stream().map(projectVO ->
+                ResponseProjectDTO.ProjectPreview.builder()
+                        .partnershipIdx(projectVO.getPartnershipIdx())
+                        .categoryIdx(projectVO.getProjectCategoryIdx())
+                        .projectIdx(projectVO.getIdx())
+                        .title(projectVO.getTitle())
+                        .createDate(projectVO.getCreateDate())
+                        .updateDate(projectVO.getUpdateDate())
+                        .statusCd(projectVO.getStatusCd())
+                        .build()
+        ).toList();
 
         for(ResponseProjectDTO.ProjectPreview projectPreview : response){
             // TODO [JCW] : 노드 개수 추가 필요
