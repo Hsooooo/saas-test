@@ -15,7 +15,7 @@ public class ExcelSheet {
     private Integer excelSheetIdx;
     private String excelSheetName;
     // Cell 목록
-    private List<String> cellList;
+    private List<String> excelCellList;
     // Row 개수
     private Integer totalRowCnt;
 }

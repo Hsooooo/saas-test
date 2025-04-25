@@ -15,6 +15,6 @@ import java.util.LinkedHashMap;
 public class ExcelRow {
     @Id
     private ExcelRowId excelRowId;
-    // Row 데이터 정보
-    private LinkedHashMap<String, Object> excelRow;
+    // 데이터 정보
+    private LinkedHashMap<String, Object> data;
 }

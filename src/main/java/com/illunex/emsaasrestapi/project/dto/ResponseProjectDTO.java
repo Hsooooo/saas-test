@@ -1,9 +1,7 @@
 package com.illunex.emsaasrestapi.project.dto;
 
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
-import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import lombok.*;
-import org.apache.coyote.Response;
 
 import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
@@ -182,8 +180,8 @@ public class ResponseProjectDTO {
     @Setter
     public static class ExcelRow {
         private ExcelRowId excelRowId;
+        private LinkedHashMap<String, Object> data;
         // Row 데이터 정보
-        private LinkedHashMap<String, Object> excelRow;
     }
 
     /**
