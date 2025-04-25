@@ -128,6 +128,7 @@ create table if not exists em_saas.partnership_member
     state_cd                 varchar(7)                           null comment '파트너쉽 회원상태(code 테이블)',
     profile_image_url        varchar(255)                         null comment '프로필 이미지 url',
     profile_image_path       varchar(255)                         null comment '프로필 이미지 경로',
+    phone                    varchar(255)                         null comment '사용자 휴대폰 번호',
     disable_functions        varchar(1024)                        null comment '사용제한 라이센스 기능들(code 쉼표 구분)',
     update_date              datetime                             null comment '수정일',
     create_date              datetime default current_timestamp() not null comment '생성일',
