@@ -99,22 +99,15 @@
        )
     </insert>
 
-    <select id="selectAllByProjectIdx" parameterType="Integer" resultType="PartnershipMemberPreviewVO">
+    <select id="selectAllByProjectIdx" parameterType="Integer" resultType="PartnershipMemberVO">
         SELECT
-            pm.idx,
-            m.name,
-            pm.profile_image_url,
-            pm.profile_image_path
+            *
         FROM
-            partnership_member pm
-        LEFT JOIN member m ON m.idx = pm.member_idx
-        WHERE pm.idx IN
-              (
-                  (SELECT partnership_member_idx
-                   FROM project_member
-                   WHERE project_idx = #{projectIdx}
-                  )
-              )
+            project_member pmem
+                JOIN partnership_member pm ON pm.idx = pmem.partnership_member_idx
+                LEFT JOIN member m ON m.idx = pm.member_idx
+        WHERE
+            pmem.project_idx = #{projectIdx}
     </select>
 
     <update id="updatePositionIdxAndPhoneByIdx">

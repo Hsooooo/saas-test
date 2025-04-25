@@ -1,7 +1,9 @@
 package com.illunex.emsaasrestapi.project.dto;
 
+import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import lombok.*;
+import org.apache.coyote.Response;
 
 import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
@@ -222,6 +224,6 @@ public class ResponseProjectDTO {
         ZonedDateTime createDate;   // 생성일
         ZonedDateTime updateDate;   // 수정일
         String statusCd;            // 상태
-        List<ResponsePartnershipDTO.MemberPreview> member;  // 프로젝트 구성원
+        List<ResponseMemberDTO.Member> members;  // 프로젝트 구성원
     }
 }

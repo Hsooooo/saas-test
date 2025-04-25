@@ -89,16 +89,17 @@ public class ProjectController {
 
     /**
      * 카테고리별 프로젝트 단순 내용 조회
-     * @param selectProject
+     * @param projectId
+     * @param pageRequest
+     * @param sort
      * @return
      * @throws CustomException
      */
     @GetMapping("/select")
     public CustomResponse<?> selectProject(
-            RequestProjectDTO.SelectProject selectProject,
-            CustomPageRequest page, String[] sort) throws CustomException {
-        selectProject.setPageable(page.of(sort));
-        return projectService.selectProject(selectProject);
+            RequestProjectDTO.ProjectId projectId,
+            CustomPageRequest pageRequest, String[] sort) throws CustomException {
+        return projectService.selectProject(projectId, pageRequest, sort);
     }
 
     /**
@@ -108,7 +109,8 @@ public class ProjectController {
      * @throws CustomException
      */
     @PostMapping("/copy")
-    public CustomResponse<?> copyProject(@RequestBody List<RequestProjectDTO.ProjectId> projectIds) throws CustomException, JsonProcessingException {
-        return projectService.copyProject(projectIds);
+    public CustomResponse<?> copyProject(@RequestBody List<RequestProjectDTO.ProjectId> projectIds,
+                                         CustomPageRequest pageRequest, String[] sort) throws CustomException, JsonProcessingException {
+        return projectService.copyProject(projectIds, pageRequest, sort);
     }
 }

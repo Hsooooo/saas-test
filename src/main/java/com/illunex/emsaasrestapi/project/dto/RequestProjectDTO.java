@@ -160,16 +160,4 @@ public class RequestProjectDTO {
         private String fieldName;
         private String fieldType;
     }
-
-    @Getter
-    @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class SelectProject {
-        private Integer projectCategoryIdx;
-        private Integer partnershipIdx;
-        private PageRequest pageable;
-    }
-
 }

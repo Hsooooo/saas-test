@@ -18,6 +18,6 @@ public interface PartnershipMemberMapper {
     Optional<PartnershipMemberVO> selectPartnershipMemberByMemberIdx(Integer partnershipIdx, Integer memberIdx);
     Boolean existsInvitedMember(Integer partnershipIdx, String email);
     void insertInvitedMember(PartnershipInvitedMemberVO partnershipInvitedMemberVO);
-    List<PartnershipMemberPreviewVO> selectAllByProjectIdx(Integer projectIdx);
+    List<PartnershipMemberVO> selectAllByProjectIdx(Integer projectIdx);
     int updatePositionIdxAndPhoneByIdx(@Param("positionIdx") Integer positionIdx, @Param("phone") String phone, @Param("idx") Integer partnershipMemberIdx);
 }
