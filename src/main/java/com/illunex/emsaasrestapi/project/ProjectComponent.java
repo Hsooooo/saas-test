@@ -146,12 +146,12 @@ public class ProjectComponent {
                                 .excelRowIdx(rowIdx)
                                 .build())
                         .build();
-                LinkedHashMap<String, Object> dataMap = new LinkedHashMap<>();
+                LinkedHashMap<String, Object> ExcelRowMap = new LinkedHashMap<>();
                 // Cell 개수 만큼 데이터 추출
                 for (int cellCnt = 0; cellCnt < excelCellList.size(); cellCnt++) {
-                    dataMap.put(excelCellList.get(cellCnt), getExcelColumnData(row.getCell(cellCnt)));
+                    ExcelRowMap.put(excelCellList.get(cellCnt), getExcelColumnData(row.getCell(cellCnt)));
                 }
-                excelRow.setExcelRow(dataMap);
+                excelRow.setExcelRow(ExcelRowMap);
                 // 엑셀 데이터 Row 저장
                 mongoTemplate.insert(excelRow);
             }
@@ -195,7 +195,8 @@ public class ProjectComponent {
                     Query.query(
                             Criteria.where("_id.projectIdx").is(projectIdx)
                                     .and("_id.excelSheetIdx").is(dataSheet.getExcelSheetIdx())
-                    ),
+                    )
+                            .limit(10),
                     ExcelRow.class
             );
             dataSheet.setExcelRowList(modelMapper.map(excelRow, new TypeToken<List<ResponseProjectDTO.ExcelRow>>(){}.getType()));
