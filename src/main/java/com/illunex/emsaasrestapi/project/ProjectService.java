@@ -6,13 +6,12 @@ import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
-import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
+import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
-import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
@@ -20,11 +19,16 @@ import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.CountOperation;
+import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
@@ -33,6 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -57,8 +62,8 @@ public class ProjectService {
         // TODO : 해당 프로젝트 권한 여부 체크
         // RDB 처리 부분
         ProjectVO projectVO = ProjectVO.builder()
-                .partnershipIdx(project.getProjectId().getPartnershipIdx())
-                .projectCategoryIdx(project.getProjectId().getProjectCategoryIdx())
+                .partnershipIdx(project.getPartnershipIdx())
+                .projectCategoryIdx(project.getProjectCategoryIdx())
                 .title(project.getTitle())
                 .description(project.getDescription())
                 .statusCd(EnumCode.Project.StatusCd.MongoDB.getCode())
@@ -68,27 +73,23 @@ public class ProjectService {
 
         if(insertCnt > 0) {
             // MongoDB 처리 부분
-//            mongoTemplate.find(Query.query(Criteria.where("idx").is(1)), RequestProjectDTO.Project.class);
             // Document 맵핑
             Project mappingProject = modelMapper.map(project, Project.class);
             // projectIdx 업데이트
-            mappingProject.getProjectId().setProjectIdx(projectVO.getIdx());
+            mappingProject.setProjectIdx(projectVO.getIdx());
 
             // 기존 데이터 확인
-            Project result = mongoTemplate.findOne(Query.query(Criteria.where("projectId").is(mappingProject.getProjectId())), Project.class);
-            if (result == null) {
+            Project mongoResult = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectVO.getIdx())), Project.class);
+            if (mongoResult == null) {
                 // 없을 경우 추가
                 mongoTemplate.insert(mappingProject);
             } else {
                 // 있을 경우 업데이트
-                mongoTemplate.replace(Query.query(Criteria.where("projectId").is(mappingProject.getProjectId())), mappingProject);
+                mongoTemplate.replace(Query.query(Criteria.where("_id").is(projectVO.getIdx())), mappingProject);
             }
-            // 변경 된 데이터 조회
-            result = mongoTemplate.findOne(Query.query(Criteria.where("projectId").is(mappingProject.getProjectId())), Project.class);
-//            List<Project> result = mongoTemplate.find(Query.query(Criteria.where("nodeList").elemMatch(Criteria.where("nodeType").is("Company"))), Project.class);
 
             return CustomResponse.builder()
-                    .data(modelMapper.map(result, ResponseProjectDTO.Project.class))
+                    .data(projectComponent.createResponseProject(projectVO.getIdx()))
                     .build();
         }
         throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
@@ -97,23 +98,14 @@ public class ProjectService {
     /**
      * 프로젝트 조회
      * @param projectIdx
-     * @param partnershipIdx
      * @return
      */
-    public CustomResponse<?> getProject(Integer projectIdx, Integer partnershipIdx) throws CustomException {
+    public CustomResponse<?> getProject(Integer projectIdx) throws CustomException {
         // TODO : 파트너쉽에 속한 회원 여부 체크
         // TODO : 해당 프로젝트 권한 여부 체크
-        // 3. 프로젝트 조회
-        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.partnershipIdx").is(partnershipIdx));
-        Project findProject = mongoTemplate.findOne(query, Project.class);
-        if(findProject == null) {
-            throw new CustomException(ErrorCode.COMMON_EMPTY);
-        }
-
-        ResponseProjectDTO.Project response = modelMapper.map(findProject, ResponseProjectDTO.Project.class);
 
         return CustomResponse.builder()
-                .data(response)
+                .data(projectComponent.createResponseProject(projectIdx))
                 .build();
     }
 
@@ -125,45 +117,107 @@ public class ProjectService {
     public CustomResponse<?> replaceProject(RequestProjectDTO.Project project) throws CustomException {
         // TODO : 파트너쉽에 속한 회원 여부 체크
         // TODO : 해당 프로젝트 권한 여부 체크
-        // 프로젝트 조회
-        Project targetProject = mongoTemplate.findById(project.getProjectId(), Project.class);
-        if(targetProject == null) {
-            throw new CustomException(ErrorCode.COMMON_EMPTY);
-        }
+        // RDB 처리 부분
+        ProjectVO projectVO = projectMapper.selectByIdx(project.getProjectIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
-        // 데이터 맵핑
-        Project replaceProject = modelMapper.map(project, Project.class);
+        if(projectVO.getDeleteDate() == null) {
+            AtomicInteger nodeCount = new AtomicInteger(0);
+            AtomicInteger edgeCount = new AtomicInteger(0);
+            // 노드&엣지 정의 정보가 있을 경우 노드&엣지 카운트 뽑기
+            if(project.getProjectNodeList() != null && project.getProjectEdgeList() != null) {
+                // 노드 정보 개수 만큼 노드 총 개수 추출
+                for (RequestProjectDTO.ProjectNode projectNode : project.getProjectNodeList()) {
+                    Excel excel = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(project.getProjectIdx())), Excel.class);
+                    excel.getExcelSheetList().stream()
+                            .filter(excelSheet -> excelSheet.getExcelSheetName().equals(projectNode.getNodeType()))
+                            .findFirst()
+                            .ifPresent(excelSheet -> {
+                                MatchOperation matchOperation = Aggregation.match(
+                                        Criteria.where("_id.projectIdx")
+                                                .is(project.getProjectIdx())
+                                                .and("_id.excelSheetIdx")
+                                                .is(excelSheet.getExcelSheetIdx())
+                                );
 
-        // 데이터 덮어쓰기
-        UpdateResult result = mongoTemplate.replace(Query.query(Criteria.where("projectId").is(project.getProjectId())), replaceProject);
+                                CountOperation countOperation = Aggregation.count().as("nodeCount");
+                                Aggregation aggregation = Aggregation.newAggregation(matchOperation, countOperation);
+                                AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel_row", Document.class);
+                                nodeCount.set(nodeCount.get() + results.getUniqueMappedResult().getInteger("nodeCount"));
+                            });
+                }
+                // 엣지 정보 개수 만큼 엣지 총 개수 추출
+                for (RequestProjectDTO.ProjectEdge projectEdge : project.getProjectEdgeList()) {
+                    Excel excel = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(project.getProjectIdx())), Excel.class);
+                    excel.getExcelSheetList().stream()
+                            .filter(excelSheet -> excelSheet.getExcelSheetName().equals(projectEdge.getEdgeType()))
+                            .findFirst()
+                            .ifPresent(excelSheet -> {
+                                MatchOperation matchOperation = Aggregation.match(
+                                        Criteria.where("_id.projectIdx")
+                                                .is(project.getProjectIdx())
+                                                .and("_id.excelSheetIdx")
+                                                .is(excelSheet.getExcelSheetIdx())
+                                );
 
-        if(result.getModifiedCount() == 0) {
+                                CountOperation countOperation = Aggregation.count().as("edgeCount");
+                                Aggregation aggregation = Aggregation.newAggregation(matchOperation, countOperation);
+                                AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel_row", Document.class);
+                                edgeCount.set(edgeCount.get() + results.getUniqueMappedResult().getInteger("edgeCount"));
+                            });
+                }
+            }
+            projectVO.setTitle(project.getTitle());
+            projectVO.setDescription(project.getDescription());
+            projectVO.setNodeCnt(nodeCount.get());
+            projectVO.setEdgeCnt(edgeCount.get());
+            // 프로젝트 업데이트
+            int updateCnt = projectMapper.updateByProjectVO(projectVO);
+
+            if (updateCnt > 0) {
+
+                // 프로젝트 데이터 조회
+                Project targetProject = mongoTemplate.findById(project.getProjectIdx(), Project.class);
+                if (targetProject == null) {
+                    throw new CustomException(ErrorCode.COMMON_EMPTY);
+                }
+                // 데이터 맵핑
+                Project replaceProject = modelMapper.map(project, Project.class);
+
+                // 데이터 덮어쓰기
+                UpdateResult result = mongoTemplate.replace(Query.query(Criteria.where("_id").is(project.getProjectIdx())), replaceProject);
+
+                return CustomResponse.builder()
+                        .data(projectComponent.createResponseProject(projectVO.getIdx()))
+                        .build();
+            }
             throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
         }
 
-        return CustomResponse.builder()
-                .data(result)
-                .build();
+        // 프로젝트 삭제 예외 응답
+        throw new CustomException(ErrorCode.PROJECT_DELETED);
     }
 
     /**
      * 프로젝트 삭제
-     * @param projectId
+     * @param projectIdx
      * @return
      */
     @Transactional
-    public CustomResponse<?> deleteProject(RequestProjectDTO.ProjectId projectId) throws CustomException {
+    public CustomResponse<?> deleteProject(Integer projectIdx) throws CustomException {
         // TODO : 파트너쉽에 속한 회원 여부 체크
         // TODO : 해당 프로젝트 권한 여부 체크
         // RDB 프로젝트 조회
-        ProjectVO projectVO = projectMapper.selectByProjectCategoryIdxAndProjectIdx(projectId.getProjectCategoryIdx(), projectId.getProjectIdx());
+        ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+
         // MongoDB 프로젝트 조회
-        Project findProject = mongoTemplate.findById(projectId, Project.class);
+        Project findProject = mongoTemplate.findById(projectIdx, Project.class);
         if(projectVO == null || findProject == null) {
             throw new CustomException(ErrorCode.COMMON_EMPTY);
         }
         // 프로젝트 삭제일 저장
-        int deleteCnt = projectMapper.updateByDeleteDate(projectId.getProjectIdx());
+        int deleteCnt = projectMapper.updateByDeleteDate(projectIdx);
 
         return CustomResponse.builder()
                 .data(deleteCnt)
@@ -182,7 +236,7 @@ public class ProjectService {
         // TODO : 해당 프로젝트 권한 여부 체크
         // 프로젝트 생성 여부 확인
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
         // 프로젝트 삭제 여부 확인
         if(projectVO.getDeleteDate() == null) {
@@ -190,11 +244,8 @@ public class ProjectService {
             // 엑셀 파싱 및 MongoDB 저장
             projectComponent.parseExcel(projectVO.getIdx(), excelFile);
 
-            // 응답 데이터 조회
-            ResponseProjectDTO.Excel response = projectComponent.responseProjectData(projectIdx);
-
             return CustomResponse.builder()
-                    .data(response)
+                    .data(projectComponent.createResponseProjectExcel(projectIdx))
                     .build();
         }
 
@@ -302,7 +353,7 @@ public class ProjectService {
 
             // MongoDB 복제
             Project copiedProject = modelMapper.map(findProject, Project.class);
-            copiedProject.getProjectId().setProjectIdx(projectVO.getIdx());
+            copiedProject.setProjectIdx(projectVO.getIdx());
 
             // MongoDB 저장
             mongoTemplate.save(copiedProject);

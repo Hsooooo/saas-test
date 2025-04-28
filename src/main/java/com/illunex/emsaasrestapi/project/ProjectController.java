@@ -31,14 +31,12 @@ public class ProjectController {
     /**
      * 프로젝트 조회
      * @param projectIdx
-     * @param partnershipIdx
      * @return
      * @throws CustomException
      */
     @GetMapping()
-    public CustomResponse<?> getProjectId(@RequestParam(name = "projectIdx") Integer projectIdx,
-                                          @RequestParam(name = "partnershipIdx") Integer partnershipIdx) throws CustomException {
-        return projectService.getProject(projectIdx, partnershipIdx);
+    public CustomResponse<?> getProjectId(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        return projectService.getProject(projectIdx);
     }
 
     /**
@@ -54,13 +52,13 @@ public class ProjectController {
 
     /**
      * 프로젝트 삭제
-     * @param projectId
+     * @param projectIdx
      * @return
      * @throws CustomException
      */
     @DeleteMapping()
-    public CustomResponse<?> deleteProject(@RequestBody RequestProjectDTO.ProjectId projectId) throws CustomException {
-        return projectService.deleteProject(projectId);
+    public CustomResponse<?> deleteProject(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        return projectService.deleteProject(projectIdx);
     }
 
     /**

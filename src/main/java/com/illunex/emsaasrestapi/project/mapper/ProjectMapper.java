@@ -4,7 +4,6 @@ import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -14,8 +13,7 @@ import java.util.Optional;
 public interface ProjectMapper {
     // 프로젝트 등록
     Integer insertByProjectVO(ProjectVO projectVO);
-    // 프로젝트 여부 조회
-    ProjectVO selectByProjectCategoryIdxAndProjectIdx(Integer projectCategoryIdx, Integer projectIdx);
+    Integer updateByProjectVO(ProjectVO projectVO);
     // 프로젝트 삭제 처리(삭제일 업데이트)
     Integer updateByDeleteDate(Integer projectIdx);
     // project_category_idx로 프로젝트 총 개수 조회

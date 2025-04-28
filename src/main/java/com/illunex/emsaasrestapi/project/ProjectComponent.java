@@ -7,7 +7,10 @@ import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelRow;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelRowId;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
+import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
@@ -29,6 +32,8 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class ProjectComponent {
+    private final ProjectMapper projectMapper;
+
     private final ModelMapper modelMapper;
     private final MongoTemplate mongoTemplate;
 
@@ -171,16 +176,50 @@ public class ProjectComponent {
     }
 
     /**
+     * RDB & MongoDB 데이터 조회 후 응답 구조 생성
+     * @param projectIdx
+     * @return
+     */
+    public ResponseProjectDTO.Project createResponseProject(Integer projectIdx) throws CustomException {
+        // RDB 조회
+        ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+
+        if(projectVO.getDeleteDate() == null) {
+            ResponseProjectDTO.Project response = modelMapper.map(projectVO, ResponseProjectDTO.Project.class);
+
+            // MongoDB 조회
+            Project project = mongoTemplate.findOne(
+                    Query.query(
+                            Criteria.where("_id").is(projectIdx)
+                    ),
+                    Project.class
+            );
+
+            if(project == null) {
+                throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
+            }
+
+            modelMapper.map(project, response);
+
+            return response;
+        }
+
+        // 프로젝트 삭제 예외 응답
+        throw new CustomException(ErrorCode.PROJECT_DELETED);
+    }
+
+    /**
      * 저장된 엑셀 데이터 정보 조회
      * @param projectIdx
      * @return
      * @throws CustomException
      */
-    public ResponseProjectDTO.Excel responseProjectData(Integer projectIdx) throws CustomException {
+    public ResponseProjectDTO.Excel createResponseProjectExcel(Integer projectIdx) throws CustomException {
         // 저장된 엑셀 데이터 정보 조회
         Excel selectExcel = mongoTemplate.findOne(
                 Query.query(
-                        Criteria.where("projectIdx").is(projectIdx)
+                        Criteria.where("_id").is(projectIdx)
                 ),
                 Excel.class
         );

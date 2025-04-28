@@ -10,18 +10,28 @@ import java.util.List;
 public class ResponseProjectDTO {
 
     /**
-     * 프로젝트 설정 요청 구조
+     * 프로젝트 설정 구조
      */
     @Getter
     @Setter
     public static class Project {
-        private ProjectId projectId;                                // 프로젝트 번호, 파트너쉽 번호
+        private Integer projectIdx;                                 // 프로젝트 번호
+        private Integer partnershipIdx;                             // 파트너쉽 번호
+        private Integer projectCategoryIdx;                         // 프로젝트 카테고리번호
         private String title;                                       // 프로젝트 제목
         private String description;                                 // 프로젝트 내용
+        private String statusCd;                                    // 프로젝트 상태(code 테이블)
+        private String imageUrl;                                    // 프로젝트 이미지 URL
+        private String imagePath;                                   // 프로젝트 이미지 경로
+        private Integer nodeCnt;                                    // 노드 개수
+        private Integer edgeCnt;                                    // 엣지 개수
         private List<ProjectNode> projectNodeList;                  // 노드정보
         private List<ProjectEdge> projectEdgeList;                  // 엣지정보
         private List<ProjectNodeSize> projectNodeSizeList;          // 노드사이즈정보
         private List<ProjectNodeContent> projectNodeContentList;      // 속성정보
+        private ZonedDateTime updateDate;
+        private ZonedDateTime createDate;
+        private ZonedDateTime deleteDate;
     }
 
     /**

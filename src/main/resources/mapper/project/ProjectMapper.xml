@@ -31,21 +31,22 @@
             SELECT LAST_INSERT_ID()
         </selectKey>
     </insert>
-<!--    프로젝트 단일 조회-->
-    <select id="selectByProjectCategoryIdxAndProjectIdx" resultType="ProjectVO">
-        SELECT
-            *
-        FROM project
-        WHERE idx = #{projectIdx}
-        AND project_category_idx = #{projectCategoryIdx}
-    </select>
+<!--    프로젝트 수정-->
+    <update id="updateByProjectVO" parameterType="ProjectVO">
+        UPDATE project
+            SET title = #{title},
+                description = #{description},
+                status_cd = #{statusCd},
+                node_cnt = #{nodeCnt},
+                edge_cnt = #{edgeCnt}
+        WHERE idx = #{idx}
+    </update>
 <!--    프로젝트 삭제 처리(삭제일 업데이트)-->
-    <delete id="updateByDeleteDate">
+    <update id="updateByDeleteDate">
         UPDATE project
             SET delete_date = now()
         WHERE idx = #{projectIdx}
-        AND project_category_idx = #{projectCategoryIdx}
-    </delete>
+    </update>
 
     <select id="countByProjectCategoryIdx" parameterType="Integer" resultType="Integer">
         SELECT COUNT(*) FROM project
@@ -103,10 +104,9 @@
         LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
     </select>
 
-    <select id="countAllByProjectId" parameterType="ProjectVO" resultType="Integer">
+    <select id="countAllByProjectId" resultType="Integer">
         SELECT COUNT(*)
         FROM project
-        WHERE partnership_idx = #{partnershipIdx}
-        AND project_category_idx = #{projectCategoryIdx}
+        WHERE project_category_idx = #{projectCategoryIdx}
     </select>
 </mapper>

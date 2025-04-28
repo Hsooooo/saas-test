@@ -15,11 +15,7 @@ import java.util.List;
 @Document(collection = "project")
 public class Project {
     @Id
-    private ProjectId projectId;
-    @Comment("프로젝트 제목")
-    private String title;
-    @Comment("프로젝트 설명")
-    private String description;
+    private Integer projectIdx;
     @Comment("노드 정보")
     private List<ProjectNode> projectNodeList;
     @Comment("엣지 정보")
