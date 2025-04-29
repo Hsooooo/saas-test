@@ -5,6 +5,7 @@ import org.hibernate.annotations.Comment;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -26,4 +27,8 @@ public class Project {
     private List<ProjectFilter> projectFilterList;
     @Comment("노드 속성 정보")
     private List<ProjectNodeContent> projectNodeContentList;
+    @Comment("수정일")
+    private LocalDateTime updateDate;
+    @Comment("등록일")
+    private LocalDateTime createDate;
 }

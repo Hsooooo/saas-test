@@ -73,6 +73,16 @@ public class ProjectController {
         return projectService.uploadSingleExcelFile(projectIdx, excelFile);
     }
 
+    /**
+     * 프로젝트 최종 저장(관계망 데이터 정제 처리)
+     * @param projectIdx
+     * @return
+     */
+    @PostMapping("complete")
+    public CustomResponse<?> completeProject(@RequestParam(name = "projectIdx") Integer projectIdx) {
+        return projectService.completeProject(projectIdx);
+    }
+
 
     /**
      * 프로젝트 카테고리 이동

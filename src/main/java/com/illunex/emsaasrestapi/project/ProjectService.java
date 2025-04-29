@@ -36,6 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -82,9 +84,12 @@ public class ProjectService {
             Project mongoResult = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectVO.getIdx())), Project.class);
             if (mongoResult == null) {
                 // 없을 경우 추가
+                mappingProject.setCreateDate(LocalDateTime.now());
                 mongoTemplate.insert(mappingProject);
             } else {
                 // 있을 경우 업데이트
+                mappingProject.setUpdateDate(LocalDateTime.now());
+                mappingProject.setCreateDate(mongoResult.getCreateDate());
                 mongoTemplate.replace(Query.query(Criteria.where("_id").is(projectVO.getIdx())), mappingProject);
             }
 
@@ -171,11 +176,11 @@ public class ProjectService {
             projectVO.setDescription(project.getDescription());
             projectVO.setNodeCnt(nodeCount.get());
             projectVO.setEdgeCnt(edgeCount.get());
+            projectVO.setUpdateDate(ZonedDateTime.now());
             // 프로젝트 업데이트
             int updateCnt = projectMapper.updateByProjectVO(projectVO);
 
             if (updateCnt > 0) {
-
                 // 프로젝트 데이터 조회
                 Project targetProject = mongoTemplate.findById(project.getProjectIdx(), Project.class);
                 if (targetProject == null) {
@@ -183,6 +188,8 @@ public class ProjectService {
                 }
                 // 데이터 맵핑
                 Project replaceProject = modelMapper.map(project, Project.class);
+                replaceProject.setUpdateDate(LocalDateTime.now());
+                replaceProject.setCreateDate(targetProject.getCreateDate());
 
                 // 데이터 덮어쓰기
                 UpdateResult result = mongoTemplate.replace(Query.query(Criteria.where("_id").is(project.getProjectIdx())), replaceProject);
@@ -251,6 +258,21 @@ public class ProjectService {
 
         // 프로젝트 삭제 예외 응답
         throw new CustomException(ErrorCode.PROJECT_DELETED);
+    }
+
+    /**
+     * 프로젝트 최종 저장(관계망 데이터 정제 처리)
+     * @param projectIdx
+     * @return
+     */
+    public CustomResponse<?> completeProject(Integer projectIdx) {
+        // TODO : 파트너쉽에 속한 회원 여부 체크
+        // TODO : 해당 프로젝트 권한 여부 체크
+        // 1. MongoDB에 프로젝트 정보 조회
+        // 2. MongoDB에 엑셀 시트 정보 조회
+        // 3. 엑셀 시트에
+        return CustomResponse.builder()
+                .build();
     }
 
     /**

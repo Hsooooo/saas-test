@@ -16,18 +16,26 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.bson.Document;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.CountOperation;
+import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 @RequiredArgsConstructor
@@ -157,6 +165,7 @@ public class ProjectComponent {
                     dataMap.put(excelCellList.get(cellCnt), getExcelColumnData(row.getCell(cellCnt)));
                 }
                 excelRow.setData(dataMap);
+                excelRow.setCreateDate(LocalDateTime.now());
                 // 엑셀 데이터 Row 저장
                 mongoTemplate.insert(excelRow);
             }
@@ -169,6 +178,7 @@ public class ProjectComponent {
                             .excelCellList(excelCellList)
                             .totalRowCnt(totalRowCnt)
                             .build());
+            excel.setCreateDate(LocalDateTime.now());
         }
 
         // 엑셀 파싱 정보 저장
@@ -228,8 +238,8 @@ public class ProjectComponent {
         }
         // 응답 구조 맵핑
         ResponseProjectDTO.Excel response = modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class);
-        // 응답 구조 안에 데이터 목록 추가
         response.getExcelSheetList().forEach(dataSheet -> {
+            // 응답 구조 안에 데이터 목록 추가
             List<ExcelRow> excelRow = mongoTemplate.find(
                     Query.query(
                             Criteria.where("_id.projectIdx").is(projectIdx)
@@ -238,7 +248,20 @@ public class ProjectComponent {
                             .limit(10),
                     ExcelRow.class
             );
+            // row 카운트 추가
             dataSheet.setExcelRowList(modelMapper.map(excelRow, new TypeToken<List<ResponseProjectDTO.ExcelRow>>(){}.getType()));
+            MatchOperation matchOperation = Aggregation.match(
+                    Criteria.where("_id.projectIdx")
+                            .is(projectIdx)
+                            .and("_id.excelSheetIdx")
+                            .is(dataSheet.getExcelSheetIdx())
+            );
+            Integer rowCount = 0;
+            CountOperation countOperation = Aggregation.count().as("rowCount");
+            Aggregation aggregation = Aggregation.newAggregation(matchOperation, countOperation);
+            AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel_row", Document.class);
+            rowCount += Objects.requireNonNull(results.getUniqueMappedResult()).getInteger("rowCount");
+            dataSheet.setTotalRowCnt(rowCount);
         });
 
         return response;

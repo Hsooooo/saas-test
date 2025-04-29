@@ -1,8 +1,10 @@
 package com.illunex.emsaasrestapi.project.document.excel;
 
 import lombok.*;
+import org.hibernate.annotations.Comment;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -12,10 +14,12 @@ import java.util.List;
 @AllArgsConstructor
 @Document(collection = "excel_sheet")
 public class ExcelSheet {
+    @Comment("엑셀시트번호")
     private Integer excelSheetIdx;
+    @Comment("엑셀시트명")
     private String excelSheetName;
-    // Cell 목록
+    @Comment("Cell 목록")
     private List<String> excelCellList;
-    // Row 개수
+    @Comment("Row 개수")
     private Integer totalRowCnt;
 }

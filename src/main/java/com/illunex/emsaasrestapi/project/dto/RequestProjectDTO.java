@@ -23,7 +23,8 @@ public class RequestProjectDTO {
         private List<ProjectNode> projectNodeList;                  // 노드정보
         private List<ProjectEdge> projectEdgeList;                  // 엣지정보
         private List<ProjectNodeSize> projectNodeSizeList;          // 노드사이즈정보
-        private List<ProjectNodeContent> projectNodeContentList;      // 속성정보
+        private List<ProjectFilter> projectFilterList;              // 필터링정보
+        private List<ProjectNodeContent> projectNodeContentList;    // 속성정보
     }
 
     /**

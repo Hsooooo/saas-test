@@ -16,9 +16,9 @@ public class ProjectNodeContent {
     @Comment("노드 타입(시트명)")
     private String nodeType;
     @Comment("라벨 표시 제목 셀명")
-    private String labelTitleFieldName;
+    private String labelTitleCellName;
     @Comment("라벨 표시 내용 셀명")
-    private String labelContentFieldName;
+    private String labelContentCellName;
     @Comment("라벨 표시 키워드 셀명 목록")
     private List<String> labelKeywordCellList;
     @Comment("라벨 표시 키워드 구분자")
