@@ -100,7 +100,7 @@ public class ProjectService {
      * @param projectIdx
      * @return
      */
-    public CustomResponse<?> getProject(Integer projectIdx) throws CustomException {
+    public CustomResponse<?> getProjectDetail(Integer projectIdx) throws CustomException {
         // TODO : 파트너쉽에 속한 회원 여부 체크
         // TODO : 해당 프로젝트 권한 여부 체크
 
@@ -284,7 +284,7 @@ public class ProjectService {
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> selectProject(RequestProjectDTO.ProjectId projectId, CustomPageRequest pageRequest, String[] sort) {
+    public CustomResponse<?> getProjectList(RequestProjectDTO.ProjectId projectId, CustomPageRequest pageRequest, String[] sort) {
         Pageable pageable = pageRequest.of(sort);
         // 프로젝트 조회
         List<ProjectVO> projectList = projectMapper.selectAllByProjectId(projectId, pageable);
@@ -296,6 +296,8 @@ public class ProjectService {
                         .categoryIdx(projectVO.getProjectCategoryIdx())
                         .projectIdx(projectVO.getIdx())
                         .title(projectVO.getTitle())
+                        .nodeCnt(projectVO.getNodeCnt())
+                        .edgeCnt(projectVO.getEdgeCnt())
                         .createDate(projectVO.getCreateDate())
                         .updateDate(projectVO.getUpdateDate())
                         .statusCd(projectVO.getStatusCd())

@@ -136,10 +136,10 @@ public class ProjectComponent {
             }
 
             // 엑셀 Row 개수 만큼 데이터 추출
-            for(int rowIdx = 1; rowIdx < totalRowCnt; rowIdx++) {
+            for(int rowIdx = 1; rowIdx < totalRowCnt + 1; rowIdx++) {
                 Row row = workSheet.getRow(rowIdx);
                 if(row == null) {
-                    // 열 데이터가 없으면 종료
+                    // Row 데이터가 없으면 종료
                     totalRowCnt = rowIdx;
                     break;
                 }

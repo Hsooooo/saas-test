@@ -29,14 +29,14 @@ public class ProjectController {
     }
 
     /**
-     * 프로젝트 조회
+     * 프로젝트 상세 조회
      * @param projectIdx
      * @return
      * @throws CustomException
      */
     @GetMapping()
-    public CustomResponse<?> getProjectId(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
-        return projectService.getProject(projectIdx);
+    public CustomResponse<?> getProjectDetail(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        return projectService.getProjectDetail(projectIdx);
     }
 
     /**
@@ -93,11 +93,10 @@ public class ProjectController {
      * @return
      * @throws CustomException
      */
-    @GetMapping("/select")
-    public CustomResponse<?> selectProject(
-            RequestProjectDTO.ProjectId projectId,
-            CustomPageRequest pageRequest, String[] sort) throws CustomException {
-        return projectService.selectProject(projectId, pageRequest, sort);
+    @GetMapping("/list")
+    public CustomResponse<?> getProjectList(RequestProjectDTO.ProjectId projectId,
+                                            CustomPageRequest pageRequest, String[] sort) throws CustomException {
+        return projectService.getProjectList(projectId, pageRequest, sort);
     }
 
     /**
