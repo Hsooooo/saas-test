@@ -79,7 +79,7 @@ public class ProjectController {
      * @return
      */
     @PostMapping("complete")
-    public CustomResponse<?> completeProject(@RequestParam(name = "projectIdx") Integer projectIdx) {
+    public CustomResponse<?> completeProject(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
         return projectService.completeProject(projectIdx);
     }
 

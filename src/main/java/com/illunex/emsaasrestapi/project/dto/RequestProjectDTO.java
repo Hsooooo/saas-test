@@ -50,8 +50,9 @@ public class RequestProjectDTO {
     @AllArgsConstructor
     public static class ProjectNode {
         private String nodeType;
-        private String cellName;
-        private String cellType;
+        private String uniqueCellName;
+        private String labelCellName;
+        private String labelCellType;
     }
 
     /**
@@ -63,12 +64,14 @@ public class RequestProjectDTO {
     @AllArgsConstructor
     public static class ProjectEdge {
         private String edgeType;
+        private String srcEdgeCellName;
         private String srcNodeType;
-        private String srcCellName;
+        private String srcNodeCellName;
+        private String destEdgeCellName;
         private String destNodeType;
-        private String destCellName;
-        private String labelCellName;
-        private String labelCellType;
+        private String destNodeCellName;
+        private String labelEdgeCellName;
+        private String labelEdgeCellType;
         private String unit;
         private String color;
         private Boolean useDirection;

@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.project.dto;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -53,8 +54,9 @@ public class ResponseProjectDTO {
     @Setter
     public static class ProjectNode {
         private String nodeType;
-        private String cellName;
-        private String cellType;
+        private String uniqueCellName;
+        private String labelCellName;
+        private String labelCellType;
     }
 
     /**
@@ -64,12 +66,14 @@ public class ResponseProjectDTO {
     @Setter
     public static class ProjectEdge {
         private String edgeType;
+        private String srcEdgeCellName;
         private String srcNodeType;
-        private String srcCellName;
+        private String srcNodeCellName;
+        private String destEdgeCellName;
         private String destNodeType;
-        private String destCellName;
-        private String labelCellName;
-        private String labelCellType;
+        private String destNodeCellName;
+        private String labelEdgeCellName;
+        private String labelEdgeCellType;
         private String unit;
         private String color;
         private Boolean useDirection;
@@ -158,6 +162,7 @@ public class ResponseProjectDTO {
     public static class Excel {
         private Integer projectIdx;
         private List<ExcelSheet> excelSheetList;
+        private LocalDateTime createDate;
     }
 
     /**
@@ -166,7 +171,7 @@ public class ResponseProjectDTO {
     @Getter
     @Setter
     public static class ExcelSheet {
-        private Integer excelSheetIdx;
+        // 엑셀 시트명
         private String excelSheetName;
         // Cell 목록
         private List<String> excelCellList;
@@ -183,7 +188,7 @@ public class ResponseProjectDTO {
     @Setter
     public static class ExcelRowId {
         private Integer projectIdx;
-        private Integer excelSheetIdx;
+        private String excelSheetName;
         private Integer excelRowIdx;
     }
 

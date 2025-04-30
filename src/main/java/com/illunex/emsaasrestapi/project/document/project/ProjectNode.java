@@ -13,8 +13,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class ProjectNode {
     @Comment("노드 타입(시트명)")
     private String nodeType;
-    @Comment("셀명")
-    private String cellName;
-    @Comment("셀 타입")
-    private String cellType;
+    @Comment("노드 고유키 셀명")
+    private String uniqueCellName;
+    @Comment("라벨 표시 셀명")
+    private String labelCellName;
+    @Comment("라벨 표시 셀타입")
+    private String labelCellType;
 }

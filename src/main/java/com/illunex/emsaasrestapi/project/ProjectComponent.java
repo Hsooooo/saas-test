@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 @RequiredArgsConstructor
@@ -155,7 +154,7 @@ public class ProjectComponent {
                 ExcelRow excelRow = ExcelRow.builder()
                         .excelRowId(ExcelRowId.builder()
                                 .projectIdx(projectIdx)
-                                .excelSheetIdx(sheetIdx + 1)
+                                .excelSheetName(workSheet.getSheetName())
                                 .excelRowIdx(rowIdx)
                                 .build())
                         .build();
@@ -173,7 +172,6 @@ public class ProjectComponent {
             // 엑셀 시트 정보 추가
             excel.getExcelSheetList()
                     .add(ExcelSheet.builder()
-                            .excelSheetIdx(sheetIdx + 1)
                             .excelSheetName(workSheet.getSheetName())
                             .excelCellList(excelCellList)
                             .totalRowCnt(totalRowCnt)
@@ -243,7 +241,7 @@ public class ProjectComponent {
             List<ExcelRow> excelRow = mongoTemplate.find(
                     Query.query(
                             Criteria.where("_id.projectIdx").is(projectIdx)
-                                    .and("_id.excelSheetIdx").is(dataSheet.getExcelSheetIdx())
+                                    .and("_id.excelSheetName").is(dataSheet.getExcelSheetName())
                     )
                             .limit(10),
                     ExcelRow.class
@@ -253,8 +251,8 @@ public class ProjectComponent {
             MatchOperation matchOperation = Aggregation.match(
                     Criteria.where("_id.projectIdx")
                             .is(projectIdx)
-                            .and("_id.excelSheetIdx")
-                            .is(dataSheet.getExcelSheetIdx())
+                            .and("_id.excelSheetName")
+                            .is(dataSheet.getExcelSheetName())
             );
             Integer rowCount = 0;
             CountOperation countOperation = Aggregation.count().as("rowCount");
