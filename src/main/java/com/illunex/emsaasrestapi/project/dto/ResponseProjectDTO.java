@@ -1,10 +1,13 @@
 package com.illunex.emsaasrestapi.project.dto;
 
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
+import com.illunex.emsaasrestapi.project.document.network.Edge;
+import com.illunex.emsaasrestapi.project.document.network.Node;
 import lombok.*;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -242,5 +245,31 @@ public class ResponseProjectDTO {
         ZonedDateTime updateDate;   // 수정일
         String statusCd;            // 상태
         List<ResponseMemberDTO.Member> members;  // 프로젝트 구성원
+    }
+
+
+    /**
+     * 프로젝트 관계망 조회
+     */
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ProjectNetwork {
+        Integer nodeSize;
+        Integer edgeSize;
+        List<Node> nodes;
+        List<Edge> edges;
+
+        public void addEdges(List<Edge> edges) {
+            if(this.edges == null) {
+                this.edges = new ArrayList<>();
+            }
+
+            if(edges != null){
+                this.edges.addAll(edges);
+            }
+        }
     }
 }

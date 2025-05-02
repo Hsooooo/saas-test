@@ -27,6 +27,7 @@ import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
+import org.checkerframework.checker.units.qual.C;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.data.domain.PageImpl;
@@ -46,6 +47,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -478,6 +480,28 @@ public class ProjectService {
 
         return CustomResponse.builder()
                 .data(new PageImpl<>(response, pageable, totalProjectList))
+                .build();
+    }
+
+
+    public CustomResponse<?> getProjectNetwork(RequestProjectDTO.ProjectNetwork projectNetworkDto) throws CustomException {
+
+        ResponseProjectDTO.ProjectNetwork response = new ResponseProjectDTO.ProjectNetwork();
+
+        //TODO [PYJ] 노드검색
+        Query query = Query.query(Criteria.where("nodeId.projectIdx").is(projectNetworkDto.getProjectIdx()));
+        List<Node> nodes = mongoTemplate.find(query, Node.class);
+
+        response.setNodes(nodes);
+
+        //TODO [PYJ] 엣지검색
+        projectComponent.extendRepeatNetworkSearch(response, nodes, projectNetworkDto.getExtendDepth());
+
+        response.setNodeSize(response.getNodes().size());
+        response.setEdgeSize(response.getEdges().size());
+
+        return CustomResponse.builder()
+                .data(response)
                 .build();
     }
 }

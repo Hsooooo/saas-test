@@ -120,4 +120,16 @@ public class ProjectController {
                                          CustomPageRequest pageRequest, String[] sort) throws CustomException, JsonProcessingException {
         return projectService.copyProject(projectIds, pageRequest, sort);
     }
+
+
+    /**
+     * 프로젝트 관계먕 조회
+     * @param projectNetworkDto
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/network")
+    public CustomResponse<?> getProjectNetwork(RequestProjectDTO.ProjectNetwork projectNetworkDto) throws CustomException {
+        return projectService.getProjectNetwork(projectNetworkDto);
+    }
 }
