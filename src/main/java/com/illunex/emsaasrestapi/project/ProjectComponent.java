@@ -275,9 +275,8 @@ public class ProjectComponent {
     public void extendRepeatNetworkSearch(ResponseProjectDTO.ProjectNetwork response, List<Node> nodes, Integer depth){
         //뎁스가 다할때 까지 재귀 조회
         if(depth > 0){
-            if(nodes.isEmpty()){
-                return;
-            }
+            if(nodes.isEmpty()) return;
+
             List<Object> nodeIdxList = nodes.stream().map(m -> m.getNodeId().getNodeIdx()).toList();
 
 

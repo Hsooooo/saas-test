@@ -35,7 +35,7 @@ public class NetworkService {
         ResponseProjectDTO.ProjectNetwork response = new ResponseProjectDTO.ProjectNetwork();
 
         //TODO [PYJ] 노드검색
-        Query query = Query.query(Criteria.where("nodeId.projectIdx").is(projectIdx));
+        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
         List<Node> nodes = mongoTemplate.find(query, Node.class);
 
         response.setNodes(nodes);
