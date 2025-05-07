@@ -52,6 +52,7 @@ public class SecurityConfig {
                         .requestMatchers("/ai/**").permitAll()
                         .requestMatchers("/project/**").permitAll()
                         .requestMatchers("/project/category/**").permitAll()
+                        .requestMatchers("/network/**").permitAll()
                         .anyRequest()
                         .authenticated()
                 )

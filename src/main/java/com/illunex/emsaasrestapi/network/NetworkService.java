@@ -41,7 +41,7 @@ public class NetworkService {
         response.setNodes(nodes);
 
         //TODO [PYJ] 엣지검색
-        projectComponent.extendRepeatNetworkSearch(response, nodes, 0);
+        projectComponent.extendRepeatNetworkSearch(response, nodes, 1);
 
         response.setNodeSize(response.getNodes().size());
         response.setLinkSize(response.getLinks().size());
