@@ -293,7 +293,7 @@ public class ProjectComponent {
             }
 
             //2. 이미 있는 엣지는 필터
-            List<Edge> existingEdges = Optional.ofNullable(response.getEdges()).orElse(Collections.emptyList());
+            List<Edge> existingEdges = Optional.ofNullable(response.getLinks()).orElse(Collections.emptyList());
             edgeList = edgeList.stream().filter(edge -> existingEdges.stream()
                         .noneMatch(existing  -> existing.getId().equals(edge.getId()))).toList();
 

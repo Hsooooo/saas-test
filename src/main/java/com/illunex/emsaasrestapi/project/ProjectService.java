@@ -482,31 +482,4 @@ public class ProjectService {
                 .data(new PageImpl<>(response, pageable, totalProjectList))
                 .build();
     }
-
-
-    public CustomResponse<?> getProjectNetwork(RequestProjectDTO.ProjectNetwork projectNetworkDto) throws CustomException {
-
-        ResponseProjectDTO.ProjectNetwork response = new ResponseProjectDTO.ProjectNetwork();
-
-        //TODO [PYJ] 노드검색
-//        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectNetworkDto.getProjectIdx()));
-        Query query = Query.query(Criteria.where("id").is(8));
-        List<Node> nodes = mongoTemplate.find(query, Node.class);
-
-        response.setNodes(nodes);
-
-        //TODO [PYJ] 엣지검색
-        projectComponent.extendRepeatNetworkSearch(response, nodes, projectNetworkDto.getExtendDepth());
-
-        if (response.getNodes() != null) {
-            response.setNodeSize(response.getNodes().size());
-        }
-        if (response.getEdges() != null) {
-            response.setEdgeSize(response.getEdges().size());
-        }
-
-        return CustomResponse.builder()
-                .data(response)
-                .build();
-    }
 }

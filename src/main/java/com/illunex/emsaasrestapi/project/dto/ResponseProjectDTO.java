@@ -258,17 +258,17 @@ public class ResponseProjectDTO {
     @NoArgsConstructor
     public static class ProjectNetwork {
         Integer nodeSize;
-        Integer edgeSize;
+        Integer linkSize;
         List<Node> nodes;
-        List<Edge> edges;
+        List<Edge> links;
 
         public void addEdges(List<Edge> edges) {
-            if(this.edges == null) {
-                this.edges = new ArrayList<>();
+            if(this.links == null) {
+                this.links = new ArrayList<>();
             }
 
             if(edges != null){
-                this.edges.addAll(edges);
+                this.links.addAll(edges);
             }
         }
     }
