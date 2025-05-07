@@ -272,4 +272,17 @@ public class ResponseProjectDTO {
             }
         }
     }
+
+
+    /**
+     * 프로젝트 관계망 조회
+     */
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ProjectNetworkNode {
+        Node node;
+    }
 }

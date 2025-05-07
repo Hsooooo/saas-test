@@ -22,4 +22,29 @@ public class NetworkController {
     public CustomResponse<?> getNetworkAll(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
         return networkService.getNetworkAll(projectIdx);
     }
+
+    /**
+     * 프로젝트 단일관계망 조회
+     * @param projectIdx
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/one")
+    public CustomResponse<?> getNetworkOne(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                           @RequestParam(name = "nodeIdx") Integer nodeIdx) throws CustomException {
+        return networkService.getNetworkOne(projectIdx, nodeIdx);
+    }
+
+
+    /**
+     * 프로젝트 단일노드 상세정보 조회
+     * @param projectIdx
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/info")
+    public CustomResponse<?> getNetworkInfo(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                           @RequestParam(name = "nodeIdx") Integer nodeIdx) throws CustomException {
+        return networkService.getNetworkInfo(projectIdx, nodeIdx);
+    }
 }

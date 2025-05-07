@@ -50,4 +50,57 @@ public class NetworkService {
                 .data(response)
                 .build();
     }
+
+
+    /**
+     * 프로젝트 단일관계망 조회
+     * @param projectIdx
+     * @return
+     */
+    public CustomResponse<?> getNetworkOne(Integer projectIdx, Integer nodeIdx) {
+        // TODO : 파트너쉽에 속한 회원 여부 체크
+        // TODO : 해당 프로젝트 권한 여부 체크
+        ResponseProjectDTO.ProjectNetwork response = new ResponseProjectDTO.ProjectNetwork();
+
+        //노드검색
+        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
+                                            .and("id").is(nodeIdx));
+        List<Node> nodes = mongoTemplate.find(query, Node.class);
+
+        response.setNodes(nodes);
+
+        //엣지검색
+        projectComponent.extendRepeatNetworkSearch(response, nodes, 1);
+
+        if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
+        if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
+
+
+        return CustomResponse.builder()
+                .data(response)
+                .build();
+    }
+
+
+    /**
+     * 프로젝트 단일노드 상세정보 조회
+     * @param projectIdx
+     * @return
+     */
+    public CustomResponse<?> getNetworkInfo(Integer projectIdx, Integer nodeIdx) {
+        // TODO : 파트너쉽에 속한 회원 여부 체크
+        // TODO : 해당 프로젝트 권한 여부 체크
+        ResponseProjectDTO.ProjectNetworkNode response = new ResponseProjectDTO.ProjectNetworkNode();
+
+        //노드검색
+        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
+                .and("id").is(nodeIdx));
+        Node node = mongoTemplate.findOne(query, Node.class);
+
+        response.setNode(node);
+
+        return CustomResponse.builder()
+                .data(response)
+                .build();
+    }
 }
