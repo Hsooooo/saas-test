@@ -489,7 +489,8 @@ public class ProjectService {
         ResponseProjectDTO.ProjectNetwork response = new ResponseProjectDTO.ProjectNetwork();
 
         //TODO [PYJ] 노드검색
-        Query query = Query.query(Criteria.where("nodeId.projectIdx").is(projectNetworkDto.getProjectIdx()));
+//        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectNetworkDto.getProjectIdx()));
+        Query query = Query.query(Criteria.where("id").is(8));
         List<Node> nodes = mongoTemplate.find(query, Node.class);
 
         response.setNodes(nodes);
@@ -497,8 +498,12 @@ public class ProjectService {
         //TODO [PYJ] 엣지검색
         projectComponent.extendRepeatNetworkSearch(response, nodes, projectNetworkDto.getExtendDepth());
 
-        response.setNodeSize(response.getNodes().size());
-        response.setEdgeSize(response.getEdges().size());
+        if (response.getNodes() != null) {
+            response.setNodeSize(response.getNodes().size());
+        }
+        if (response.getEdges() != null) {
+            response.setEdgeSize(response.getEdges().size());
+        }
 
         return CustomResponse.builder()
                 .data(response)
