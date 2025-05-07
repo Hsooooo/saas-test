@@ -34,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Stream;
 
 @Component
 @RequiredArgsConstructor
@@ -265,6 +266,12 @@ public class ProjectComponent {
     }
 
 
+    /**
+     * 노드 전체검색
+     * @param response  리턴할 값
+     * @param nodes 검색할 노드
+     * @param depth 검색할 횟수(깊이)
+     */
     public void extendRepeatNetworkSearch(ResponseProjectDTO.ProjectNetwork response, List<Node> nodes, Integer depth){
         //뎁스가 다할때 까지 재귀 조회
         if(depth > 0){
@@ -293,9 +300,16 @@ public class ProjectComponent {
             //3. 엣지 추가
             response.addEdges(edgeList);
 
-            //4. end의 노드들 검색해서 다음 뎁스 준비
-            nodeIdxList = edgeList.stream().map(m -> m.getEnd()).toList();
-            query = Query.query(Criteria.where("nodeId.projectIdx").in(nodeIdxList));
+            //4. start end의 노드들 검색해서 다음 뎁스 준비(중복 제거)
+            nodeIdxList = Stream.concat(
+                    edgeList.stream().map(Edge::getStart),
+                    edgeList.stream().map(Edge::getEnd)
+            ).distinct().toList();
+            nodeIdxList = nodeIdxList.stream().filter(nodeIdx ->
+                        response.getNodes().stream()
+                                .noneMatch(existing -> existing.getId().equals(nodeIdx))
+                    ).toList();
+            query = Query.query(Criteria.where("id").in(nodeIdxList));
             List<Node> nodeList = mongoTemplate.find(query, Node.class);
 
             //5. 뎁스만큼 반복
