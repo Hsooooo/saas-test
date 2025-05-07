@@ -166,4 +166,20 @@ public class RequestProjectDTO {
         private String cellName;
         private String cellType;
     }
+
+
+    /**
+     * 관계망 검색
+     */
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProjectNetwork {
+        private Integer projectIdx;
+        private String searchType;
+        private List<String> keywordList;
+        private Integer extendDepth;
+    }
 }

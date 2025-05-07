@@ -7,6 +7,8 @@ import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelRow;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelRowId;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
+import com.illunex.emsaasrestapi.project.document.network.Edge;
+import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
@@ -31,10 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -263,5 +262,44 @@ public class ProjectComponent {
         });
 
         return response;
+    }
+
+
+    public void extendRepeatNetworkSearch(ResponseProjectDTO.ProjectNetwork response, List<Node> nodes, Integer depth){
+        //뎁스가 다할때 까지 재귀 조회
+        if(depth > 0){
+            if(nodes.isEmpty()){
+                return;
+            }
+            List<Object> nodeIdxList = nodes.stream().map(m -> m.getNodeId().getNodeIdx()).toList();
+
+
+            Query query = new Query(new Criteria().orOperator(
+                    Criteria.where("start").in(nodeIdxList),
+                    Criteria.where("end").in(nodeIdxList)
+            ));
+
+            //1. 엣지조회
+            List<Edge> edgeList = mongoTemplate.find(query, Edge.class);
+            if(edgeList.isEmpty()){
+                return;
+            }
+
+            //2. 이미 있는 엣지는 필터
+            List<Edge> existingEdges = Optional.ofNullable(response.getEdges()).orElse(Collections.emptyList());
+            edgeList = edgeList.stream().filter(edge -> existingEdges.stream()
+                        .noneMatch(existing  -> existing.getId().equals(edge.getId()))).toList();
+
+            //3. 엣지 추가
+            response.addEdges(edgeList);
+
+            //4. end의 노드들 검색해서 다음 뎁스 준비
+            nodeIdxList = edgeList.stream().map(m -> m.getEnd()).toList();
+            query = Query.query(Criteria.where("nodeId.projectIdx").in(nodeIdxList));
+            List<Node> nodeList = mongoTemplate.find(query, Node.class);
+
+            //5. 뎁스만큼 반복
+            extendRepeatNetworkSearch(response, nodeList, depth-1);
+        }
     }
 }
