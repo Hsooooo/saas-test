@@ -287,9 +287,8 @@ public class ProjectComponent {
 
             //1. 엣지조회
             List<Edge> edgeList = mongoTemplate.find(query, Edge.class);
-            if(edgeList.isEmpty()){
-                return;
-            }
+            if(edgeList.isEmpty()) return;
+
 
             //2. 이미 있는 엣지는 필터
             List<Edge> existingEdges = Optional.ofNullable(response.getLinks()).orElse(Collections.emptyList());
@@ -311,7 +310,10 @@ public class ProjectComponent {
             query = Query.query(Criteria.where("id").in(nodeIdxList));
             List<Node> nodeList = mongoTemplate.find(query, Node.class);
 
-            //5. 뎁스만큼 반복
+            //5. 노드 추가
+            response.addNodes(nodeList);
+
+            //6. 뎁스만큼 반복
             extendRepeatNetworkSearch(response, nodeList, depth-1);
         }
     }

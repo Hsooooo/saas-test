@@ -182,4 +182,5 @@ public class RequestProjectDTO {
         private List<String> keywordList;
         private Integer extendDepth;
     }
+
 }

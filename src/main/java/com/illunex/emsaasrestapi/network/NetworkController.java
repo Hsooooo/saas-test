@@ -24,12 +24,12 @@ public class NetworkController {
     }
 
     /**
-     * 프로젝트 단일관계망 조회
+     * 프로젝트 단일 노드 확장 검색 API
      * @param projectIdx
      * @return
      * @throws CustomException
      */
-    @GetMapping("/one")
+    @GetMapping("/extend")
     public CustomResponse<?> getNetworkOne(@RequestParam(name = "projectIdx") Integer projectIdx,
                                            @RequestParam(name = "nodeIdx") Integer nodeIdx) throws CustomException {
         return networkService.getNetworkOne(projectIdx, nodeIdx);
@@ -39,12 +39,15 @@ public class NetworkController {
     /**
      * 프로젝트 단일노드 상세정보 조회
      * @param projectIdx
+     * @param nodeIdx
+     * @param label
      * @return
      * @throws CustomException
      */
     @GetMapping("/info")
     public CustomResponse<?> getNetworkInfo(@RequestParam(name = "projectIdx") Integer projectIdx,
-                                           @RequestParam(name = "nodeIdx") Integer nodeIdx) throws CustomException {
-        return networkService.getNetworkInfo(projectIdx, nodeIdx);
+                                            @RequestParam(name = "nodeIdx") Integer nodeIdx,
+                                            @RequestParam(name = "label") String label) throws CustomException {
+        return networkService.getNetworkInfo(projectIdx, nodeIdx, label);
     }
 }

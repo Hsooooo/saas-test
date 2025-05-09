@@ -262,6 +262,16 @@ public class ResponseProjectDTO {
         List<Node> nodes;
         List<Edge> links;
 
+        public void addNodes(List<Node> nodes) {
+            if(this.nodes == null) {
+                this.nodes = new ArrayList<>();
+            }
+
+            if(nodes != null){
+                this.nodes.addAll(nodes);
+            }
+        }
+
         public void addEdges(List<Edge> edges) {
             if(this.links == null) {
                 this.links = new ArrayList<>();
@@ -285,4 +295,20 @@ public class ResponseProjectDTO {
     public static class ProjectNetworkNode {
         Node node;
     }
+
+    /**
+     * 프로젝트 관계망 조회
+     */
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ProjectNetworkInfo {
+        String label;
+        String cellName;
+        String cellType;
+        Object value;
+    }
+
 }
