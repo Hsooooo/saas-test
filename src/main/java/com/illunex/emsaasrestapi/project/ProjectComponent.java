@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.network.dto.ResponseNetworkDTO;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelRow;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelRowId;
@@ -272,23 +273,24 @@ public class ProjectComponent {
      * @param nodes 검색할 노드
      * @param depth 검색할 횟수(깊이)
      */
-    public void extendRepeatNetworkSearch(ResponseProjectDTO.ProjectNetwork response, List<Node> nodes, Integer depth){
+    public void extendRepeatNetworkSearch(ResponseNetworkDTO.Network response, List<Node> nodes, Integer depth){
         //뎁스가 다할때 까지 재귀 조회
         if(depth > 0){
             if(nodes.isEmpty()) return;
 
             List<Object> nodeIdxList = nodes.stream().map(m -> m.getNodeId().getNodeIdx()).toList();
-
+            String nodeType = nodes.get(0).getLabel().toString();
 
             Query query = new Query(new Criteria().orOperator(
-                    Criteria.where("start").in(nodeIdxList),
-                    Criteria.where("end").in(nodeIdxList)
+                    Criteria.where("startType").is(nodeType)
+                            .and("start").in(nodeIdxList),
+                    Criteria.where("endType").is(nodeType)
+                            .and("end").in(nodeIdxList)
             ));
 
             //1. 엣지조회
             List<Edge> edgeList = mongoTemplate.find(query, Edge.class);
             if(edgeList.isEmpty()) return;
-
 
             //2. 이미 있는 엣지는 필터
             List<Edge> existingEdges = Optional.ofNullable(response.getLinks()).orElse(Collections.emptyList());
@@ -296,7 +298,7 @@ public class ProjectComponent {
                         .noneMatch(existing  -> existing.getId().equals(edge.getId()))).toList();
 
             //3. 엣지 추가
-            response.addEdges(edgeList);
+            response.getLinks().addAll(edgeList);
 
             //4. start end의 노드들 검색해서 다음 뎁스 준비(중복 제거)
             nodeIdxList = Stream.concat(
@@ -311,10 +313,17 @@ public class ProjectComponent {
             List<Node> nodeList = mongoTemplate.find(query, Node.class);
 
             //5. 노드 추가
-            response.addNodes(nodeList);
+            response.getNodes().addAll(nodeList);
 
             //6. 뎁스만큼 반복
             extendRepeatNetworkSearch(response, nodeList, depth-1);
         }
+
+        // 중복 노드 & 엣지 제거
+        response.setNodes(response.getNodes().stream().distinct().toList());
+        response.setLinks(response.getLinks().stream().distinct().toList());
+        // 노드 & 엣지 사이즈 추출
+        response.setNodeSize(response.getNodes().size());
+        response.setLinkSize(response.getLinks().size());
     }
 }

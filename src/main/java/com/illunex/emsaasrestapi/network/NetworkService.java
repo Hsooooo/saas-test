@@ -2,13 +2,14 @@ package com.illunex.emsaasrestapi.network;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
+import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.network.dto.RequestNetworkDTO;
+import com.illunex.emsaasrestapi.network.dto.ResponseNetworkDTO;
 import com.illunex.emsaasrestapi.project.ProjectComponent;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContent;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContentCell;
-import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
-import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,9 +18,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -38,7 +37,7 @@ public class NetworkService {
         // TODO : 파트너쉽에 속한 회원 여부 체크
         // TODO : 해당 프로젝트 권한 여부 체크
 
-        ResponseProjectDTO.ProjectNetwork response = new ResponseProjectDTO.ProjectNetwork();
+        ResponseNetworkDTO.Network response = new ResponseNetworkDTO.Network();
 
         //TODO [PYJ] 노드검색
         Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
@@ -59,56 +58,60 @@ public class NetworkService {
 
 
     /**
-     * 프로젝트 단일관계망 조회
-     * @param projectIdx
+     * 단일 노드 확장 조회
+     * @param extend
      * @return
      */
-    public CustomResponse<?> getNetworkOne(Integer projectIdx, Integer nodeIdx) {
+    public CustomResponse<?> getNetworkSingleExtend(RequestNetworkDTO.Extend extend) {
         // TODO : 파트너쉽에 속한 회원 여부 체크
         // TODO : 해당 프로젝트 권한 여부 체크
-        ResponseProjectDTO.ProjectNetwork response = new ResponseProjectDTO.ProjectNetwork();
+        ResponseNetworkDTO.Network response = new ResponseNetworkDTO.Network();
 
         //노드검색
-        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                                            .and("id").is(nodeIdx));
+        Query query = Query.query(Criteria.where("_id.projectIdx").is(extend.getProjectIdx())
+                        .and("_id.nodeIdx").is(extend.getNodeIdx())
+                        .and("label").is(extend.getLabel()));
         List<Node> nodes = mongoTemplate.find(query, Node.class);
 
-        response.setNodes(nodes);
+        response.getNodes().addAll(nodes);
 
         //엣지검색
         projectComponent.extendRepeatNetworkSearch(response, nodes, 1);
-
-        if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
-        if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
-
 
         return CustomResponse.builder()
                 .data(response)
                 .build();
     }
 
-
     /**
-     * 프로젝트 단일노드 상세정보 조회
-     * @param projectIdx
-     * @param nodeIdx
-     * @param label
+     * 노드 상세정보 조회
+     * @param extend
      * @return
      */
-    public CustomResponse<?> getNetworkInfo(Integer projectIdx, Integer nodeIdx, String label) {
+    public CustomResponse<?> getNetworkInfo(RequestNetworkDTO.Extend extend) throws CustomException {
         // TODO : 파트너쉽에 속한 회원 여부 체크
         // TODO : 해당 프로젝트 권한 여부 체크
-        List<ResponseProjectDTO.ProjectNetworkInfo> data = new ArrayList<>();
+        List<ResponseNetworkDTO.NodeDetailInfo> data = new ArrayList<>();
 
         //1. 노드 검색
-        Query query1 = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                .and("id").is(nodeIdx)
-                .and("label").is(label));
+        Query query1 = Query.query(Criteria.where("_id.projectIdx").is(extend.getProjectIdx())
+                .and("_id.nodeIdx").is(extend.getNodeIdx())
+                .and("label").is(extend.getLabel()));
         Node node = mongoTemplate.findOne(query1, Node.class);
 
+        // 노드 정보가 없을 경우 예외처리
+        if(node == null) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
+
         //2. 사용자가 세팅한 설정 검색
-        Query query2 = Query.query(Criteria.where("_id").is(projectIdx));
+        Query query2 = Query.query(Criteria.where("_id").is(extend.getProjectIdx()));
         Project project = mongoTemplate.findOne(query2, Project.class);
+
+        // 프로젝트 정보가 없을 경우 예외처리
+        if(project == null) {
+            throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+        }
 
         List <ProjectNodeContent> nodeContentList = project.getProjectNodeContentList();
         ProjectNodeContent findNodeInfo = null;
@@ -124,7 +127,7 @@ public class NetworkService {
         for(ProjectNodeContentCell cell : cellList) {
             node.getProperties().forEach((key, value) -> {
                 if(cell.getCellName().equals(key)){
-                    data.add(ResponseProjectDTO.ProjectNetworkInfo.builder()
+                    data.add(ResponseNetworkDTO.NodeDetailInfo.builder()
                             .label(cell.getLabel())
                             .cellName(key)
                             .cellType(cell.getCellType())
