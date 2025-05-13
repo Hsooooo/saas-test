@@ -205,9 +205,9 @@ public class MemberService {
 //        memberTermAgreeRepository.saveAll(memberMemberTermAgreeList);
 //
 //        // 회원가입 이메일 발송
-//        String certData = awsSESComponent.sendJoinEmail(
-//                null,
-//                joinData.getEmail());
+        String certData = awsSESComponent.sendJoinEmail(
+                null,
+                joinData.getEmail());
 //
 //        // 회원가입 인증 메일 이력 저장
 //        MemberEmailHistory memberEmailHistory = new MemberEmailHistory();

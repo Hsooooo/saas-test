@@ -9,9 +9,10 @@ spring:
         access-key: ${ACCESS_KEY}  # AWS IAM Access Key
         secret-key: ${SECRET_KEY}  # AWS IAM Secret Key
       s3:
-        bucket: ee # AWS 버킷 이름
-        region: ee # AWS 리전 정보
+        bucket: ${BUCKET} # AWS 버킷 이름
+        region: ${REGION} # AWS 리전 정보
       region:
-        static: ee # AWS 리전 정보
+        static: ${REGION} # AWS 리전 정보
       ses:
-        region: ee
+        region: ${REGION}
+        manager-email: ${MANAGER_EMAIL}

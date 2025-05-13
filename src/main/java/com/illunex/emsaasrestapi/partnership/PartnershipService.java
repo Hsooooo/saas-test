@@ -2,9 +2,9 @@ package com.illunex.emsaasrestapi.partnership;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.aws.AwsSESComponent;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.license.mapper.LicensePartnershipMapper;
-import com.illunex.emsaasrestapi.license.vo.LicensePartnershipVO;
 import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
@@ -26,7 +26,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +39,8 @@ public class PartnershipService {
     private final LicensePartnershipMapper licensePartnershipMapper;
     private final MemberMapper memberMapper;
     private final MemberJoinMapper memberJoinMapper;
+
+    private final AwsSESComponent sesComponent;
 
     private final ModelMapper modelMapper;
 
@@ -140,12 +141,14 @@ public class PartnershipService {
 
 
                 partnershipMemberMapper.insertInvitedMember(invitedMemberVO);
+                sesComponent.sendInviteMemberEmail(null, email, partnershipMember.getIdx());
+
                 validList.add(ResponsePartnershipDTO.InviteResult.builder()
                         .email(email)
                         .result("success")
                         .build());
 
-                // TODO 이메일 발송 로직, 발송 이력 저장 로직 필요
+
             } catch (Exception e) {
                 log.error(e.getMessage());
                 invalidList.add(ResponsePartnershipDTO.InviteResult.builder()

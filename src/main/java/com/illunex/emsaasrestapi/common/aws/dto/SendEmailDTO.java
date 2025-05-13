@@ -32,46 +32,46 @@ public class SendEmailDTO {
     // 이름
     private final String name;
 
-//    /**
-//     * 메일 템플릿 생성
-//     * @return
-//     * @throws IOException
-//     */
-//    public SendEmailRequest createSendEmailRequest(AwsSESComponent.EmailType emailType) throws IOException {
-//        ClassPathResource templateResource = new ClassPathResource(emailType.getTemplatePath());
-//        String bodyHtml = StreamUtils.copyToString(templateResource.getInputStream(), Charset.defaultCharset())
-//                .replace("${TO}", receiverAddress)
-//                .replace("${URL}", certUrl + "&certData=" + URLEncoder.encode(certData, StandardCharsets.UTF_8));
-//
-//        Destination destination = Destination.builder()
-//                .toAddresses(receiverAddress)
-//                .build();
-//
-//        Content content = Content.builder()
-//                .data(bodyHtml)
-//                .build();
-//
-//        Content subject = Content.builder()
-//                .data(this.subject)
-//                .build();
-//
-//        Body body = Body.builder()
-//                .html(content)
-//                .build();
-//
-//        Message message = Message.builder()
-//                .subject(subject)
-//                .body(body)
-//                .build();
-//
-//        EmailContent emailContent = EmailContent.builder()
-//                .simple(message)
-//                .build();
-//
-//        return SendEmailRequest.builder()
-//                .destination(destination)
-//                .content(emailContent)
-//                .fromEmailAddress(senderAddress)
-//                .build();
-//    }
+    /**
+     * 메일 템플릿 생성
+     * @return
+     * @throws IOException
+     */
+    public SendEmailRequest createSendEmailRequest(AwsSESComponent.EmailType emailType) throws IOException {
+        ClassPathResource templateResource = new ClassPathResource(emailType.getTemplatePath());
+        String bodyHtml = StreamUtils.copyToString(templateResource.getInputStream(), Charset.defaultCharset())
+                .replace("${TO}", receiverAddress)
+                .replace("${URL}", certUrl + "&certData=" + URLEncoder.encode(certData, StandardCharsets.UTF_8));
+
+        Destination destination = Destination.builder()
+                .toAddresses(receiverAddress)
+                .build();
+
+        Content content = Content.builder()
+                .data(bodyHtml)
+                .build();
+
+        Content subject = Content.builder()
+                .data(this.subject)
+                .build();
+
+        Body body = Body.builder()
+                .html(content)
+                .build();
+
+        Message message = Message.builder()
+                .subject(subject)
+                .body(body)
+                .build();
+
+        EmailContent emailContent = EmailContent.builder()
+                .simple(message)
+                .build();
+
+        return SendEmailRequest.builder()
+                .destination(destination)
+                .content(emailContent)
+                .fromEmailAddress(senderAddress)
+                .build();
+    }
 }
