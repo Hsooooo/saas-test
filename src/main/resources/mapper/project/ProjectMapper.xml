@@ -22,8 +22,8 @@
             #{title},
             #{description},
             #{statusCd},
-            0,
-            0,
+            #{nodeCnt},
+            #{edgeCnt},
             now(),
             now()
         )
@@ -38,7 +38,8 @@
                 description = #{description},
                 status_cd = #{statusCd},
                 node_cnt = #{nodeCnt},
-                edge_cnt = #{edgeCnt}
+                edge_cnt = #{edgeCnt},
+                update_date = now()
         WHERE idx = #{idx}
     </update>
 <!--    프로젝트 삭제 처리(삭제일 업데이트)-->

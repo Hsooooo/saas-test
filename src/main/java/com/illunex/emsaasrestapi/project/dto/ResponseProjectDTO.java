@@ -1,5 +1,7 @@
 package com.illunex.emsaasrestapi.project.dto;
 
+import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
@@ -10,6 +12,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 
 public class ResponseProjectDTO {
 
@@ -25,6 +28,7 @@ public class ResponseProjectDTO {
         private String title;                                       // 프로젝트 제목
         private String description;                                 // 프로젝트 내용
         private String statusCd;                                    // 프로젝트 상태(code 테이블)
+        private String statusCdDesc;
         private String imageUrl;                                    // 프로젝트 이미지 URL
         private String imagePath;                                   // 프로젝트 이미지 경로
         private Integer nodeCnt;                                    // 노드 개수
@@ -37,6 +41,11 @@ public class ResponseProjectDTO {
         private ZonedDateTime updateDate;
         private ZonedDateTime createDate;
         private ZonedDateTime deleteDate;
+
+        public void setStatusCd(String statusCd) {
+            this.statusCd = statusCd;
+            this.statusCdDesc = Objects.requireNonNull(BaseCodeEnum.fromCode(EnumCode.Project.StatusCd.class, statusCd)).getValue();
+        }
     }
 
     /**

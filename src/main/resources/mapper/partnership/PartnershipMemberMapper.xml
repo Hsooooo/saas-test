@@ -41,7 +41,7 @@
           AND manager_cd = 'PST0001'
     </select>
 
-    <select id="selectPartnershipMemberByMemberIdx" resultType="PartnershipMemberVO">
+    <select id="selectByPartnershipIdxAndMemberIdx" resultType="PartnershipMemberVO">
         SELECT
             idx,
             partnership_idx,

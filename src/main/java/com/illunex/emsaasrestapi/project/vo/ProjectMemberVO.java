@@ -11,7 +11,7 @@ import java.time.ZonedDateTime;
 @Alias("ProjectMemberVO")
 public class ProjectMemberVO {
     private Integer idx;
-    private Integer partnershipIdx;
+    private Integer projectIdx;
     private Integer partnershipMemberIdx;
     private String typeCd;
     private String disableFunctions;

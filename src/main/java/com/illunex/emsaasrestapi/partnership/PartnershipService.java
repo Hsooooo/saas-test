@@ -66,8 +66,8 @@ public class PartnershipService {
         PartnershipMemberVO partnershipMember = new PartnershipMemberVO();
         partnershipMember.setMemberIdx(ownerMemberIdx);
         partnershipMember.setPartnershipIdx(partnership.getIdx());
-        partnershipMember.setManagerCd(EnumCode.Partnership.ManagerCd.Manager.getValue());
-        partnershipMember.setStateCd(EnumCode.Partnership.StateCd.Normal.getCode());
+        partnershipMember.setManagerCd(EnumCode.PartnershipMember.ManagerCd.Manager.getValue());
+        partnershipMember.setStateCd(EnumCode.PartnershipMember.StateCd.Normal.getCode());
         partnershipMemberMapper.insertByPartnershipMember(partnershipMember);
 
         //파트너십 기본 라이센스 등록
@@ -95,8 +95,8 @@ public class PartnershipService {
     @Transactional
     public ResponsePartnershipDTO.InviteMember invitePartnershipMember(Integer partnershipIdx, Integer memberIdx, RequestPartnershipDTO.InviteMember inviteMember) throws CustomException {
         // 파트너쉽 관리자 여부 확인
-        Optional<PartnershipMemberVO> partnershipMemberVO = partnershipMemberMapper.selectPartnershipMemberByMemberIdx(partnershipIdx, memberIdx);
-        if (partnershipMemberVO.isEmpty() || !partnershipMemberVO.get().getManagerCd().equals(EnumCode.Partnership.ManagerCd.Manager.getCode())) {
+        Optional<PartnershipMemberVO> partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberIdx);
+        if (partnershipMemberVO.isEmpty() || !partnershipMemberVO.get().getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
             throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
         }
 
@@ -114,7 +114,7 @@ public class PartnershipService {
 
                 // 2. 이미 가입된 사용자 여부
                 MemberVO member = memberMapper.selectByEmail(email)
-                        .filter(e -> e.getStateCd().equals(EnumCode.Partnership.StateCd.Normal.getCode()))
+                        .filter(e -> e.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Normal.getCode()))
                         .orElseGet(() -> {
                             MemberVO memberVO = new MemberVO();
                             memberVO.setEmail(email);
@@ -134,7 +134,7 @@ public class PartnershipService {
                 partnershipMember.setMemberIdx(member.getIdx());
                 partnershipMember.setPartnershipIdx(partnershipIdx);
                 partnershipMember.setManagerCd(info.getAuth());
-                partnershipMember.setStateCd(EnumCode.Partnership.StateCd.Wait.getCode());
+                partnershipMember.setStateCd(EnumCode.PartnershipMember.StateCd.Wait.getCode());
                 partnershipMemberMapper.insertByPartnershipMember(partnershipMember);
 
                 invitedMemberVO.setPartnershipMemberIdx(partnershipMember.getIdx());
@@ -177,7 +177,7 @@ public class PartnershipService {
     public ResponsePartnershipDTO.MyInfo getMyInfo(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
         PartnershipVO partnership = partnershipMapper.selectByIdx(partnershipIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
-        PartnershipMemberVO partnershipMember = partnershipMemberMapper.selectPartnershipMemberByMemberIdx(partnershipIdx, memberVO.getIdx())
+        PartnershipMemberVO partnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
 
         ResponsePartnershipDTO.PartnershipPositionInfo positionInfo = null;
@@ -222,7 +222,7 @@ public class PartnershipService {
      */
     @Transactional
     public Object updateMyInfo(Integer partnershipIdx, MemberVO memberVO, RequestPartnershipDTO.@Valid UpdateMyInfo updateInfo) throws CustomException {
-        PartnershipMemberVO partnershipMember = partnershipMemberMapper.selectPartnershipMemberByMemberIdx(partnershipIdx, memberVO.getIdx())
+        PartnershipMemberVO partnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
 
         Integer partnershipPositionIdx = null;

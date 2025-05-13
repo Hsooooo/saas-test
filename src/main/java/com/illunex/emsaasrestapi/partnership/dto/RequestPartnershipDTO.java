@@ -5,7 +5,6 @@ import com.illunex.emsaasrestapi.common.validation.ValidEnumCode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
-import lombok.NonNull;
 
 import java.util.List;
 
@@ -29,7 +28,7 @@ public class RequestPartnershipDTO {
     public static class InviteMemberInfo {
         @NotNull
         private String email;
-        @ValidEnumCode(enumClass = EnumCode.Partnership.ManagerCd.class, message = "유효하지 않은 권한 코드입니다.")
+        @ValidEnumCode(enumClass = EnumCode.PartnershipMember.ManagerCd.class, message = "유효하지 않은 권한 코드입니다.")
         private String auth;
     }
 }

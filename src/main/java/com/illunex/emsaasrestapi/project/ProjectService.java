@@ -6,6 +6,8 @@ import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
+import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
@@ -27,7 +29,6 @@ import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
-import org.checkerframework.checker.units.qual.C;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.data.domain.PageImpl;
@@ -47,7 +48,6 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -59,6 +59,7 @@ public class ProjectService {
 
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
+    private final PartnershipComponent partnershipComponent;
     private final ProjectComponent projectComponent;
 
     /**
@@ -67,21 +68,22 @@ public class ProjectService {
      * @return
      */
     @Transactional
-    public CustomResponse<?> createProject(RequestProjectDTO.Project project) throws CustomException {
-        // TODO : 파트너쉽에 속한 회원 여부 체크
-        // TODO : 해당 프로젝트 권한 여부 체크
+    public CustomResponse<?> createProject(MemberVO memberVO, RequestProjectDTO.Project project) throws CustomException {
         // RDB 처리 부분
         ProjectVO projectVO = ProjectVO.builder()
                 .partnershipIdx(project.getPartnershipIdx())
                 .projectCategoryIdx(project.getProjectCategoryIdx())
                 .title(project.getTitle())
                 .description(project.getDescription())
-                .statusCd(EnumCode.Project.StatusCd.MongoDB.getCode())
+                .statusCd(EnumCode.Project.StatusCd.Created.getCode())
                 .build();
         // 프로젝트 저장
         int insertCnt = projectMapper.insertByProjectVO(projectVO);
 
         if(insertCnt > 0) {
+            // 파트너쉽 회원 여부 체크
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectVO.getIdx());
+
             // MongoDB 처리 부분
             // Document 맵핑
             Project mappingProject = modelMapper.map(project, Project.class);
@@ -101,6 +103,13 @@ public class ProjectService {
                 mongoTemplate.replace(Query.query(Criteria.where("_id").is(projectVO.getIdx())), mappingProject);
             }
 
+            // 프로젝트 생성자를 관리자로 프로젝트 구성원에 추가
+            ProjectMemberVO projectMemberVO = new ProjectMemberVO();
+            projectMemberVO.setProjectIdx(partnershipMemberVO.getPartnershipIdx());
+            projectMemberVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Manager.getCode());
+            projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
+
             return CustomResponse.builder()
                     .data(projectComponent.createResponseProject(projectVO.getIdx()))
                     .build();
@@ -113,9 +122,11 @@ public class ProjectService {
      * @param projectIdx
      * @return
      */
-    public CustomResponse<?> getProjectDetail(Integer projectIdx) throws CustomException {
-        // TODO : 파트너쉽에 속한 회원 여부 체크
-        // TODO : 해당 프로젝트 권한 여부 체크
+    public CustomResponse<?> getProjectDetail(MemberVO memberVO, Integer projectIdx) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
 
         return CustomResponse.builder()
                 .data(projectComponent.createResponseProject(projectIdx))
@@ -127,9 +138,12 @@ public class ProjectService {
      * @param project
      * @return
      */
-    public CustomResponse<?> replaceProject(RequestProjectDTO.Project project) throws CustomException {
-        // TODO : 파트너쉽에 속한 회원 여부 체크
-        // TODO : 해당 프로젝트 권한 여부 체크
+    public CustomResponse<?> replaceProject(MemberVO memberVO, RequestProjectDTO.Project project) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, project.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+
         // RDB 처리 부분
         ProjectVO projectVO = projectMapper.selectByIdx(project.getProjectIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
@@ -172,6 +186,8 @@ public class ProjectService {
             projectVO.setDescription(project.getDescription());
             projectVO.setNodeCnt(nodeCount);
             projectVO.setEdgeCnt(edgeCount);
+            // 프로젝트 상태 변경
+            projectVO.setStatusCd(projectComponent.getProjectStatusCd(project, projectVO));
             projectVO.setUpdateDate(ZonedDateTime.now());
             // 프로젝트 업데이트
             int updateCnt = projectMapper.updateByProjectVO(projectVO);
@@ -207,9 +223,12 @@ public class ProjectService {
      * @return
      */
     @Transactional
-    public CustomResponse<?> deleteProject(Integer projectIdx) throws CustomException {
-        // TODO : 파트너쉽에 속한 회원 여부 체크
-        // TODO : 해당 프로젝트 권한 여부 체크
+    public CustomResponse<?> deleteProject(MemberVO memberVO, Integer projectIdx) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+
         // RDB 프로젝트 조회
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
@@ -234,18 +253,23 @@ public class ProjectService {
      * @return
      */
     @Transactional
-    public CustomResponse<?> uploadSingleExcelFile(Integer projectIdx, MultipartFile excelFile) throws CustomException, IOException {
-        // TODO : 파트너쉽에 속한 회원 여부 체크
-        // TODO : 해당 프로젝트 권한 여부 체크
+    public CustomResponse<?> uploadSingleExcelFile(MemberVO memberVO, Integer projectIdx, MultipartFile excelFile) throws CustomException, IOException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+
         // 프로젝트 생성 여부 확인
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
         // 프로젝트 삭제 여부 확인
         if(projectVO.getDeleteDate() == null) {
-
             // 엑셀 파싱 및 MongoDB 저장
             projectComponent.parseExcel(projectVO.getIdx(), excelFile);
+            // 프로젝트 상태 변경(엑셀 업로드)
+            projectVO.setStatusCd(EnumCode.Project.StatusCd.Step1.getCode());
+            projectMapper.updateByProjectVO(projectVO);
 
             return CustomResponse.builder()
                     .data(projectComponent.createResponseProjectExcel(projectIdx))
@@ -261,9 +285,13 @@ public class ProjectService {
      * @param projectIdx
      * @return
      */
-    public CustomResponse<?> completeProject(Integer projectIdx) throws CustomException {
-        // TODO : 파트너쉽에 속한 회원 여부 체크
-        // TODO : 해당 프로젝트 권한 여부 체크
+    @Transactional
+    public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+
         // 1. RDB 프로젝트 조회
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
@@ -337,7 +365,12 @@ public class ProjectService {
                 });
             }
 
+            // 프로젝트 상태 변경(프로젝트 설정 완료)
+            projectVO.setStatusCd(EnumCode.Project.StatusCd.Complete.getCode());
+            Integer updateCnt = projectMapper.updateByProjectVO(projectVO);
+
             return CustomResponse.builder()
+                    .data(updateCnt)
                     .build();
         }
 
@@ -351,8 +384,14 @@ public class ProjectService {
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> moveProject(List<RequestProjectDTO.ProjectId> projectId) {
+    @Transactional
+    public CustomResponse<?> moveProject(MemberVO memberVO, List<RequestProjectDTO.ProjectId> projectId) throws CustomException {
         for(RequestProjectDTO.ProjectId dto : projectId){
+            // 파트너쉽 회원 여부 체크
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, dto.getProjectIdx());
+            // 프로젝트 구성원 여부 체크
+            projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+
             //maraiDB
             ProjectVO projectVO = ProjectVO.builder()
                     .idx(dto.getProjectIdx())
@@ -376,7 +415,9 @@ public class ProjectService {
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> getProjectList(RequestProjectDTO.ProjectId projectId, CustomPageRequest pageRequest, String[] sort) {
+    public CustomResponse<?> getProjectList(MemberVO memberVO, RequestProjectDTO.ProjectId projectId, CustomPageRequest pageRequest, String[] sort) throws CustomException {
+        // TODO : 프로젝트에 포함되어 있지 않는 프로젝트도 표기해야 하는가??? [JWC] 확인 필요
+
         Pageable pageable = pageRequest.of(sort);
         // 프로젝트 조회
         List<ProjectVO> projectList = projectMapper.selectAllByProjectId(projectId, pageable);
@@ -410,9 +451,23 @@ public class ProjectService {
                 .build();
     }
 
+    /**
+     * 프로젝트 복제
+     * @param memberVO
+     * @param projectIds
+     * @param pageRequest
+     * @param sort
+     * @return
+     * @throws CustomException
+     */
     @Transactional(rollbackFor = Exception.class)
-    public CustomResponse<?> copyProject(List<RequestProjectDTO.ProjectId> projectIds, CustomPageRequest pageRequest, String[] sort) throws CustomException {
+    public CustomResponse<?> copyProject(MemberVO memberVO, List<RequestProjectDTO.ProjectId> projectIds, CustomPageRequest pageRequest, String[] sort) throws CustomException {
         for(RequestProjectDTO.ProjectId projectId : projectIds){
+            // 파트너쉽 회원 여부 체크
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectId.getProjectIdx());
+            // 프로젝트 구성원 여부 체크
+            projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+
             // MariaDB 프로젝트 조회
             ProjectVO projectVO = projectMapper.selectByIdx(projectId.getProjectIdx())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
@@ -421,6 +476,7 @@ public class ProjectService {
             // MariaDB 프로젝트 복제
             ProjectVO copiedProjectVO = modelMapper.map(projectVO, ProjectVO.class);
             copiedProjectVO.setIdx(null);
+            copiedProjectVO.setTitle(copiedProjectVO.getTitle() + "(복사)");
             int insertCnt = projectMapper.insertByProjectVO(copiedProjectVO);
             if (insertCnt == 0) {
                 throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
@@ -431,55 +487,63 @@ public class ProjectService {
             for (ProjectMemberVO projectMemberVO : projectMemberList) {
                 ProjectMemberVO copiedProjectMemberVO = modelMapper.map(projectMemberVO, ProjectMemberVO.class);
                 copiedProjectMemberVO.setIdx(null);
+                copiedProjectMemberVO.setProjectIdx(copiedProjectVO.getIdx());
                 int insertMemberCnt = projectMemberMapper.insertByProjectMemberVO(copiedProjectMemberVO);
                 if (insertMemberCnt == 0) {
                     throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
                 }
             }
 
-            // TODO[JCW] : 노드 및 엣지 추가 필요
-
-            // MongoDB 조회
-            Project findProject = mongoTemplate.findById(projectId, Project.class);
+            // MongoDB 프로젝트 조회
+            Project findProject = mongoTemplate.findById(projectId.getProjectIdx(), Project.class);
             if(findProject == null) {
                 throw new CustomException(ErrorCode.COMMON_EMPTY);
             }
-
-            // MongoDB 복제
+            // MongoDB 프로젝트 복제
             Project copiedProject = modelMapper.map(findProject, Project.class);
             copiedProject.setProjectIdx(projectVO.getIdx());
-
             // MongoDB 저장
             mongoTemplate.save(copiedProject);
-        }
 
-        Pageable pageable = pageRequest.of(sort);
-        Integer totalProjectList = projectMapper.countAllByProjectId(projectIds.get(0));
+            // MongoDB 노드 조회
+            List<Node> findNodeList = mongoTemplate.find(
+                    Query.query(
+                            Criteria.where("_id.projectIdx").is(projectId.getProjectIdx())
+                    ),
+                    Node.class
+            );
+            // Node 데이터 삭제
+            mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(copiedProjectVO.getIdx())), Node.class);
+            // 조회된 노드 프로젝트 번호 변경 후 저장
+            findNodeList.forEach(node -> {
+                node.setNodeId(NodeId.builder()
+                        .projectIdx(copiedProjectVO.getIdx())
+                        .nodeIdx(node.getId())
+                        .build());
+                mongoTemplate.insert(node);
+            });
 
-        List<ProjectVO> result = projectMapper.selectAllByProjectId(projectIds.get(0), pageable);
-        List<ResponseProjectDTO.ProjectPreview> response = result.stream().map(projectVO ->
-                ResponseProjectDTO.ProjectPreview.builder()
-                        .partnershipIdx(projectVO.getPartnershipIdx())
-                        .categoryIdx(projectVO.getProjectCategoryIdx())
-                        .projectIdx(projectVO.getIdx())
-                        .title(projectVO.getTitle())
-                        .createDate(projectVO.getCreateDate())
-                        .updateDate(projectVO.getUpdateDate())
-                        .statusCd(projectVO.getStatusCd())
-                        .build()
-        ).toList();
-
-        for(ResponseProjectDTO.ProjectPreview projectPreview : response){
-            // TODO [JCW] : 노드 개수 추가 필요
-            // TODO [JCW] : 엣지 개수 추가 필요
-            // 프로젝트 구성원 조회
-            List<PartnershipMemberVO> projectMemberList = partnershipMemberMapper.selectAllByProjectIdx(projectPreview.getProjectIdx());
-            List<ResponseMemberDTO.Member> members = modelMapper.map(projectMemberList, new TypeToken<List<ResponseMemberDTO.Member>>(){}.getType());
-            projectPreview.setMembers(members);
+            // MongoDB 엣지 조회
+            List<Edge> findEdgeList = mongoTemplate.find(
+                    Query.query(
+                            Criteria.where("_id.projectIdx").is(projectId.getProjectIdx())
+                    ),
+                    Edge.class
+            );
+            // Edge 데이터 삭제
+            mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(copiedProjectVO.getIdx())), Edge.class);
+            // 조회된 노드 프로젝트 번호 변경 후 저장
+            findEdgeList.forEach(edge -> {
+                edge.setEdgeId(EdgeId.builder()
+                        .projectIdx(copiedProjectVO.getIdx())
+                        .edgeIdx(edge.getId())
+                        .build());
+                mongoTemplate.insert(edge);
+            });
         }
 
         return CustomResponse.builder()
-                .data(new PageImpl<>(response, pageable, totalProjectList))
+                .data(projectIds.size())
                 .build();
     }
 }

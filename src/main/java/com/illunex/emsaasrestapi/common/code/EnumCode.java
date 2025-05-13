@@ -5,10 +5,6 @@ package com.illunex.emsaasrestapi.common.code;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-
 public class EnumCode {
 //    private static LinkedHashMap<String, String> codeMap;
 //    private static CodeRepository codeRepository;
@@ -192,7 +188,14 @@ public class EnumCode {
 //    }
 //
 //    // 회원
+
+    /**
+     * 회원
+     */
     public static class Member {
+        /**
+         * 회원 구분
+         */
         @Getter
         @AllArgsConstructor
         public enum TypeCd implements BaseCodeEnum {
@@ -201,7 +204,10 @@ public class EnumCode {
             private final String code;
             private final String value;
         }
-//
+
+        /**
+         * 회원 상태
+         */
         @Getter
         @AllArgsConstructor
         public enum StateCd implements BaseCodeEnum {
@@ -215,8 +221,13 @@ public class EnumCode {
         }
     }
 
-    // 파트너쉽
-    public static class Partnership {
+    /**
+     * 파트너쉽
+     */
+    public static class PartnershipMember {
+        /**
+         * 파트너쉽 회원 구분
+         */
         @Getter
         @AllArgsConstructor
         public enum ManagerCd implements BaseCodeEnum {
@@ -227,7 +238,10 @@ public class EnumCode {
             private final String value;
 
         }
-        //
+
+        /**
+         * 파트너쉽 회원 상태
+         */
         @Getter
         @AllArgsConstructor
         public enum StateCd implements BaseCodeEnum {
@@ -241,13 +255,40 @@ public class EnumCode {
         }
     }
 
+    /**
+     * 프로젝트
+     */
     public static class Project {
+        /**
+         * 프로젝트 상태
+         */
         @Getter
         @AllArgsConstructor
         public enum StatusCd implements BaseCodeEnum {
-            MongoDB("PJS0001", "임시저장(MongoDB)"),
-            Rdb("PJS0002", "저장(RDB)"),
-            Neo4j("PJS0003", "저장(Neo4j)");
+            Created("PJS0001", "생성/기본정보 입력"),
+            Step1("PJS0002", "엑셀 업로드"),
+            Step2("PJS0003", "노드/엣지 정의"),
+            Step3("PJS0004", "기능 정의"),
+            Step4("PJS0005", "속성 정의"),
+            Complete("PJS0006", "설정 완료");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    /**
+     * 프로젝트 구성원
+     */
+    public static class ProjectMember {
+        /**
+         * 프로젝트 사용자 구분
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum TypeCd implements BaseCodeEnum {
+            Manager("PMT0001", "관리자"),
+            Normal("PMT0002", "구성원");
 
             private final String code;
             private final String value;

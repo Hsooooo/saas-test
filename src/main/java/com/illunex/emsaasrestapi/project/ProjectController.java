@@ -1,11 +1,14 @@
 package com.illunex.emsaasrestapi.project;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.illunex.emsaasrestapi.common.CurrentMember;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
+import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,83 +23,105 @@ public class ProjectController {
 
     /**
      * 프로젝트 생성
+     * @param memberVO
      * @param project
      * @return
      */
     @PostMapping()
-    public CustomResponse<?> createProject(@RequestBody RequestProjectDTO.Project project) throws CustomException {
-        return projectService.createProject(project);
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> createProject(@CurrentMember MemberVO memberVO,
+                                           @RequestBody RequestProjectDTO.Project project) throws CustomException {
+        return projectService.createProject(memberVO, project);
     }
 
     /**
      * 프로젝트 상세 조회
+     * @param memberVO
      * @param projectIdx
      * @return
      * @throws CustomException
      */
     @GetMapping()
-    public CustomResponse<?> getProjectDetail(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
-        return projectService.getProjectDetail(projectIdx);
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getProjectDetail(@CurrentMember MemberVO memberVO,
+                                              @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        return projectService.getProjectDetail(memberVO, projectIdx);
     }
 
     /**
      * 프로젝트 수정
+     * @param memberVO
      * @param project
      * @return
      * @throws CustomException
      */
     @PutMapping()
-    public CustomResponse<?> replaceProject(@RequestBody RequestProjectDTO.Project project) throws CustomException {
-        return projectService.replaceProject(project);
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> replaceProject(@CurrentMember MemberVO memberVO,
+                                            @RequestBody RequestProjectDTO.Project project) throws CustomException {
+        return projectService.replaceProject(memberVO, project);
     }
 
     /**
      * 프로젝트 삭제
+     * @param memberVO
      * @param projectIdx
      * @return
      * @throws CustomException
      */
     @DeleteMapping()
-    public CustomResponse<?> deleteProject(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
-        return projectService.deleteProject(projectIdx);
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> deleteProject(@CurrentMember MemberVO memberVO,
+                                           @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        return projectService.deleteProject(memberVO, projectIdx);
     }
 
     /**
      * 프로젝트 데이터 엑셀 파일 업로드
+     * @param memberVO
      * @param projectIdx
      * @param excelFile
      * @return
      */
     @PostMapping("upload/single")
-    public CustomResponse<?> uploadSingleExcelFile(@RequestParam(name = "projectIdx") Integer projectIdx,
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> uploadSingleExcelFile(@CurrentMember MemberVO memberVO,
+                                                   @RequestParam(name = "projectIdx") Integer projectIdx,
                                                    @RequestPart(name = "excel") MultipartFile excelFile) throws CustomException, IOException {
-        return projectService.uploadSingleExcelFile(projectIdx, excelFile);
+        return projectService.uploadSingleExcelFile(memberVO, projectIdx, excelFile);
     }
 
     /**
      * 프로젝트 최종 저장(관계망 데이터 정제 처리)
+     * @param memberVO
      * @param projectIdx
      * @return
      */
     @PostMapping("complete")
-    public CustomResponse<?> completeProject(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
-        return projectService.completeProject(projectIdx);
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> completeProject(@CurrentMember MemberVO memberVO,
+                                             @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        return projectService.completeProject(memberVO, projectIdx);
     }
 
 
     /**
      * 프로젝트 카테고리 이동
+     * @param memberVO
      * @param projectId
      * @return
      * @throws CustomException
      */
     @PatchMapping("/move")
-    public CustomResponse<?> moveProject(@RequestBody List<RequestProjectDTO.ProjectId> projectId) throws CustomException {
-        return projectService.moveProject(projectId);
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> moveProject(@CurrentMember MemberVO memberVO,
+                                         @RequestBody List<RequestProjectDTO.ProjectId> projectId) throws CustomException {
+        return projectService.moveProject(memberVO, projectId);
     }
 
     /**
      * 카테고리별 프로젝트 단순 내용 조회
+     * @param memberVO
      * @param projectId
      * @param pageRequest
      * @param sort
@@ -104,20 +129,25 @@ public class ProjectController {
      * @throws CustomException
      */
     @GetMapping("/list")
-    public CustomResponse<?> getProjectList(RequestProjectDTO.ProjectId projectId,
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getProjectList(@CurrentMember MemberVO memberVO,
+                                            RequestProjectDTO.ProjectId projectId,
                                             CustomPageRequest pageRequest, String[] sort) throws CustomException {
-        return projectService.getProjectList(projectId, pageRequest, sort);
+        return projectService.getProjectList(memberVO, projectId, pageRequest, sort);
     }
 
     /**
      * 프로젝트 복제
+     * @param memberVO
      * @param projectIds
      * @return
      * @throws CustomException
      */
     @PostMapping("/copy")
-    public CustomResponse<?> copyProject(@RequestBody List<RequestProjectDTO.ProjectId> projectIds,
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> copyProject(@CurrentMember MemberVO memberVO,
+                                         @RequestBody List<RequestProjectDTO.ProjectId> projectIds,
                                          CustomPageRequest pageRequest, String[] sort) throws CustomException, JsonProcessingException {
-        return projectService.copyProject(projectIds, pageRequest, sort);
+        return projectService.copyProject(memberVO, projectIds, pageRequest, sort);
     }
 }
