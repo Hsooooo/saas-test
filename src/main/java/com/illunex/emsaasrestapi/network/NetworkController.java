@@ -44,4 +44,16 @@ public class NetworkController {
     public CustomResponse<?> getNetworkInfo(@RequestBody RequestNetworkDTO.Extend extend) throws CustomException {
         return networkService.getNetworkInfo(extend);
     }
+
+
+    /**
+     * 검색한 다중노드 관계망 조회
+     * @param search
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/search")
+    public CustomResponse<?> getNetworkSearch(@RequestBody RequestNetworkDTO.Search search) throws CustomException {
+        return networkService.getNetworkSearch(search);
+    }
 }
