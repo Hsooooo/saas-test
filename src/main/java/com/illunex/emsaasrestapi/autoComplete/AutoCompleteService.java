@@ -1,0 +1,74 @@
+package com.illunex.emsaasrestapi.autoComplete;
+
+import com.illunex.emsaasrestapi.autoComplete.dto.RequestAutoCompleteDTO;
+import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomResponse;
+import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.project.document.network.Node;
+import com.illunex.emsaasrestapi.project.document.project.Project;
+import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+
+@Slf4j
+@RequiredArgsConstructor
+@Service
+public class AutoCompleteService {
+
+    private final MongoTemplate mongoTemplate;
+
+    public CustomResponse<?> getAutoComplete(RequestAutoCompleteDTO.AutoCompleteSearch autoCompleteSearch) throws CustomException {
+        Project project = mongoTemplate.findOne(new Query(Criteria.where("_id").is(autoCompleteSearch.getProjectIdx())), Project.class);
+
+        if (project == null) {
+            throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+        }
+
+        List<ProjectNodeContent> projectNodeContentList = project.getProjectNodeContentList();
+        String nodeType = autoCompleteSearch.getNodeType();
+        List<String> labelTitleCellNames;
+
+        if (!nodeType.isEmpty()) {
+            projectNodeContentList = projectNodeContentList.stream()
+                    .filter(projectNodeContent -> projectNodeContent.getNodeType().equals(nodeType))
+                    .toList();
+
+            if (projectNodeContentList.isEmpty()) {
+                throw new CustomException(ErrorCode.COMMON_EMPTY);
+            }
+        }
+
+        labelTitleCellNames = projectNodeContentList.stream()
+                .map(ProjectNodeContent::getLabelTitleCellName)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (labelTitleCellNames.isEmpty()) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
+
+        Criteria criteria = Criteria.where("_id.projectIdx").is(autoCompleteSearch.getProjectIdx());
+
+        if (!nodeType.isEmpty()) {
+            criteria.and("label").is(nodeType);
+        }
+
+        List<Criteria> criteriaList = labelTitleCellNames.stream()
+                .map(labelTitleCellName -> Criteria.where("properties." + labelTitleCellName)
+                        .regex(".*" + autoCompleteSearch.getSearchKeyword() + ".*", "i"))
+                .toList();
+
+        criteria.andOperator(new Criteria().orOperator(criteriaList.toArray(new Criteria[0])));
+        Query query = new Query(criteria).limit(autoCompleteSearch.getLimit());
+
+        List<Node> nodeList = mongoTemplate.find(query, Node.class, "node");
+
+        return CustomResponse.builder().data(nodeList).build();
+    }
+}
