@@ -47,7 +47,7 @@ public class NetworkController {
 
 
     /**
-     * 검색한 다중노드 관계망 조회
+     * 노드 키워드 검색
      * @param search
      * @return
      * @throws CustomException
