@@ -19,7 +19,10 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -150,7 +153,7 @@ public class NetworkService {
      * @param search
      * @return
      */
-    public CustomResponse<?> getNetworkSearch(RequestNetworkDTO.Search search) {
+    public CustomResponse<?> getNetworkSearch(RequestNetworkDTO.Search search) throws CustomException {
         // TODO : 파트너쉽에 속한 회원 여부 체크
         // TODO : 해당 프로젝트 권한 여부 체크
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
@@ -158,6 +161,11 @@ public class NetworkService {
         //검색할 컬럼명 조회
         Query query = Query.query(Criteria.where("_id").is(search.getProjectIdx()));
         Project project = mongoTemplate.findOne(query, Project.class);
+
+        // 프로젝트 정보가 없을 경우 예외처리
+        if(project == null) {
+            throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+        }
 
         //노드검색
         String labelTitleCellName = project.getProjectNodeContentList().get(0).getLabelTitleCellName();
@@ -171,6 +179,7 @@ public class NetworkService {
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
                         ResponseNetworkDTO.NodeInfo.builder()
                                 .nodeId(target.getNodeId())
+                                .label(target.getLabel())
                                 .properties(target.getProperties())
                                 .build()
                         ).toList();
@@ -179,6 +188,23 @@ public class NetworkService {
 
         //엣지검색
         networkSearch(response, nodes);
+
+        //node 정보 사용자가 지정한 정보만 보이도록 필터링
+        Map<String, ProjectNodeContent> projectNodeContentMap = project.getProjectNodeContentList().stream()
+                .collect(Collectors.toMap(
+                        ProjectNodeContent::getNodeType,
+                        nodeContent -> nodeContent
+                ));
+
+        nodeInfoList = response.getNodes();
+        for(ResponseNetworkDTO.NodeInfo nodeInfo : nodeInfoList){
+            ProjectNodeContent currentOption = projectNodeContentMap.get(nodeInfo.getLabel());
+            nodeInfo.getProperties().entrySet().removeIf(entry ->
+                    !currentOption.getLabelKeywordCellList().contains(entry.getKey()));
+            nodeInfo.setDelimiter(currentOption.getKeywordSplitUnit());
+        }
+        response.setNodes(nodeInfoList);
+
 
         //노드, 엣지 개수 세팅
         response.setNodeSize(response.getNodes().size());
@@ -226,11 +252,11 @@ public class NetworkService {
         //4. 해당 엣지들로 노드 검색
         List<Criteria> criteriaList2 = edgeInfoList.stream()
                 .flatMap(edge -> Stream.of(
-                        Criteria.where("type").is(edge.getStartType()).and("id").is(edge.getStart()),
-                        Criteria.where("type").is(edge.getEndType()).and("id").is(edge.getEnd())
+                        Criteria.where("label").is(edge.getStartType()).and("id").is(edge.getStart()),
+                        Criteria.where("label").is(edge.getEndType()).and("id").is(edge.getEnd())
                 ))
                 .toList();
-        Criteria combinedCriteria2 = new Criteria().orOperator(criteriaList.toArray(new Criteria[0]));
+        Criteria combinedCriteria2 = new Criteria().orOperator(criteriaList2.toArray(new Criteria[0]));
         Query query = Query.query(combinedCriteria2);
         List<Node> nodeList = mongoTemplate.find(query, Node.class);
 
@@ -239,6 +265,7 @@ public class NetworkService {
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodeList.stream().map(target ->
                 ResponseNetworkDTO.NodeInfo.builder()
                         .nodeId(target.getNodeId())
+                        .label(target.getLabel())
                         .properties(target.getProperties())
                         .build()
         ).toList();

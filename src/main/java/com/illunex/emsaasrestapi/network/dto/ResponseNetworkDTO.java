@@ -76,7 +76,8 @@ public class ResponseNetworkDTO {
     @NoArgsConstructor
     public static class NodeInfo {
         NodeId nodeId;
-        String label;
+        Object label;
+        String delimiter;
         LinkedHashMap<String, Object> properties;
 
         @Override
