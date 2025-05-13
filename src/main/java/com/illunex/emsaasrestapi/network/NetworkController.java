@@ -47,7 +47,7 @@ public class NetworkController {
 
 
     /**
-     * 노드 키워드 검색
+     * 관계망 조회 API
      * @param search
      * @return
      * @throws CustomException
