@@ -56,4 +56,16 @@ public class NetworkController {
                                             @RequestBody RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         return networkService.getNetworkInfo(memberVO, selectNode);
     }
+
+
+    /**
+     * 관계망 조회 API
+     * @param search
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/search")
+    public CustomResponse<?> getNetworkSearch(@RequestBody RequestNetworkDTO.Search search) throws CustomException {
+        return networkService.getNetworkSearch(search);
+    }
 }

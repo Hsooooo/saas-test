@@ -17,4 +17,17 @@ public class RequestNetworkDTO {
         private String label;
         private Integer nodeIdx;
     }
+
+    /**
+     * 검색한 다중노드 관계망 조회
+     */
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Search {
+        private Integer projectIdx;
+        private String keyword;
+    }
 }
