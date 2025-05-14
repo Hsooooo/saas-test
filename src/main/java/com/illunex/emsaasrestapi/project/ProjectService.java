@@ -408,7 +408,7 @@ public class ProjectService {
     }
 
     /**
-     * 카테고리별 프로젝트 단순 내용 조회
+     * 카테고리에 속한 프로젝트 목록 조회
      * @param projectCategoryIdx
      * @param pageRequest
      * @param sort
@@ -419,12 +419,12 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember2(memberVO, projectCategoryIdx);
         // 프로젝트 구성원 여부 체크
-//        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
 
         Pageable pageable = pageRequest.of(sort);
         // 프로젝트 조회
         List<ProjectVO> projectList = projectMapper.selectAllByPartnershipIdxAndProjectCategoryIdx(partnershipMemberVO.getPartnershipIdx() ,projectCategoryIdx, pageable);
-        Integer totalProjectList = projectMapper.countAllByProjectCategoryIdx(projectCategoryIdx);
+        Integer totalProjectList = projectMapper.countAllByPartnershipIdxAndProjectCategoryIdx(partnershipMemberVO.getPartnershipIdx(), projectCategoryIdx);
 
         List<ResponseProjectDTO.ProjectPreview> result = projectList.stream().map(projectVO ->
                 ResponseProjectDTO.ProjectPreview.builder()

@@ -105,9 +105,10 @@
         LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
     </select>
 
-    <select id="countAllByProjectCategoryIdx" resultType="Integer">
+    <select id="countAllByPartnershipIdxAndProjectCategoryIdx" resultType="Integer">
         SELECT COUNT(*)
         FROM project
         WHERE project_category_idx = #{projectCategoryIdx}
+        AND partnership_idx = #{partnershipIdx}
     </select>
 </mapper>
