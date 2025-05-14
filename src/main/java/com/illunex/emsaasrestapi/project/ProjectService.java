@@ -105,7 +105,7 @@ public class ProjectService {
 
             // 프로젝트 생성자를 관리자로 프로젝트 구성원에 추가
             ProjectMemberVO projectMemberVO = new ProjectMemberVO();
-            projectMemberVO.setProjectIdx(partnershipMemberVO.getPartnershipIdx());
+            projectMemberVO.setProjectIdx(projectVO.getIdx());
             projectMemberVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
             projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Manager.getCode());
             projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
