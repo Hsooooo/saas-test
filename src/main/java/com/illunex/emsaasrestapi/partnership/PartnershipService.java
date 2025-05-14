@@ -1,8 +1,11 @@
 package com.illunex.emsaasrestapi.partnership;
 
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
 import com.illunex.emsaasrestapi.common.aws.AwsSESComponent;
+import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.license.mapper.LicensePartnershipMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
@@ -24,7 +27,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +44,7 @@ public class PartnershipService {
     private final LicensePartnershipMapper licensePartnershipMapper;
     private final MemberMapper memberMapper;
     private final MemberJoinMapper memberJoinMapper;
+    private final AwsS3Component awsS3Component;
 
     private final AwsSESComponent sesComponent;
 
@@ -118,6 +124,7 @@ public class PartnershipService {
                         .orElseGet(() -> {
                             MemberVO memberVO = new MemberVO();
                             memberVO.setEmail(email);
+                            memberVO.setStateCd(EnumCode.PartnershipMember.StateCd.Wait.getCode());
                             memberJoinMapper.insertByMemberJoin(memberVO);
                             return memberVO;
                         });
@@ -139,23 +146,21 @@ public class PartnershipService {
 
                 invitedMemberVO.setPartnershipMemberIdx(partnershipMember.getIdx());
 
-
                 partnershipMemberMapper.insertInvitedMember(invitedMemberVO);
+                // 메일 발송
                 sesComponent.sendInviteMemberEmail(null, email, partnershipMember.getIdx());
 
                 validList.add(ResponsePartnershipDTO.InviteResult.builder()
                         .email(email)
                         .result("success")
                         .build());
-
-
             } catch (Exception e) {
                 log.error(e.getMessage());
                 invalidList.add(ResponsePartnershipDTO.InviteResult.builder()
-                                .email(email)
-                                .result("error")
-                                .reason(e.getMessage())
-                                .build()
+                        .email(email)
+                        .result("error")
+                        .reason(e.getMessage())
+                        .build()
                 );
             }
         }
@@ -197,6 +202,8 @@ public class PartnershipService {
                         .idx(partnershipMember.getIdx())
                         .positionInfo(positionInfo)
                         .phone(partnershipMember.getPhone())
+                        .profileImageUrl(partnershipMember.getProfileImageUrl())
+                        .profileImagePath(partnershipMember.getProfileImagePath())
                         .build())
                 .partnership(ResponsePartnershipDTO.PartnershipInfo.builder()
                         .idx(partnership.getIdx())
@@ -231,7 +238,7 @@ public class PartnershipService {
         if (updateInfo.getPosition() != null) {
             // 기존 등록된 직책이 있는경우 해당 직책 Idx / 없는 경우 마지막 sort_level로 등록
             partnershipPositionIdx = partnershipPositionMapper
-                    .selectByNameAndPartnershipIdx(partnershipIdx, updateInfo.getName())
+                    .selectByNameAndPartnershipIdx(partnershipIdx, updateInfo.getPosition())
                     .map(PartnershipPositionVO::getIdx)
                     .orElseGet(() -> {
                         int maxSortLevel = partnershipPositionMapper.selectMaxSortLevelByPartnershipIdx(partnershipIdx);
@@ -252,5 +259,38 @@ public class PartnershipService {
         return this.getMyInfo(partnershipIdx, memberVO);
     }
 
+    /**
+     * 파트너쉽 멤버 프로필 이미지 변경
+     * @param partnershipIdx
+     * @param memberVO
+     * @param file
+     * @return
+     * @throws CustomException
+     * @throws IOException
+     */
+    @Transactional
+    public CustomResponse<?> updateProfileImage(Integer partnershipIdx, MemberVO memberVO, MultipartFile file) throws CustomException, IOException {
+        PartnershipMemberVO partnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+
+        AwsS3ResourceDTO response = AwsS3ResourceDTO.builder()
+                .fileName(file.getOriginalFilename())
+                .s3Resource(awsS3Component.upload(file, AwsS3Component.FolderType.PartnershipMember, partnershipMember.getIdx().toString()))
+                .build();
+//
+//        // 기존 프로필 이미지가 있을 경우 삭제
+        if(partnershipMember.getProfileImagePath() != null && !partnershipMember.getProfileImagePath().isEmpty()) {
+            awsS3Component.delete(partnershipMember.getProfileImagePath());
+        }
+//
+        partnershipMember.setProfileImageUrl(response.getUrl());
+        partnershipMember.setProfileImagePath(response.getFileName());
+
+        partnershipMemberMapper.updateProfileImageByIdx(partnershipMember);
+
+        return CustomResponse.builder()
+                .data(null)
+                .build();
+    }
 
 }

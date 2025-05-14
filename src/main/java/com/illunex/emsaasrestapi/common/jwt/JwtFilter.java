@@ -1,10 +1,15 @@
 package com.illunex.emsaasrestapi.common.jwt;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.illunex.emsaasrestapi.common.CustomAuthException;
+import com.illunex.emsaasrestapi.common.CustomResponse;
+import com.illunex.emsaasrestapi.common.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
@@ -28,12 +33,27 @@ public class JwtFilter extends GenericFilterBean {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest httpServletRequest = (HttpServletRequest) request;
+        HttpServletResponse httpServletResponse = (HttpServletResponse) response;
         String jwt = resolveToken(httpServletRequest);
-        if (StringUtils.hasText(jwt) && this.tokenProvider.validateToken(jwt)) {
-            Authentication authentication = this.tokenProvider.getAuthentication(jwt);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            if (StringUtils.hasText(jwt)) {
+                tokenProvider.validateTokenAndThrow(jwt);     // 유효할 땐 그대로 진행
+                Authentication auth = tokenProvider.getAuthentication(jwt);
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            }
+            chain.doFilter(request, response);
+        } catch (CustomAuthException ex) {                    // 인증 실패 → 여기서 바로 응답
+            ErrorCode code = ex.getErrorCode();
+            httpServletResponse.setStatus(ex.getHttpStatus().value());
+            httpServletResponse.setContentType("application/json;charset=UTF-8");
+            httpServletResponse.getWriter().write(
+                    new ObjectMapper().writeValueAsString(
+                            CustomResponse.builder()
+                                    .status(code.getStatus())
+                                    .data(code.getMessage())
+                                    .message(ex.getMessage())
+                                    .build()));
         }
-        chain.doFilter(request, response);
     }
 
     private String resolveToken(HttpServletRequest request) {

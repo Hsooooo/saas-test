@@ -19,4 +19,5 @@ public interface PartnershipMemberMapper {
     void insertInvitedMember(PartnershipInvitedMemberVO partnershipInvitedMemberVO);
     List<PartnershipMemberVO> selectAllByProjectIdx(Integer projectIdx);
     int updatePositionIdxAndPhoneByIdx(@Param("positionIdx") Integer positionIdx, @Param("phone") String phone, @Param("idx") Integer partnershipMemberIdx);
+    void updateProfileImageByIdx(PartnershipMemberVO partnershipMember);
 }

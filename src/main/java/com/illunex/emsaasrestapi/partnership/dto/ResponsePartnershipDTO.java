@@ -52,6 +52,8 @@ public class ResponsePartnershipDTO {
         private Integer idx;
         private String phone;
         private PartnershipPositionInfo positionInfo;
+        private String profileImageUrl;
+        private String profileImagePath;
     }
 
     @Builder
