@@ -1,5 +1,7 @@
 package com.illunex.emsaasrestapi.common.jwt;
 
+import com.illunex.emsaasrestapi.common.CustomAuthException;
+import com.illunex.emsaasrestapi.common.ErrorCode;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -8,6 +10,7 @@ import jakarta.servlet.http.Cookie;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -95,14 +98,34 @@ public class TokenProvider {
         return UsernamePasswordAuthenticationToken.authenticated(principal, token, authorities);
     }
 
+    public void validateTokenAndThrow(String token) {
+        try {
+            jwtParser.parseClaimsJws(token);
+        } catch (ExpiredJwtException e) {
+            throw new CustomAuthException(ErrorCode.JWT_TOKEN_EXPIRED, HttpStatus.UNAUTHORIZED);
+        } catch (MalformedJwtException e) {
+            throw new CustomAuthException(ErrorCode.JWT_TOKEN_MALFORMED, HttpStatus.UNAUTHORIZED);
+        } catch (SignatureException e) {
+            throw new CustomAuthException(ErrorCode.JWT_TOKEN_INVALID_SIGNATURE, HttpStatus.UNAUTHORIZED);
+        } catch (UnsupportedJwtException | IllegalArgumentException e) {
+            throw new CustomAuthException(ErrorCode.JWT_TOKEN_MISSING, HttpStatus.UNAUTHORIZED);
+        }
+    }
+
     public boolean validateToken(String token) {
         try {
             jwtParser.parseClaimsJws(token);
             return true;
-        } catch (ExpiredJwtException | UnsupportedJwtException | MalformedJwtException | SignatureException e) {
-            log.trace(INVALID_JWT_TOKEN, e);
+        } catch (ExpiredJwtException e) {
+            throw new CustomAuthException(ErrorCode.JWT_TOKEN_EXPIRED, HttpStatus.UNAUTHORIZED);
+        } catch (MalformedJwtException e) {
+            throw new CustomAuthException(ErrorCode.JWT_TOKEN_MALFORMED, HttpStatus.UNAUTHORIZED);
+        } catch (SignatureException e) {
+            throw new CustomAuthException(ErrorCode.JWT_TOKEN_INVALID_SIGNATURE, HttpStatus.UNAUTHORIZED);
+        } catch (UnsupportedJwtException e) {
+            throw new CustomAuthException(ErrorCode.JWT_TOKEN_MISSING, HttpStatus.UNAUTHORIZED);
         } catch (IllegalArgumentException e) {
-            log.error("Token validation error {}", e.getMessage());
+            log.error(INVALID_JWT_TOKEN, e);
         }
         return false;
     }

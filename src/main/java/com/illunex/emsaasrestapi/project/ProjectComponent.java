@@ -3,6 +3,8 @@ package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.network.dto.ResponseNetworkDTO;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelRow;
@@ -11,8 +13,11 @@ import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
+import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.io.FilenameUtils;
@@ -41,48 +46,54 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class ProjectComponent {
     private final ProjectMapper projectMapper;
+    private final ProjectMemberMapper projectMemberMapper;
 
     private final ModelMapper modelMapper;
     private final MongoTemplate mongoTemplate;
 
     /**
-     * 엑셀 cell 타입에 맞게 데이터 반환
-     * @param cell
+     * 프로젝트 구성원 여부 체크
+     * @param projectMemberIdx
+     * @param projectIdx
      * @return
      * @throws CustomException
      */
-    private Object getExcelColumnData(Cell cell) throws CustomException{
-            if(cell == null) {
-                return "";
-            }
-            switch (cell.getCellType()) {
-                case STRING -> {
-                    return cell.getStringCellValue();
-                }
-                case NUMERIC -> {
-                    if (DateUtil.isCellDateFormatted(cell)) {
-                        return cell.getDateCellValue();
-                    } else {
-                        return cell.getNumericCellValue();
-                    }
-                }
-                case BOOLEAN -> {
-                    return cell.getBooleanCellValue();
-                }
-                // 수식 셀은 getCellFormula() 또는 evaluate 사용
-                case FORMULA -> {
-                    return cell.getCellFormula();
-                }
-                case BLANK -> {
-                    return "";
-                }
-                case ERROR -> {
-                    return cell.getErrorCellValue();
-                }
-                default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
-            }
+    public ProjectMemberVO checkProjectMember(Integer projectMemberIdx, Integer projectIdx) throws CustomException {
+        // 프로젝트 구성원 조회
+        ProjectMemberVO projectMemberVO = projectMemberMapper.selectByProjectIdxAndPartnershipMemberIdx(projectIdx, projectMemberIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_INVALID_MEMBER));
+
+        return projectMemberVO;
     }
 
+    /**
+     * 프로젝트 상태 코드 조회
+     * @param project
+     * @param projectVO
+     * @return
+     */
+    public String getProjectStatusCd(RequestProjectDTO.Project project, ProjectVO projectVO) {
+        // 프로젝트 설정 정보에 따라서 상태 변경
+        if(project.getProjectNodeContentList() != null) {
+            // 속성 정의 있을 경우
+            return EnumCode.Project.StatusCd.Step4.getCode();
+        } else if (project.getProjectNodeSizeList() != null && project.getProjectFilterList() != null) {
+            // 기능 정의 있을 경우
+            return EnumCode.Project.StatusCd.Step3.getCode();
+        } else if (project.getProjectNodeList() != null && project.getProjectEdgeList() != null) {
+            // 노드&엣지 정의 있을 경우
+            return EnumCode.Project.StatusCd.Step2.getCode();
+        }
+        return projectVO.getStatusCd();
+    }
+
+    /**
+     * 단일 엑셀파일 파싱 함수
+     * @param projectIdx
+     * @param excelFile
+     * @throws CustomException
+     * @throws IOException
+     */
     public void parseExcel(Integer projectIdx, MultipartFile excelFile) throws CustomException, IOException {
         // 확장자 체크
         String ext = FilenameUtils.getExtension(excelFile.getOriginalFilename());
@@ -325,5 +336,43 @@ public class ProjectComponent {
         // 노드 & 엣지 사이즈 추출
         response.setNodeSize(response.getNodes().size());
         response.setLinkSize(response.getLinks().size());
+    }
+
+    /**
+     * 엑셀 cell 타입에 맞게 데이터 반환
+     * @param cell
+     * @return
+     * @throws CustomException
+     */
+    private Object getExcelColumnData(Cell cell) throws CustomException{
+        if(cell == null) {
+            return "";
+        }
+        switch (cell.getCellType()) {
+            case STRING -> {
+                return cell.getStringCellValue();
+            }
+            case NUMERIC -> {
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue();
+                } else {
+                    return cell.getNumericCellValue();
+                }
+            }
+            case BOOLEAN -> {
+                return cell.getBooleanCellValue();
+            }
+            // 수식 셀은 getCellFormula() 또는 evaluate 사용
+            case FORMULA -> {
+                return cell.getCellFormula();
+            }
+            case BLANK -> {
+                return "";
+            }
+            case ERROR -> {
+                return cell.getErrorCellValue();
+            }
+            default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
+        }
     }
 }

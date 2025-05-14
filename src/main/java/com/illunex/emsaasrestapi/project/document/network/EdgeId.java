@@ -11,5 +11,5 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "edge_id")
 public class EdgeId {
     private Integer projectIdx;
-    private Integer edgeIdx;
+    private Object edgeIdx;
 }

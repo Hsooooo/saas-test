@@ -12,7 +12,7 @@ public class RequestNetworkDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Extend {
+    public static class SelectNode {
         private Integer projectIdx;
         private String label;
         private Integer nodeIdx;

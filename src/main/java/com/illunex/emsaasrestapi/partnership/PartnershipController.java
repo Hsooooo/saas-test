@@ -3,15 +3,16 @@ package com.illunex.emsaasrestapi.partnership;
 import com.illunex.emsaasrestapi.common.CurrentMember;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
-import com.illunex.emsaasrestapi.member.dto.RequestMemberDTO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.dto.PartnershipCreateDTO;
 import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,7 +28,6 @@ public class PartnershipController {
      * @return
      */
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> createPartnership(@RequestBody PartnershipCreateDTO createDTO,
                                                @CurrentMember MemberVO memberVO) throws CustomException {
         return CustomResponse.builder()
@@ -41,7 +41,6 @@ public class PartnershipController {
      * @return
      */
     @GetMapping("/list")
-    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> getPartnerships(@CurrentMember MemberVO memberVO) throws CustomException {
         return CustomResponse.builder()
                 .data(partnershipService.getPartnerships(memberVO.getIdx()))
@@ -57,7 +56,6 @@ public class PartnershipController {
      * @throws CustomException
      */
     @PostMapping("/{partnershipIdx}/invite")
-    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> invitePartnershipMember(@PathVariable("partnershipIdx") Integer partnershipIdx,
                                                      @CurrentMember MemberVO memberVO,
                                                      @RequestBody @Valid RequestPartnershipDTO.InviteMember request) throws CustomException {
@@ -74,7 +72,6 @@ public class PartnershipController {
      * @throws CustomException
      */
     @GetMapping("/{partnershipIdx}/my-info")
-    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> getMyInfo(@PathVariable("partnershipIdx") Integer partnershipIdx,
                                        @CurrentMember MemberVO memberVO) throws CustomException {
         return CustomResponse.builder()
@@ -91,12 +88,24 @@ public class PartnershipController {
      * @throws CustomException
      */
     @PutMapping("/{partnershipIdx}/my-info")
-    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> updateMyInfo(@PathVariable("partnershipIdx") Integer partnershipIdx,
                                           @CurrentMember MemberVO memberVO,
                                           @RequestBody @Valid RequestPartnershipDTO.UpdateMyInfo updateInfo) throws CustomException {
         return CustomResponse.builder()
                 .data(partnershipService.updateMyInfo(partnershipIdx, memberVO, updateInfo))
                 .build();
+    }
+
+    /**
+     * 파트너쉽 회원 프로필 이미지 수정
+     * @param file
+     * @return
+     * @throws CustomException
+     */
+    @PutMapping ("/{partnershipIdx}/profile")
+    public CustomResponse<?> updateProfileImage(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                @RequestPart(name = "image") MultipartFile file,
+                                                @CurrentMember MemberVO memberVO) throws CustomException, IOException {
+        return partnershipService.updateProfileImage(partnershipIdx, memberVO, file);
     }
 }

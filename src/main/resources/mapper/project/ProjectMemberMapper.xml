@@ -33,4 +33,12 @@
         FROM em_saas.project_member
         WHERE project_idx = #{projectIdx}
     </select>
+
+    <select id="selectByProjectIdxAndPartnershipMemberIdx" resultType="ProjectMemberVO">
+        SELECT
+            *
+        FROM em_saas.project_member
+        WHERE project_idx = #{projectIdx}
+          AND partnership_member_idx = #{partnershipMemberIdx}
+    </select>
 </mapper>

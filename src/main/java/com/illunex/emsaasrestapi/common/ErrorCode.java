@@ -17,6 +17,10 @@ public enum ErrorCode {
     COMMON_FAIL_AUTHENTICATION(102, "권한이 없습니다."),
     COMMON_INTERNAL_SERVER_ERROR(500, "서버 에러"),
     COMMON_INVALID_FILE_EXTENSION(800, "잘못된 형식의 파일 입니다."),
+    JWT_TOKEN_MISSING(103, "인증 토큰이 없습니다. 다시 로그인해주세요."),
+    JWT_TOKEN_EXPIRED(104, "로그인 세션이 만료되었습니다. 다시 로그인해주세요."),
+    JWT_TOKEN_MALFORMED(105, "토큰 형식이 잘못되었습니다. 다시 로그인해주세요."),
+    JWT_TOKEN_INVALID_SIGNATURE(106, "위조된 토큰입니다. 다시 로그인해주세요."),
     COMMON_NOT_FOUND_FILE(801, "파일을 찾을 수 없습니다."),
 
     /**
@@ -49,6 +53,7 @@ public enum ErrorCode {
     PROJECT_NOT_FOUND(503, "프로젝트 정보가 없습니다."),
     PROJECT_DELETED(504, "삭제된 프로젝트 입니다."),
     PROJECT_EMPTY_DATA(505, "저장된 데이터가 없습니다."),
+    PROJECT_INVALID_MEMBER(506, "유효한 프로젝트 구성원이 아닙니다."),
 
     PROJECT_CATEGORY_INVALID_SORT_ORDER(550, "요청된 정렬 순서가 올바르지 않습니다."),
     ;
