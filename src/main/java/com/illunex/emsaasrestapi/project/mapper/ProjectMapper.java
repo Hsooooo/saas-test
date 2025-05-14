@@ -25,7 +25,7 @@ public interface ProjectMapper {
     // idx로 프로젝트 조회
     Optional<ProjectVO> selectByIdx(Integer idx);
     // partnership_idx와 project_category_idx로 프로젝트 조회 (pagination)
-    List<ProjectVO> selectAllByProjectId(@Param("projectId") RequestProjectDTO.ProjectId projectId, @Param("pageable") Pageable pageable);
+    List<ProjectVO> selectAllByPartnershipIdxAndProjectCategoryIdx(@Param("partnershipIdx") Integer partnershipIdx, @Param("projectCategoryIdx") Integer projectCategoryIdx , @Param("pageable") Pageable pageable);
     // partnership_idx와 project_category_idx로 프로젝트 총 개수 조회
-    Integer countAllByProjectId(RequestProjectDTO.ProjectId projectId);
+    Integer countAllByProjectCategoryIdx(@Param("projectCategoryIdx") Integer projectCategoryIdx);
 }
