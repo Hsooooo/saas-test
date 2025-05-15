@@ -28,4 +28,33 @@
          WHERE idx = #{idx}
     </update>
 
+    <select id="selectByIdx" resultType="MemberVO">
+        SELECT idx,
+               email,
+               name,
+               password,
+               type_cd,
+               state_cd,
+               comment,
+               last_login_date,
+               leave_date,
+               update_date,
+               create_date
+        FROM member
+        WHERE idx = #{idx}
+    </select>
+
+    <update id="updateMemberStateByIdx">
+        UPDATE member
+          SET state_cd = #{stateCd}
+         WHERE idx = #{idx}
+    </update>
+
+    <update id="updateStateAndPasswordByIdx">
+        UPDATE member
+        SET state_cd = #{stateCd},
+            password = #{password}
+        WHERE idx = #{idx}
+    </update>
+
 </mapper>

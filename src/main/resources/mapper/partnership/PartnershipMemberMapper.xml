@@ -136,4 +136,29 @@
         WHERE idx = #{idx}
     </update>
 
+    <select id="selectByIdx" resultType="PartnershipMemberVO">
+        SELECT
+            idx,
+            partnership_idx,
+            partnership_team_idx,
+            member_idx,
+            partnership_position_idx,
+            manager_cd,
+            state_cd,
+            profile_image_url,
+            profile_image_path,
+            phone,
+            disable_functions,
+            update_date,
+            create_date
+        FROM partnership_member
+        WHERE idx = #{idx}
+    </select>
+
+    <update id="updatePartnershipMemberStateByIdx">
+        UPDATE partnership_member
+        SET state_cd = #{stateCd}
+        WHERE idx = #{idx}
+    </update>
+
 </mapper>

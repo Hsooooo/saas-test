@@ -94,32 +94,6 @@ public class MemberController {
     }
 
     /**
-     * TODO 회원가입 인증
-     * @param certData
-     * @throws Exception
-     */
-    @PostMapping("cert/join")
-    public CustomResponse<?> certificateJoin(@RequestParam(name = "certData") String certData) throws Exception {
-        return memberService.certificateJoin(certData);
-    }
-
-
-
-    /**
-     * TODO 회원 프로필 이미지 수정
-     * @param file
-     * @return
-     * @throws CustomException
-     */
-    @PutMapping ("/profile")
-    @PreAuthorize("isAuthenticated()")
-    public CustomResponse<?> updateProfileImage(@RequestPart(name = "image")MultipartFile file) throws CustomException, IOException {
-        return memberService.updateProfileImage(file);
-    }
-
-
-
-    /**
      * TODO 인증코드 체크
      * @param certData
      * @return

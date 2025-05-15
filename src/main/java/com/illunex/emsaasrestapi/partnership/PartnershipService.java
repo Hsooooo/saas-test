@@ -8,8 +8,10 @@ import com.illunex.emsaasrestapi.common.aws.AwsSESComponent;
 import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.license.mapper.LicensePartnershipMapper;
+import com.illunex.emsaasrestapi.member.mapper.EmailHistoryMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
+import com.illunex.emsaasrestapi.member.vo.MemberEmailHistoryVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.dto.PartnershipCreateDTO;
 import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
@@ -30,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +45,7 @@ public class PartnershipService {
     private final PartnershipMemberMapper partnershipMemberMapper;
     private final PartnershipPositionMapper partnershipPositionMapper;
     private final LicensePartnershipMapper licensePartnershipMapper;
+    private final EmailHistoryMapper emailHistoryMapper;
     private final MemberMapper memberMapper;
     private final MemberJoinMapper memberJoinMapper;
     private final AwsS3Component awsS3Component;
@@ -124,7 +128,7 @@ public class PartnershipService {
                         .orElseGet(() -> {
                             MemberVO memberVO = new MemberVO();
                             memberVO.setEmail(email);
-                            memberVO.setStateCd(EnumCode.PartnershipMember.StateCd.Wait.getCode());
+                            memberVO.setStateCd(EnumCode.Member.StateCd.Wait.getCode());
                             memberJoinMapper.insertByMemberJoin(memberVO);
                             return memberVO;
                         });
@@ -148,7 +152,16 @@ public class PartnershipService {
 
                 partnershipMemberMapper.insertInvitedMember(invitedMemberVO);
                 // 메일 발송
-                sesComponent.sendInviteMemberEmail(null, email, partnershipMember.getIdx());
+                String certData = sesComponent.sendInviteMemberEmail(null, email, partnershipMember.getIdx(), member.getIdx());
+
+                MemberEmailHistoryVO emailHistoryVO = new MemberEmailHistoryVO();
+                emailHistoryVO.setMemberIdx(member.getIdx());
+                emailHistoryVO.setCertData(certData);
+                emailHistoryVO.setUsed(false);
+                emailHistoryVO.setEmailType(EnumCode.Email.TypeCd.InvitePartnership.getCode());
+                emailHistoryVO.setExpireDate(ZonedDateTime.now().plusHours(1)); //1시간?
+
+                emailHistoryMapper.insertByMemberEmailHistoryVO(emailHistoryVO);
 
                 validList.add(ResponsePartnershipDTO.InviteResult.builder()
                         .email(email)

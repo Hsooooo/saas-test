@@ -2,7 +2,6 @@ package com.illunex.emsaasrestapi.partnership.mapper;
 
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipInvitedMemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -20,4 +19,6 @@ public interface PartnershipMemberMapper {
     List<PartnershipMemberVO> selectAllByProjectIdx(Integer projectIdx);
     int updatePositionIdxAndPhoneByIdx(@Param("positionIdx") Integer positionIdx, @Param("phone") String phone, @Param("idx") Integer partnershipMemberIdx);
     void updateProfileImageByIdx(PartnershipMemberVO partnershipMember);
+    Optional<PartnershipMemberVO> selectByIdx(int partnershipMemberIdx);
+    void updatePartnershipMemberStateByIdx(Integer idx, String stateCd);
 }

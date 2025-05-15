@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.member.mapper.EmailHistoryMapper">
+
+    <insert id="insertByMemberEmailHistoryVO" parameterType="MemberEmailHistoryVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO member_email_history(
+           member_idx,
+           cert_data,
+           used,
+           email_type,
+           expire_date,
+           create_date
+        ) VALUES (
+            #{memberIdx},
+            #{certData},
+            #{isUsed},
+            #{emailType},
+            #{expireDate},
+            now()
+        )
+    </insert>
+
+    <select id="selectByMemberIdxAndCertDataAndEmailType" resultType="MemberEmailHistoryVO">
+        SELECT member_idx,
+               cert_data,
+               used,
+               email_type,
+               expire_date,
+               create_date
+          FROM member_email_history
+         WHERE member_idx = #{memberIdx}
+          AND cert_data = #{certData}
+          AND email_type = #{emailType}
+    </select>
+
+    <select id="selectTop1ByMemberIdxAndEmailTypeOrderByCreateDateDesc" resultType="MemberEmailHistoryVO">
+        SELECT idx,
+               member_idx,
+               cert_data,
+               used,
+               email_type,
+               expire_date,
+               create_date
+        FROM member_email_history
+        WHERE member_idx = #{memberIdx}
+          AND email_type = #{emailType}
+        ORDER BY create_date desc
+        LIMIT 1
+    </select>
+
+    <update id="updateUsedByIdx">
+        UPDATE member_email_history
+          SET used = #{used}
+         WHERE idx = #{idx}
+    </update>
+
+    <select id="selectByCertData" resultType="MemberEmailHistoryVO">
+        SELECT idx,
+               member_idx,
+               cert_data,
+               used,
+               email_type,
+               expire_date,
+               create_date
+        FROM member_email_history
+        WHERE cert_data = #{certData}
+        LIMIT 1
+    </select>
+
+
+</mapper>
