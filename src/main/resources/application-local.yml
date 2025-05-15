@@ -40,9 +40,9 @@ spring:
         - classpath*:db/local/schema.sql
         - classpath*:db/common/alter_table.sql
       data-locations:
-        - classpath*:db/common/code.sql,
+        - classpath*:db/common/code.sql
         - classpath*:db/local/data.sql
-    mode: always
+      mode: always
   data:
     mongodb:
       host: localhost
