@@ -26,7 +26,8 @@ public class AwsS3Component {
     private final S3Operations s3Operations;
 
     public enum FolderType {
-        PartnershipMember
+        PartnershipMember,
+        ProjectFile
     }
 
     /**

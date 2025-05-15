@@ -295,7 +295,24 @@ public class EnumCode {
         }
     }
 
+    /**
+     * 프로젝트 업로드 파일
+     */
+    public static class ProjectFile {
+        /**
+         * 프로젝트 업로드 파일 구분
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum FileCd implements BaseCodeEnum {
+            Single("PFC0001", "단일 파일"),
+            MultipleNode("PFC0002", "멀티 파일(노드)"),
+            MultipleEdge("PFC0003", "멀티 파일(엣지)");
 
+            private final String code;
+            private final String value;
+        }
+    }
 //
 //    // 이메일
 //    public static class Email {

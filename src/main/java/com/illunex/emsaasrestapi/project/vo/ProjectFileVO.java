@@ -17,7 +17,7 @@ public class ProjectFileVO {
     private String fileName;
     private String fileUrl;
     private String filePath;
-    private Integer fileSize;
+    private Long fileSize;
     private String fileCd;
     private ZonedDateTime updateDate;
     private ZonedDateTime createDate;

@@ -4,6 +4,8 @@ import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
+import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
@@ -21,8 +23,10 @@ import com.illunex.emsaasrestapi.project.document.project.ProjectEdge;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNode;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
@@ -55,12 +59,14 @@ import java.util.List;
 public class ProjectService {
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final ProjectFileMapper projectFileMapper;
     private final PartnershipMemberMapper partnershipMemberMapper;
 
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
     private final PartnershipComponent partnershipComponent;
     private final ProjectComponent projectComponent;
+    private final AwsS3Component awsS3Component;
 
     /**
      * 프로젝트 생성
@@ -271,6 +277,20 @@ public class ProjectService {
             projectVO.setStatusCd(EnumCode.Project.StatusCd.Step1.getCode());
             projectMapper.updateByProjectVO(projectVO);
 
+            // s3 업로드
+            AwsS3ResourceDTO awsS3ResourceDTO = AwsS3ResourceDTO.builder()
+                    .fileName(excelFile.getOriginalFilename())
+                    .s3Resource(awsS3Component.upload(excelFile, AwsS3Component.FolderType.ProjectFile, projectIdx.toString()))
+                    .build();
+            ProjectFileVO projectFileVO = new ProjectFileVO();
+            projectFileVO.setProjectIdx(projectIdx);
+            projectFileVO.setFileName(awsS3ResourceDTO.getFileName());
+            projectFileVO.setFileUrl(awsS3ResourceDTO.getUrl());
+            projectFileVO.setFilePath(awsS3ResourceDTO.getPath());
+            projectFileVO.setFileSize(awsS3ResourceDTO.getSize());
+            projectFileVO.setFileCd(EnumCode.ProjectFile.FileCd.Single.getCode());
+            Integer updateCnt = projectFileMapper.insertByProjectFileVO(projectFileVO);
+
             return CustomResponse.builder()
                     .data(projectComponent.createResponseProjectExcel(projectIdx))
                     .build();
@@ -322,6 +342,7 @@ public class ProjectService {
                     Node node = Node.builder()
                             .nodeId(NodeId.builder()
                                     .projectIdx(projectIdx)
+                                    .type(excelRow.getExcelRowId().getExcelSheetName())
                                     .nodeIdx(excelRow.getData().get(projectNode.getUniqueCellName()))       // 노드 고유키
                                     .build()
                             )
@@ -349,6 +370,7 @@ public class ProjectService {
                     Edge edge = Edge.builder()
                             .edgeId(EdgeId.builder()
                                     .projectIdx(projectIdx)
+                                    .type(excelRow.getExcelRowId().getExcelSheetName())
                                     .edgeIdx(excelRow.getExcelRowId().getExcelRowIdx())                     // 엑셀 파싱 시 생성된 고유키
                                     .build()
                             )

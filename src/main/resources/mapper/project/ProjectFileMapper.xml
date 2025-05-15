@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper">
+    <insert id="insertByProjectFileVO" parameterType="ProjectFileVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO project_file (
+            project_idx,
+            file_name,
+            file_url,
+            file_path,
+            file_size,
+            file_cd,
+            update_date,
+            create_date
+        ) VALUES (
+            #{projectIdx},
+            #{fileName},
+            #{fileUrl},
+            #{filePath},
+            #{fileSize},
+            #{fileCd},
+            now(),
+            now()
+        )
+        <selectKey resultType="Integer" keyProperty="idx" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+<!--    프로젝트 파일 목록 조회-->
+    <select id="selectAllByProjectIdx" parameterType="Integer" resultType="ProjectFileVO">
+        SELECT
+            *
+        FROM project_file
+        WHERE project_idx = #{projectIdx}
+        ORDER BY project_idx desc;
+    </select>
+</mapper>

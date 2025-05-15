@@ -27,7 +27,7 @@
             now(),
             now()
         )
-        <selectKey resultType="int" keyProperty="idx" order="AFTER">
+        <selectKey resultType="Integer" keyProperty="idx" order="AFTER">
             SELECT LAST_INSERT_ID()
         </selectKey>
     </insert>

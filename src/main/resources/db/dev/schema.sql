@@ -63,7 +63,7 @@ create table if not exists em_saas.member_login_history
     )
     comment '로그인 이력 정보';
 
-CREATE TABLE IF NOT EXISTS `member_email_history` (
+CREATE TABLE IF NOT EXISTS `em_saas`.`member_email_history` (
     `idx` INT(11) NOT NULL COMMENT '이메일전송이력번호',
     `member_idx` INT(11) NULL DEFAULT NULL COMMENT '회원번호',
     `cert_data` VARCHAR(255) NULL DEFAULT NULL COMMENT '인증키' COLLATE 'utf8mb4_general_ci',
@@ -252,7 +252,7 @@ COMMENT='프로젝트 정보'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `project_member` (
+CREATE TABLE IF NOT EXISTS `em_saas`.`project_member` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로제거트 구성원 번호',
     `project_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 번호',
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 회원번호',
@@ -271,13 +271,13 @@ COMMENT='프로젝트 구성원'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `project_file` (
+CREATE TABLE IF NOT EXISTS `em_saas`.`project_file` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 파일번호',
     `project_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 번호',
     `file_name` VARCHAR(255) NULL DEFAULT NULL COMMENT '파일명' COLLATE 'utf8mb4_general_ci',
     `file_url` VARCHAR(512) NULL DEFAULT NULL COMMENT '파일URL' COLLATE 'utf8mb4_general_ci',
     `file_path` VARCHAR(512) NULL DEFAULT NULL COMMENT '파일경로' COLLATE 'utf8mb4_general_ci',
-    `file_size` INT(11) NULL DEFAULT NULL COMMENT '파일크기',
+    `file_size` BIGINT(20) NULL DEFAULT NULL COMMENT '파일크기',
     `file_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '파일 구분(code)' COLLATE 'utf8mb4_general_ci',
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
