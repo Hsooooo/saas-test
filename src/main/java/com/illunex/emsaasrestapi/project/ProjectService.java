@@ -477,20 +477,20 @@ public class ProjectService {
     /**
      * 프로젝트 복제
      * @param memberVO
-     * @param projectIds
+     * @param projectCopyList
      * @return
      * @throws CustomException
      */
     @Transactional(rollbackFor = Exception.class)
-    public CustomResponse<?> copyProject(MemberVO memberVO, List<RequestProjectDTO.ProjectId> projectIds) throws CustomException {
-        for(RequestProjectDTO.ProjectId projectId : projectIds){
+    public CustomResponse<?> copyProject(MemberVO memberVO, List<RequestProjectDTO.ProjectCopy> projectCopyList) throws CustomException {
+        for(RequestProjectDTO.ProjectCopy projectCopy : projectCopyList){
             // 파트너쉽 회원 여부 체크
-            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectId.getProjectIdx());
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectCopy.getProjectIdx());
             // 프로젝트 구성원 여부 체크
             projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
 
             // MariaDB 프로젝트 조회
-            ProjectVO projectVO = projectMapper.selectByIdx(projectId.getProjectIdx())
+            ProjectVO projectVO = projectMapper.selectByIdx(projectCopy.getProjectIdx())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
 
@@ -504,7 +504,7 @@ public class ProjectService {
             }
 
             // MariaDB 프로젝트 멤버 복제
-            List<ProjectMemberVO> projectMemberList = projectMemberMapper.selectAllByProjectIdx(projectId.getProjectIdx());
+            List<ProjectMemberVO> projectMemberList = projectMemberMapper.selectAllByProjectIdx(projectCopy.getProjectIdx());
             for (ProjectMemberVO projectMemberVO : projectMemberList) {
                 ProjectMemberVO copiedProjectMemberVO = modelMapper.map(projectMemberVO, ProjectMemberVO.class);
                 copiedProjectMemberVO.setIdx(null);
@@ -516,7 +516,7 @@ public class ProjectService {
             }
 
             // MongoDB 프로젝트 조회
-            Project findProject = mongoTemplate.findById(projectId.getProjectIdx(), Project.class);
+            Project findProject = mongoTemplate.findById(projectCopy.getProjectIdx(), Project.class);
             if(findProject == null) {
                 throw new CustomException(ErrorCode.COMMON_EMPTY);
             }
@@ -529,7 +529,7 @@ public class ProjectService {
             // MongoDB 노드 조회
             List<Node> findNodeList = mongoTemplate.find(
                     Query.query(
-                            Criteria.where("_id.projectIdx").is(projectId.getProjectIdx())
+                            Criteria.where("_id.projectIdx").is(projectCopy.getProjectIdx())
                     ),
                     Node.class
             );
@@ -547,7 +547,7 @@ public class ProjectService {
             // MongoDB 엣지 조회
             List<Edge> findEdgeList = mongoTemplate.find(
                     Query.query(
-                            Criteria.where("_id.projectIdx").is(projectId.getProjectIdx())
+                            Criteria.where("_id.projectIdx").is(projectCopy.getProjectIdx())
                     ),
                     Edge.class
             );
@@ -564,7 +564,7 @@ public class ProjectService {
         }
 
         return CustomResponse.builder()
-                .data(projectIds.size())
+                .data(projectCopyList.size())
                 .build();
     }
 }
