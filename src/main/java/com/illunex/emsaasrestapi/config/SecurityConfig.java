@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers(CorsUtils::isPreFlightRequest).permitAll()
                         .requestMatchers("/").permitAll()
                         .requestMatchers("/member/**").permitAll()
+                        .requestMatchers("/cert/**").permitAll()
                         .requestMatchers("/project/**").hasAnyAuthority(MEMBER)
                         .requestMatchers("/project/category/**").hasAnyAuthority(MEMBER)
                         .requestMatchers("/network/**").hasAnyAuthority(MEMBER)

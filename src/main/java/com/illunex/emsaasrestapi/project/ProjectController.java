@@ -139,15 +139,14 @@ public class ProjectController {
     /**
      * 프로젝트 복제
      * @param memberVO
-     * @param projectIds
+     * @param proejectIdList
      * @return
      * @throws CustomException
      */
     @PostMapping("/copy")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> copyProject(@CurrentMember MemberVO memberVO,
-                                         @RequestBody List<RequestProjectDTO.ProjectId> projectIds,
-                                         CustomPageRequest pageRequest, String[] sort) throws CustomException, JsonProcessingException {
-        return projectService.copyProject(memberVO, projectIds, pageRequest, sort);
+                                         @RequestBody List<Integer> proejectIdList) throws CustomException, JsonProcessingException {
+        return projectService.copyProject(memberVO, proejectIdList);
     }
 }

@@ -13,8 +13,6 @@ import software.amazon.awssdk.services.sesv2.SesV2Client;
 import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
 import software.amazon.awssdk.services.sesv2.model.SendEmailResponse;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 
 @Slf4j
@@ -33,7 +31,8 @@ public class AwsSESComponent {
     public enum EmailType {
         join("join", "[Em-Stock] 회원가입 메일", "templates/CertificationTemplate.html"),
         findPassword("password", "[Em-Stock] 비밀번호 변경 메일", "templates/FindPWMailTemplate.html"),
-        invite("invite", "[Em-SAAS] 초대 메일", "templates/Invite.html");
+        invite("invite", "[Em-SAAS] 초대 메일", "templates/Invite.html"),
+        inviteProject("inviteProject", "[Em-SAAS] 초대 메일", "templates/InviteProject.html");
 
         @Getter
         private final String value;
@@ -83,7 +82,7 @@ public class AwsSESComponent {
 
         sendingResultMustSuccess(listener, sendEmailResponse, sendEmailRequest);
 
-        return URLEncoder.encode(certData, StandardCharsets.UTF_8);
+        return certData;
     }
 
     /**
@@ -124,14 +123,16 @@ public class AwsSESComponent {
      * @param listener
      * @param email
      * @param partnershipMemberIdx
+     * @param memberIdx
      * @return
      * @throws Exception
      */
-    public String sendInviteMemberEmail(AwsSESListener listener, String email, Integer partnershipMemberIdx) throws Exception {
+    public String sendInviteMemberEmail(AwsSESListener listener, String email, Integer partnershipMemberIdx, Integer memberIdx) throws Exception {
         JSONObject certJson = new JSONObject()
                 .put("type", EmailType.invite.getValue())
                 .put("partnershipMemberIdx", partnershipMemberIdx)
-                .put("expire", ZonedDateTime.now().plusHours(1).toString());
+                .put("memberIdx", memberIdx)
+                .put("expire", ZonedDateTime.now().plusHours(1).toString()); // 1시간?
 
         // 이메일 인증을 위한 암호화 - AES256 -> Base64
         String certData = Utils.AES256.encrypt(encryptKey, certJson.toString());
@@ -149,7 +150,7 @@ public class AwsSESComponent {
 
         sendingResultMustSuccess(listener, sendEmailResponse, sendEmailRequest);
 
-        return URLEncoder.encode(certData, StandardCharsets.UTF_8);
+        return certData;
     }
 
     /**

@@ -9,19 +9,19 @@ import com.illunex.emsaasrestapi.common.aws.AwsSESComponent;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.common.jwt.TokenProvider;
 import com.illunex.emsaasrestapi.config.SecurityConfig;
-import com.illunex.emsaasrestapi.license.vo.LicensePartnershipVO;
 import com.illunex.emsaasrestapi.member.dto.RequestMemberDTO;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
+import com.illunex.emsaasrestapi.member.mapper.EmailHistoryMapper;
 import com.illunex.emsaasrestapi.member.mapper.LoginHistoryMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
+import com.illunex.emsaasrestapi.member.vo.MemberEmailHistoryVO;
 import com.illunex.emsaasrestapi.member.vo.MemberLoginHistoryVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipService;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -43,6 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,6 +59,7 @@ public class MemberService {
     private final PartnershipMapper partnershipMapper;
     private final PartnershipMemberMapper partnershipMemberMapper;
     private final LoginHistoryMapper loginHistoryMapper;
+    private final EmailHistoryMapper emailHistoryMapper;
 
     private final AwsSESComponent awsSESComponent;
     private final AwsS3Component awsS3Component;
@@ -210,13 +212,14 @@ public class MemberService {
                 joinData.getEmail());
 //
 //        // 회원가입 인증 메일 이력 저장
-//        MemberEmailHistory memberEmailHistory = new MemberEmailHistory();
-//        memberEmailHistory.setMemberIdx(member.getIdx());
-//        memberEmailHistory.setCertData(certData);
-//        memberEmailHistory.setUsed(false);
-//        memberEmailHistory.setEmailType(EnumCode.Email.TypeCd.JoinEmail.getCode());
-//        memberEmailHistory.setExpireDate(ZonedDateTime.now().plusHours(1));
-//        memberPasswordHistoryRepository.save(memberEmailHistory);
+        MemberEmailHistoryVO emailHistoryVO = new MemberEmailHistoryVO();
+        emailHistoryVO.setMemberIdx(member.getIdx());
+        emailHistoryVO.setCertData(certData);
+        emailHistoryVO.setUsed(false);
+        emailHistoryVO.setEmailType(EnumCode.Email.TypeCd.JoinEmail.getCode());
+        emailHistoryVO.setExpireDate(ZonedDateTime.now().plusHours(1)); //1시간?
+
+        emailHistoryMapper.insertByMemberEmailHistoryVO(emailHistoryVO);
 
         return CustomResponse.builder()
                 .data(null)
@@ -274,96 +277,48 @@ public class MemberService {
      */
     @Transactional
     public CustomResponse<?> certificateJoin(String certData) throws Exception {
-//        JSONObject data = new JSONObject(Utils.AES256.decrypt(encryptKey, URLDecoder.decode(certData, StandardCharsets.UTF_8)));
-//        ZonedDateTime expireDate = ZonedDateTime.parse(data.getString("expire"));
-//
-//        // 회원가입용 인증키 확인
-//        if(!data.getString("type").equals(AwsSESComponent.EmailType.join.getValue())) {
-//            throw new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID);
-//        }
-//
-//        // 회원 확인
-//        Member member = memberRepository.findByEmail(data.getString("email"))
-//                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID));
-//
-//        if(!member.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
-//            // 인증대기 상태가 아닐 경우
-//            throw new CustomException(ErrorCode.MEMBER_ALREADY_EMAIL_CERTIFICATE);
-//        }
-//
-//        // 인증키 유효 체크
-//        MemberEmailHistory history = memberPasswordHistoryRepository.findTop1ByMemberIdxAndEmailTypeOrderByCreateDateDesc(member.getIdx(), EnumCode.Email.TypeCd.JoinEmail.getCode())
-//                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID));
-//
-//        // 인증 만료 체크
-//        if(expireDate.isBefore(ZonedDateTime.now())
-//                || history.getExpireDate().isBefore(ZonedDateTime.now())
-//                || !history.getCertData().equals(certData)
-//                || history.getUsed().equals(true)) {
-//            throw new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_EXPIRE);
-//        }
-//
-//        // 인증키 사용 처리
-//        history.setUsed(true);
-//
-//        // 회원 상태 변경
-//        member.setStateCd(EnumCode.Member.StateCd.Approval.getCode());
+        String decrypted = Utils.AES256.decrypt(encryptKey, certData);
+        JSONObject data = new JSONObject(decrypted);
+        ZonedDateTime expireDate = ZonedDateTime.parse(data.getString("expire"));
+
+        // 회원가입용 인증키 확인
+        if(!data.getString("type").equals(AwsSESComponent.EmailType.join.getValue())) {
+            throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID);
+        }
+
+        // 회원 확인
+        MemberVO member = memberMapper.selectByEmail(data.getString("email"))
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
+
+        if(!member.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
+            // 인증대기 상태가 아닐 경우
+            throw new CustomException(ErrorCode.COMMON_ALREADY_EMAIL_CERTIFICATE);
+        }
+
+        // 인증키 유효 체크
+        MemberEmailHistoryVO history = emailHistoryMapper.selectTop1ByMemberIdxAndEmailTypeOrderByCreateDateDesc(member.getIdx(), EnumCode.Email.TypeCd.JoinEmail.getCode())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
+
+        // 인증 만료 체크
+        if(expireDate.isBefore(ZonedDateTime.now())
+                || history.getExpireDate().isBefore(ZonedDateTime.now())
+                || !history.getCertData().equals(certData)
+                || history.isUsed()) {
+            throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_EXPIRE);
+        }
+
+        // 인증키 사용 처리
+        emailHistoryMapper.updateUsedByIdx(true, history.getIdx());
+
+        // 회원 상태 변경
+        member.setStateCd(EnumCode.Member.StateCd.Approval.getCode());
+
+        memberMapper.updateMemberStateByIdx(member.getIdx(), EnumCode.Member.StateCd.Approval.getCode());
 
         return CustomResponse.builder()
                 .build();
     }
 
-
-    /**
-     * 회원정보 수정
-     * @param updateMember
-     * @return
-     */
-    public CustomResponse<?> updateMember(RequestMemberDTO.UpdateMember updateMember) throws CustomException {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//        Member member = memberRepository.findByEmail(auth.getName()).
-//                orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMPTY_ACCOUNT));
-//
-//        modelMapper.map(updateMember, member);
-//
-//        memberRepository.save(member);
-//
-//        ResponseMemberDTO.Member response = modelMapper.map(member, ResponseMemberDTO.Member.class);
-
-        return CustomResponse.builder()
-                .data(null)
-                .build();
-    }
-
-    /**
-     * 회원 프로필 이미지 수정
-     * @param file
-     * @return
-     */
-    public CustomResponse<?> updateProfileImage(MultipartFile file) throws CustomException, IOException {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-//        Member member = memberRepository.findByEmail(auth.getName()).
-//                orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMPTY_ACCOUNT));
-//
-//        AwsS3ResourceDTO response = AwsS3ResourceDTO.builder()
-//                .fileName(file.getOriginalFilename())
-//                .s3Resource(awsS3Component.upload(file, AwsS3Component.FolderType.Member, member.getEmail()))
-//                .build();
-//
-//        // 기존 프로필 이미지가 있을 경우 삭제
-//        if(member.getProfileImagePath() != null && !member.getProfileImagePath().isEmpty()) {
-//            awsS3Component.delete(member.getProfileImagePath());
-//        }
-//
-//        member.setProfileImageUrl(response.getUrl());
-//        member.setProfileImagePath(response.getFileName());
-//
-//        memberRepository.save(member);
-
-        return CustomResponse.builder()
-                .data(null)
-                .build();
-    }
 
     /**
      * 이메일/도메인 중복 체크
