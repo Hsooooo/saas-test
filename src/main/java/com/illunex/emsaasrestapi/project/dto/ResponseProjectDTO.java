@@ -45,7 +45,7 @@ public class ResponseProjectDTO {
 
         public void setStatusCd(String statusCd) {
             this.statusCd = statusCd;
-            this.statusCdDesc = Objects.requireNonNull(BaseCodeEnum.fromCode(EnumCode.Project.StatusCd.class, statusCd)).getValue();
+            this.statusCdDesc = EnumCode.getCodeDesc(statusCd);
         }
     }
 
@@ -68,7 +68,7 @@ public class ResponseProjectDTO {
 
         public void setFileCd(String fileCd) {
             this.fileCd = fileCd;
-            this.fileCdDesc = Objects.requireNonNull(BaseCodeEnum.fromCode(EnumCode.ProjectFile.FileCd.class, fileCd)).getValue();
+            this.fileCdDesc = EnumCode.getCodeDesc(fileCd);
         }
     }
 

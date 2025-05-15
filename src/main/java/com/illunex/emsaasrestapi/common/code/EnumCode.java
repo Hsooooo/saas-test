@@ -1,7 +1,5 @@
 package com.illunex.emsaasrestapi.common.code;
 
-//import com.illunex.emsaasrestapi.common.code.entity.Code;
-//import com.illunex.emsaasrestapi.common.code.repository.CodeRepository;
 import com.illunex.emsaasrestapi.common.code.mapper.CodeMapper;
 import com.illunex.emsaasrestapi.common.code.vo.CodeVO;
 import lombok.AllArgsConstructor;
@@ -195,27 +193,4 @@ public class EnumCode {
             private final String value;
         }
     }
-//
-//    // 이메일
-//    public static class Email {
-//        @AllArgsConstructor
-//        public enum TypeCd {
-//            JoinEmail("ETP0001", "회원가입 인증"),
-//            FindPasswordEmail("ETP0002", "비밀번호 찾기");
-//
-//            @Getter
-//            private String code;
-//            @Getter
-//            private String value;
-//
-//            public static EnumCode.Email.TypeCd codeToEnum(String stringCode) {
-//                for (EnumCode.Email.TypeCd value : values()) {
-//                    if (value.code.equals(stringCode)) {
-//                        return value;
-//                    }
-//                }
-//                return null;
-//            }
-//        }
-//    }
 }
