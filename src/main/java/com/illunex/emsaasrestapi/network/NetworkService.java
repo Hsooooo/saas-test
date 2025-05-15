@@ -193,7 +193,7 @@ public class NetworkService {
      * @param search
      * @return
      */
-    public CustomResponse<?> getNetworkSearch(RequestNetworkDTO.Search search) throws CustomException {
+    public CustomResponse<?> getNetworkSearch(MemberVO memberVO, RequestNetworkDTO.Search search) throws CustomException {
         // 파트너쉽 회원 여부 체크
 //        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, search.getProjectIdx());
         // 프로젝트 구성원 여부 체크

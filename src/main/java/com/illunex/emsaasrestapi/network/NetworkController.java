@@ -65,7 +65,9 @@ public class NetworkController {
      * @throws CustomException
      */
     @PostMapping("/search")
-    public CustomResponse<?> getNetworkSearch(@RequestBody RequestNetworkDTO.Search search) throws CustomException {
-        return networkService.getNetworkSearch(search);
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getNetworkSearch(@CurrentMember MemberVO memberVO,
+                    @RequestBody RequestNetworkDTO.Search search) throws CustomException {
+        return networkService.getNetworkSearch(memberVO, search);
     }
 }
