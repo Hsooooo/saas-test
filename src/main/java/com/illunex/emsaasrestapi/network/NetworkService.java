@@ -194,8 +194,11 @@ public class NetworkService {
      * @return
      */
     public CustomResponse<?> getNetworkSearch(RequestNetworkDTO.Search search) throws CustomException {
-        // TODO : 파트너쉽에 속한 회원 여부 체크
-        // TODO : 해당 프로젝트 권한 여부 체크
+        // 파트너쉽 회원 여부 체크
+//        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, search.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+//        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
         //검색할 컬럼명 조회
