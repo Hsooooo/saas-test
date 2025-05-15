@@ -45,8 +45,8 @@ public class ResponseNetworkDTO {
         List<EdgeInfo> links;
 
         public SearchNetwork() {
-            if(nodes == null) nodes = new ArrayList<>();
-            if(links == null) links = new ArrayList<>();
+            this.nodes = new ArrayList<>();
+            this.links = new ArrayList<>();
         }
     }
 
