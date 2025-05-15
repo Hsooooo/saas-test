@@ -27,7 +27,7 @@
             now(),
             now()
         )
-        <selectKey resultType="int" keyProperty="idx" order="AFTER">
+        <selectKey resultType="Integer" keyProperty="idx" order="AFTER">
             SELECT LAST_INSERT_ID()
         </selectKey>
     </insert>
@@ -91,11 +91,11 @@
         WHERE idx = #{idx}
     </select>
 
-    <select id="selectAllByProjectId" resultType="ProjectVO">
+    <select id="selectAllByPartnershipIdxAndProjectCategoryIdx" resultType="ProjectVO">
         SELECT *
         FROM project
-        WHERE partnership_idx = #{projectId.partnershipIdx}
-        AND project_category_idx = #{projectId.projectCategoryIdx}
+        WHERE partnership_idx = #{partnershipIdx}
+        AND project_category_idx = #{projectCategoryIdx}
         <if test="pageable.sort != null and !pageable.sort.empty">
             ORDER BY
             <foreach item="order" collection="pageable.sort" separator=",">
@@ -105,9 +105,10 @@
         LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
     </select>
 
-    <select id="countAllByProjectId" resultType="Integer">
+    <select id="countAllByPartnershipIdxAndProjectCategoryIdx" resultType="Integer">
         SELECT COUNT(*)
         FROM project
         WHERE project_category_idx = #{projectCategoryIdx}
+        AND partnership_idx = #{partnershipIdx}
     </select>
 </mapper>

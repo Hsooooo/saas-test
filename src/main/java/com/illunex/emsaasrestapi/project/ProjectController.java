@@ -120,9 +120,9 @@ public class ProjectController {
     }
 
     /**
-     * 카테고리별 프로젝트 단순 내용 조회
+     * 카테고리에 속한 프로젝트 목록 조회
      * @param memberVO
-     * @param projectId
+     * @param projectCategoryIdx
      * @param pageRequest
      * @param sort
      * @return
@@ -131,9 +131,9 @@ public class ProjectController {
     @GetMapping("/list")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> getProjectList(@CurrentMember MemberVO memberVO,
-                                            RequestProjectDTO.ProjectId projectId,
+                                            Integer projectCategoryIdx,
                                             CustomPageRequest pageRequest, String[] sort) throws CustomException {
-        return projectService.getProjectList(memberVO, projectId, pageRequest, sort);
+        return projectService.getProjectList(memberVO, projectCategoryIdx, pageRequest, sort);
     }
 
     /**

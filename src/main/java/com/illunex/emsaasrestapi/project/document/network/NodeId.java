@@ -11,5 +11,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "node_id")
 public class NodeId {
     private Integer projectIdx;
+    private String type;
     private Object nodeIdx;
 }

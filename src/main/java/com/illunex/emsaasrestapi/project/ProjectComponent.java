@@ -15,8 +15,10 @@ import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +49,7 @@ import java.util.stream.Stream;
 public class ProjectComponent {
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final ProjectFileMapper projectFileMapper;
 
     private final ModelMapper modelMapper;
     private final MongoTemplate mongoTemplate;
@@ -221,6 +224,14 @@ public class ProjectComponent {
             }
 
             modelMapper.map(project, response);
+
+            // 프로젝트 파일 업로드 맵핑
+            List<ProjectFileVO> projectFileList = projectFileMapper.selectAllByProjectIdx(projectIdx);
+            if(projectFileList.size() > 0) {
+                response.setProjectFileList(modelMapper.map(projectFileList, new TypeToken<List<ResponseProjectDTO.ProjectFile>>(){}.getType()));
+            } else {
+                response.setProjectFileList(new ArrayList<>());
+            }
 
             return response;
         }

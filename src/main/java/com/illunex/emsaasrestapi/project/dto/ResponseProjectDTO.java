@@ -37,7 +37,8 @@ public class ResponseProjectDTO {
         private List<ProjectEdge> projectEdgeList;                  // 엣지정보
         private List<ProjectNodeSize> projectNodeSizeList;          // 노드사이즈정보
         private List<ProjectFilter> projectFilterList;              // 필터링정보
-        private List<ProjectNodeContent> projectNodeContentList;      // 속성정보
+        private List<ProjectNodeContent> projectNodeContentList;    // 속성정보
+        private List<ProjectFile> projectFileList;                  // 업로드 파일
         private ZonedDateTime updateDate;
         private ZonedDateTime createDate;
         private ZonedDateTime deleteDate;
@@ -45,6 +46,29 @@ public class ResponseProjectDTO {
         public void setStatusCd(String statusCd) {
             this.statusCd = statusCd;
             this.statusCdDesc = Objects.requireNonNull(BaseCodeEnum.fromCode(EnumCode.Project.StatusCd.class, statusCd)).getValue();
+        }
+    }
+
+    @Getter
+    @Setter
+    /**
+     * 프로젝트 업로드 파일 정보
+     */
+    public static class ProjectFile {
+        private Integer idx;
+        private Integer projectIdx;
+        private String fileName;
+        private String fileUrl;
+        private String filePath;
+        private String fileSize;
+        private String fileCd;
+        private String fileCdDesc;
+        private ZonedDateTime updateDate;
+        private ZonedDateTime createDate;
+
+        public void setFileCd(String fileCd) {
+            this.fileCd = fileCd;
+            this.fileCdDesc = Objects.requireNonNull(BaseCodeEnum.fromCode(EnumCode.ProjectFile.FileCd.class, fileCd)).getValue();
         }
     }
 

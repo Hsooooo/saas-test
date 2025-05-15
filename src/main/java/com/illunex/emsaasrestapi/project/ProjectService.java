@@ -4,6 +4,8 @@ import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
+import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
@@ -21,8 +23,10 @@ import com.illunex.emsaasrestapi.project.document.project.ProjectEdge;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNode;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
@@ -55,12 +59,14 @@ import java.util.List;
 public class ProjectService {
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final ProjectFileMapper projectFileMapper;
     private final PartnershipMemberMapper partnershipMemberMapper;
 
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
     private final PartnershipComponent partnershipComponent;
     private final ProjectComponent projectComponent;
+    private final AwsS3Component awsS3Component;
 
     /**
      * 프로젝트 생성
@@ -105,7 +111,7 @@ public class ProjectService {
 
             // 프로젝트 생성자를 관리자로 프로젝트 구성원에 추가
             ProjectMemberVO projectMemberVO = new ProjectMemberVO();
-            projectMemberVO.setProjectIdx(partnershipMemberVO.getPartnershipIdx());
+            projectMemberVO.setProjectIdx(projectVO.getIdx());
             projectMemberVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
             projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Manager.getCode());
             projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
@@ -271,6 +277,20 @@ public class ProjectService {
             projectVO.setStatusCd(EnumCode.Project.StatusCd.Step1.getCode());
             projectMapper.updateByProjectVO(projectVO);
 
+            // s3 업로드
+            AwsS3ResourceDTO awsS3ResourceDTO = AwsS3ResourceDTO.builder()
+                    .fileName(excelFile.getOriginalFilename())
+                    .s3Resource(awsS3Component.upload(excelFile, AwsS3Component.FolderType.ProjectFile, projectIdx.toString()))
+                    .build();
+            ProjectFileVO projectFileVO = new ProjectFileVO();
+            projectFileVO.setProjectIdx(projectIdx);
+            projectFileVO.setFileName(awsS3ResourceDTO.getFileName());
+            projectFileVO.setFileUrl(awsS3ResourceDTO.getUrl());
+            projectFileVO.setFilePath(awsS3ResourceDTO.getPath());
+            projectFileVO.setFileSize(awsS3ResourceDTO.getSize());
+            projectFileVO.setFileCd(EnumCode.ProjectFile.FileCd.Single.getCode());
+            Integer updateCnt = projectFileMapper.insertByProjectFileVO(projectFileVO);
+
             return CustomResponse.builder()
                     .data(projectComponent.createResponseProjectExcel(projectIdx))
                     .build();
@@ -322,6 +342,7 @@ public class ProjectService {
                     Node node = Node.builder()
                             .nodeId(NodeId.builder()
                                     .projectIdx(projectIdx)
+                                    .type(excelRow.getExcelRowId().getExcelSheetName())
                                     .nodeIdx(excelRow.getData().get(projectNode.getUniqueCellName()))       // 노드 고유키
                                     .build()
                             )
@@ -349,6 +370,7 @@ public class ProjectService {
                     Edge edge = Edge.builder()
                             .edgeId(EdgeId.builder()
                                     .projectIdx(projectIdx)
+                                    .type(excelRow.getExcelRowId().getExcelSheetName())
                                     .edgeIdx(excelRow.getExcelRowId().getExcelRowIdx())                     // 엑셀 파싱 시 생성된 고유키
                                     .build()
                             )
@@ -408,20 +430,23 @@ public class ProjectService {
     }
 
     /**
-     * 카테고리별 프로젝트 단순 내용 조회
-     * @param projectId
+     * 카테고리에 속한 프로젝트 목록 조회
+     * @param projectCategoryIdx
      * @param pageRequest
      * @param sort
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> getProjectList(MemberVO memberVO, RequestProjectDTO.ProjectId projectId, CustomPageRequest pageRequest, String[] sort) throws CustomException {
-        // TODO : 프로젝트에 포함되어 있지 않는 프로젝트도 표기해야 하는가??? [JWC] 확인 필요
+    public CustomResponse<?> getProjectList(MemberVO memberVO, Integer projectCategoryIdx, CustomPageRequest pageRequest, String[] sort) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember2(memberVO, projectCategoryIdx);
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
 
         Pageable pageable = pageRequest.of(sort);
         // 프로젝트 조회
-        List<ProjectVO> projectList = projectMapper.selectAllByProjectId(projectId, pageable);
-        Integer totalProjectList = projectMapper.countAllByProjectId(projectId);
+        List<ProjectVO> projectList = projectMapper.selectAllByPartnershipIdxAndProjectCategoryIdx(partnershipMemberVO.getPartnershipIdx() ,projectCategoryIdx, pageable);
+        Integer totalProjectList = projectMapper.countAllByPartnershipIdxAndProjectCategoryIdx(partnershipMemberVO.getPartnershipIdx(), projectCategoryIdx);
 
         List<ResponseProjectDTO.ProjectPreview> result = projectList.stream().map(projectVO ->
                 ResponseProjectDTO.ProjectPreview.builder()
@@ -438,8 +463,6 @@ public class ProjectService {
         ).toList();
 
         for(ResponseProjectDTO.ProjectPreview projectPreview : result){
-            // TODO [PYJ] : 노드 개수 추가 필요
-            // TODO [PYJ] : 엣지 개수 추가 필요
             // 프로젝트 구성원 조회
             List<PartnershipMemberVO> projectMemberList = partnershipMemberMapper.selectAllByProjectIdx(projectPreview.getProjectIdx());
             List<ResponseMemberDTO.Member> members = modelMapper.map(projectMemberList, new TypeToken<List<ResponseMemberDTO.Member>>(){}.getType());

@@ -177,4 +177,45 @@ public class EnumCode {
             private final String value;
         }
     }
+    /**
+     * 프로젝트 업로드 파일
+     */
+    public static class ProjectFile {
+        /**
+         * 프로젝트 업로드 파일 구분
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum FileCd implements BaseCodeEnum {
+            Single("PFC0001", "단일 파일"),
+            MultipleNode("PFC0002", "멀티 파일(노드)"),
+            MultipleEdge("PFC0003", "멀티 파일(엣지)");
+
+            private final String code;
+            private final String value;
+        }
+    }
+//
+//    // 이메일
+//    public static class Email {
+//        @AllArgsConstructor
+//        public enum TypeCd {
+//            JoinEmail("ETP0001", "회원가입 인증"),
+//            FindPasswordEmail("ETP0002", "비밀번호 찾기");
+//
+//            @Getter
+//            private String code;
+//            @Getter
+//            private String value;
+//
+//            public static EnumCode.Email.TypeCd codeToEnum(String stringCode) {
+//                for (EnumCode.Email.TypeCd value : values()) {
+//                    if (value.code.equals(stringCode)) {
+//                        return value;
+//                    }
+//                }
+//                return null;
+//            }
+//        }
+//    }
 }

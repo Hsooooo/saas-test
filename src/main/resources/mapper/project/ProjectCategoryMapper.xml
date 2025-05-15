@@ -18,7 +18,7 @@
             now(),
             now()
         )
-        <selectKey resultType="int" keyProperty="idx" order="AFTER">
+        <selectKey resultType="Integer" keyProperty="idx" order="AFTER">
             SELECT LAST_INSERT_ID()
         </selectKey>
     </insert>
@@ -43,4 +43,11 @@
         DELETE FROM project_category
         WHERE idx = #{idx}
     </delete>
+
+    <select id="selectByProjectCategoryIdx" parameterType="Integer" resultType="ProjectCategoryVO">
+        SELECT
+            *
+        FROM project_category
+        WHERE idx = #{projectCategoryIdx}
+    </select>
 </mapper>
