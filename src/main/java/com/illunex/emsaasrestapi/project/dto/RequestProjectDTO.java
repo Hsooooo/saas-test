@@ -166,16 +166,4 @@ public class RequestProjectDTO {
         private String cellName;
         private String cellType;
     }
-
-    /**
-     * 프로젝트 복사 요청구조
-     */
-    @Getter
-    @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ProjectCopy {
-        private Integer projectIdx;
-    }
 }
