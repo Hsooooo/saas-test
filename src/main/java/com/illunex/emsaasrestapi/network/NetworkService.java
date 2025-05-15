@@ -25,10 +25,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -130,9 +127,9 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkInfo(MemberVO memberVO, RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
+//        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+//        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
 
         List<ResponseNetworkDTO.NodeDetailInfo> data = new ArrayList<>();
 
@@ -158,6 +155,11 @@ public class NetworkService {
 
         List <ProjectNodeContent> nodeContentList = project.getProjectNodeContentList();
         ProjectNodeContent findNodeInfo = null;
+
+        // 프로젝트 필드 정보가 없을 경우 예외처리
+        if(nodeContentList == null) {
+            throw new CustomException(ErrorCode.PROJECT_CONTENT_EMPTY_DATA);
+        }
 
         for(ProjectNodeContent nodeContent : nodeContentList) {
             if(nodeContent.getNodeType().equals(node.getLabel())){
@@ -206,14 +208,20 @@ public class NetworkService {
         }
 
         //노드검색
-        String labelTitleCellName = project.getProjectNodeContentList().get(0).getLabelTitleCellName();
-        String nodeType = project.getProjectNodeContentList().get(0).getNodeType();
-        Query query2 = Query.query(
-                new Criteria().andOperator(
-                        Criteria.where("properties." + labelTitleCellName).regex(".*" + search.getKeyword() + ".*"),
-                        Criteria.where("label").is(nodeType)
-                ));
-        List<Node> nodes = mongoTemplate.find(query2, Node.class);
+        List<ProjectNodeContent> projectNodeContentList = project.getProjectNodeContentList();
+        if(projectNodeContentList == null) {
+            throw new CustomException(ErrorCode.PROJECT_CONTENT_EMPTY_DATA);
+        }
+        List<Criteria> criteriaList = projectNodeContentList.stream().map(
+                target -> new Criteria().andOperator(
+                        Criteria.where("properties." + target.getLabelTitleCellName()).regex(".*" + search.getKeyword() + ".*"),
+                        Criteria.where("label").is(target.getNodeType())
+                )
+        ).toList();
+        Criteria combinedCriteria = new Criteria().orOperator(criteriaList.toArray(new Criteria[0]));
+        Query combinedQuery = Query.query(combinedCriteria);
+        List<Node> nodes = mongoTemplate.find(combinedQuery, Node.class);
+
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
                         ResponseNetworkDTO.NodeInfo.builder()
                                 .nodeId(target.getNodeId())
@@ -222,9 +230,9 @@ public class NetworkService {
                                 .build()
                         ).toList();
 
-        response.getNodes().addAll(nodeInfoList);
+        response.setNodes(nodeInfoList);
 
-        //엣지검색
+        //관계망 검색
         networkSearch(response, nodes);
 
         //node 정보 사용자가 지정한 정보만 보이도록 필터링
@@ -237,8 +245,21 @@ public class NetworkService {
         nodeInfoList = response.getNodes();
         for(ResponseNetworkDTO.NodeInfo nodeInfo : nodeInfoList){
             ProjectNodeContent currentOption = projectNodeContentMap.get(nodeInfo.getLabel());
-            nodeInfo.getProperties().entrySet().removeIf(entry ->
-                    !currentOption.getLabelKeywordCellList().contains(entry.getKey()));
+            List<String> cellList = currentOption.getProjectNodeContentCellList().stream()
+                    .map(ProjectNodeContentCell::getCellName).toList();
+            List<ResponseNetworkDTO.NodeDetailInfo> props = new ArrayList<>();
+            for(ProjectNodeContentCell cell : currentOption.getProjectNodeContentCellList()){
+                ResponseNetworkDTO.NodeDetailInfo nodeDetailInfo = ResponseNetworkDTO.NodeDetailInfo.builder()
+                        .label((String) cell.getLabel())
+                        .cellName(cell.getCellName())
+                        .cellType(cell.getCellType())
+                        .value(nodeInfo.getProperties().get(cell.getCellName()))
+                        .build();
+                props.add(nodeDetailInfo);
+            }
+            LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+            map.put("data", props);
+            nodeInfo.setProperties(map);
             nodeInfo.setDelimiter(currentOption.getKeywordSplitUnit());
         }
         response.setNodes(nodeInfoList);
