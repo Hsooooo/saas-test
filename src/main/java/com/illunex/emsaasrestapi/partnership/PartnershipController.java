@@ -108,4 +108,15 @@ public class PartnershipController {
                                                 @CurrentMember MemberVO memberVO) throws CustomException, IOException {
         return partnershipService.updateProfileImage(partnershipIdx, memberVO, file);
     }
+
+    /**
+     *
+     * @param partnershipIdx
+     * @return
+     */
+    @PutMapping("/{partnershipIdx}/additional")
+    public CustomResponse<?> updatePartnershipAdditionalInfo(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                             @RequestBody RequestPartnershipDTO.AdditionalInfo request) {
+        return partnershipService.updatePartnershipAdditionalInfo(partnershipIdx, request);
+    }
 }
