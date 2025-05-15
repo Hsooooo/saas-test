@@ -10,15 +10,12 @@ import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.ProjectComponent;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
-import com.illunex.emsaasrestapi.project.document.network.EdgeId;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContent;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContentCell;
-import com.mongodb.client.MongoCursor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -355,4 +352,63 @@ public class NetworkService {
         log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());
     }
 
+    /**
+     * 자동완성 조회
+     * @param memberVO
+     * @param autoCompleteSearch
+     */
+    public CustomResponse<?> getAutoComplete(MemberVO memberVO,
+                                             RequestNetworkDTO.AutoCompleteSearch autoCompleteSearch) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, autoCompleteSearch.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+
+        // 프로젝트 조회
+        Project project = mongoTemplate.findOne(new Query(Criteria.where("_id").is(autoCompleteSearch.getProjectIdx())), Project.class);
+        if (project == null || project.getProjectNodeContentList().isEmpty()) {
+            throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+        }
+
+        List<ProjectNodeContent> projectNodeContentList = project.getProjectNodeContentList();
+
+        // 타겟 노드 타입 필터링
+        List<ProjectNodeContent> filteredNodeContents = projectNodeContentList.stream()
+                .filter(content -> autoCompleteSearch.getNodeType().isEmpty() || autoCompleteSearch.getNodeType().contains(content.getNodeType()))
+                .toList();
+
+        if (filteredNodeContents.isEmpty()) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
+
+        Map<String, List<ResponseNetworkDTO.AutoComplete>> response = new HashMap<>();
+
+        // 노드 데이터 조회
+        for (ProjectNodeContent content : filteredNodeContents) {
+            String nodeType = content.getNodeType();
+            String labelTitleCellName = content.getLabelTitleCellName();
+
+            Criteria criteria = Criteria.where("_id.projectIdx").is(autoCompleteSearch.getProjectIdx())
+                    .and("_id.type").is(nodeType)
+                    .and("properties." + labelTitleCellName)
+                    .regex(".*" + autoCompleteSearch.getSearchKeyword() + ".*", "i");
+
+            List<Node> nodes = mongoTemplate.find(new Query(criteria).limit(autoCompleteSearch.getLimit()), Node.class, "node");
+
+            List<ResponseNetworkDTO.AutoComplete> result = new ArrayList<>();
+
+            for (Node node : nodes) {
+                ResponseNetworkDTO.AutoComplete autoComplete = ResponseNetworkDTO.AutoComplete.builder()
+                        .nodeId(node.getNodeId())
+                        .nodeLabelTitle(node.getProperties().get(labelTitleCellName).toString())
+                        .build();
+
+                result.add(autoComplete);
+            }
+
+            response.put(nodeType, result);
+        }
+
+        return CustomResponse.builder().data(response).build();
+    }
 }

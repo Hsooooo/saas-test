@@ -70,4 +70,17 @@ public class NetworkController {
                     @RequestBody RequestNetworkDTO.Search search) throws CustomException {
         return networkService.getNetworkSearch(memberVO, search);
     }
+
+    /**
+     * 자동완성 API
+     * @param memberVO
+     * @param autoCompleteSearch
+     * @return
+     * @throws CustomException
+     */
+    @PatchMapping("/autoComplete")
+    public CustomResponse<?> getAutoComplete(@CurrentMember MemberVO memberVO,
+                                             @RequestBody RequestNetworkDTO.AutoCompleteSearch autoCompleteSearch) throws CustomException {
+        return networkService.getAutoComplete(memberVO,autoCompleteSearch);
+    }
 }

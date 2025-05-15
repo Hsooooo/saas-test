@@ -123,4 +123,15 @@ public class ResponseNetworkDTO {
             return Objects.hash(edgeId.getEdgeIdx());
         }
     }
+
+    /**
+     * 자동검색 조회
+     */
+    @Getter
+    @Setter
+    @Builder
+    public static class AutoComplete {
+        private Object nodeId;
+        private String nodeLabelTitle;
+    }
 }

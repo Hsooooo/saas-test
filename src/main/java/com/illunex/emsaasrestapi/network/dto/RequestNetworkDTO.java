@@ -2,6 +2,8 @@ package com.illunex.emsaasrestapi.network.dto;
 
 import lombok.*;
 
+import java.util.List;
+
 public class RequestNetworkDTO {
 
     /**
@@ -29,5 +31,16 @@ public class RequestNetworkDTO {
     public static class Search {
         private Integer projectIdx;
         private String keyword;
+    }
+
+    /**
+     * 자동완성 검색
+     */
+    @Getter
+    public static class AutoCompleteSearch {
+        private Integer projectIdx;        // 프로젝트 ID
+        private List<String> nodeType;     // 검색할 노트타입
+        private String searchKeyword;      // 키워드
+        private Integer limit;             // 제한수
     }
 }
