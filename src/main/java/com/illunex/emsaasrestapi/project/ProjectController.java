@@ -146,8 +146,7 @@ public class ProjectController {
     @PostMapping("/copy")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> copyProject(@CurrentMember MemberVO memberVO,
-                                         @RequestBody List<RequestProjectDTO.ProjectId> projectIds,
-                                         CustomPageRequest pageRequest, String[] sort) throws CustomException, JsonProcessingException {
-        return projectService.copyProject(memberVO, projectIds, pageRequest, sort);
+                                         @RequestBody List<RequestProjectDTO.ProjectId> projectIds) throws CustomException, JsonProcessingException {
+        return projectService.copyProject(memberVO, projectIds);
     }
 }

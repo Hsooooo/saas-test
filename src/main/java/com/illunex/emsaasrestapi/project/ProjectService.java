@@ -478,13 +478,11 @@ public class ProjectService {
      * 프로젝트 복제
      * @param memberVO
      * @param projectIds
-     * @param pageRequest
-     * @param sort
      * @return
      * @throws CustomException
      */
     @Transactional(rollbackFor = Exception.class)
-    public CustomResponse<?> copyProject(MemberVO memberVO, List<RequestProjectDTO.ProjectId> projectIds, CustomPageRequest pageRequest, String[] sort) throws CustomException {
+    public CustomResponse<?> copyProject(MemberVO memberVO, List<RequestProjectDTO.ProjectId> projectIds) throws CustomException {
         for(RequestProjectDTO.ProjectId projectId : projectIds){
             // 파트너쉽 회원 여부 체크
             PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectId.getProjectIdx());
