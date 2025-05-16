@@ -43,9 +43,9 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkAll(MemberVO memberVO, Integer projectIdx) throws CustomException {
         // 파트너쉽 회원 여부 체크
-//        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-//        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
 
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
@@ -84,9 +84,9 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkSingleExtend(MemberVO memberVO, RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         // 파트너쉽 회원 여부 체크
-//        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
         // 프로젝트 구성원 여부 체크
-//        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
 
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
@@ -124,9 +124,9 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkInfo(MemberVO memberVO, RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         // 파트너쉽 회원 여부 체크
-//        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
         // 프로젝트 구성원 여부 체크
-//        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
 
         List<ResponseNetworkDTO.NodeDetailInfo> data = new ArrayList<>();
 
@@ -192,9 +192,9 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkSearch(MemberVO memberVO, RequestNetworkDTO.Search search) throws CustomException {
         // 파트너쉽 회원 여부 체크
-//        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, search.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, search.getProjectIdx());
         // 프로젝트 구성원 여부 체크
-//        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
 
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
