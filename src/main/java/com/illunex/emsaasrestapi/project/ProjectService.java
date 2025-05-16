@@ -8,6 +8,7 @@ import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
 import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
+import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
@@ -61,6 +62,7 @@ public class ProjectService {
     private final ProjectMemberMapper projectMemberMapper;
     private final ProjectFileMapper projectFileMapper;
     private final PartnershipMemberMapper partnershipMemberMapper;
+    private final MemberMapper memberMapper;
 
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
@@ -463,13 +465,13 @@ public class ProjectService {
 
         for(ResponseProjectDTO.ProjectPreview projectPreview : result){
             // 프로젝트 구성원 조회
-            List<PartnershipMemberVO> projectMemberList = partnershipMemberMapper.selectAllByProjectIdx(projectPreview.getProjectIdx());
+            List<MemberVO> projectMemberList = memberMapper.selectByProjectIdx(projectPreview.getProjectIdx());
             List<ResponseMemberDTO.Member> members = modelMapper.map(projectMemberList, new TypeToken<List<ResponseMemberDTO.Member>>(){}.getType());
             projectPreview.setMembers(members);
         }
 
         return CustomResponse.builder()
-                .data(new PageImpl<>(result, pageable, totalProjectList))
+                .data(new PageImpl<>(result, pageable, totalProjectList.longValue()))
                 .build();
     }
 

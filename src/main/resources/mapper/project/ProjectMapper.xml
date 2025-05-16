@@ -93,13 +93,15 @@
 
     <select id="selectAllByPartnershipIdxAndProjectCategoryIdx" resultType="ProjectVO">
         SELECT *
-        FROM project
-        WHERE partnership_idx = #{partnershipIdx}
-        AND project_category_idx = #{projectCategoryIdx}
+        FROM project p
+        LEFT JOIN project_member pm ON pm.project_idx = p.idx
+        WHERE p.partnership_idx = #{partnershipIdx}
+        AND p.project_category_idx = #{projectCategoryIdx}
+        AND pm.partnership_member_idx in (#{partnershipIdx})
         <if test="pageable.sort != null and !pageable.sort.empty">
             ORDER BY
             <foreach item="order" collection="pageable.sort" separator=",">
-                ${order.property} ${order.direction}
+                p.${order.property} ${order.direction}
             </foreach>
         </if>
         LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
@@ -107,8 +109,10 @@
 
     <select id="countAllByPartnershipIdxAndProjectCategoryIdx" resultType="Integer">
         SELECT COUNT(*)
-        FROM project
-        WHERE project_category_idx = #{projectCategoryIdx}
-        AND partnership_idx = #{partnershipIdx}
+        FROM project p
+        LEFT JOIN project_member pm ON pm.project_idx = p.idx
+        WHERE p.project_category_idx = #{projectCategoryIdx}
+        AND p.partnership_idx = #{partnershipIdx}
+        AND pm.partnership_member_idx in (#{partnershipIdx})
     </select>
 </mapper>

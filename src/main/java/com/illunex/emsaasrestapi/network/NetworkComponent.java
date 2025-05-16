@@ -1,0 +1,135 @@
+package com.illunex.emsaasrestapi.network;
+
+
+import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.code.EnumCode;
+import com.illunex.emsaasrestapi.network.dto.ResponseNetworkDTO;
+import com.illunex.emsaasrestapi.project.document.excel.Excel;
+import com.illunex.emsaasrestapi.project.document.excel.ExcelRow;
+import com.illunex.emsaasrestapi.project.document.excel.ExcelRowId;
+import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
+import com.illunex.emsaasrestapi.project.document.network.Edge;
+import com.illunex.emsaasrestapi.project.document.network.Node;
+import com.illunex.emsaasrestapi.project.document.project.Project;
+import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
+import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectVO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.bson.Document;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.CountOperation;
+import org.springframework.data.mongodb.core.aggregation.MatchOperation;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StopWatch;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class NetworkComponent {
+
+    private final MongoTemplate mongoTemplate;
+
+
+
+    /**
+     * 1뎁스로 노드의 관계망 검색
+     * @param response
+     * @param nodes
+     */
+    public void networkSearch(ResponseNetworkDTO.SearchNetwork response, List<Node> nodes){
+        if(nodes.isEmpty()) return;
+        StopWatch stopWatch = new StopWatch();
+
+        //1. 해당 노드들의 엣지 검색
+        stopWatch.start("노드들의 엣지조회");
+        Map<String, List<Node>> typeNodeList = nodes.stream().collect(Collectors.groupingBy(node -> (String) node.getLabel()));
+        List<Criteria> criteriaList = typeNodeList.entrySet().stream()
+                .flatMap(entry -> Stream.of(
+                        Criteria.where("startType").is(entry.getKey()).and("start").in(entry.getValue().stream().map(Node::getId).toList()),
+                        Criteria.where("endType").is(entry.getKey()).and("end").in(entry.getValue().stream().map(Node::getId).toList())
+                ))
+                .toList();
+        Criteria combinedCriteria = new Criteria().orOperator(criteriaList.toArray(new Criteria[0]));
+        Query combinedQuery = Query.query(combinedCriteria);
+        List<Edge> edgeList = mongoTemplate.find(combinedQuery, Edge.class);
+        stopWatch.stop();
+
+
+        //2. 조회된 엣지 response 용으로 변경
+        List<ResponseNetworkDTO.EdgeInfo> edgeInfoList = edgeList.stream().map(target ->
+                ResponseNetworkDTO.EdgeInfo.builder()
+                        .edgeId(target.getEdgeId())
+                        .startType(target.getStartType())
+                        .start(target.getStart())
+                        .endType(target.getEndType())
+                        .end(target.getEnd())
+                        .build()
+        ).toList();
+
+        //3. 중복제거(override 해놓음) 및 response에 담기(현재 1뎁스만 하기때문에 기존 엣지 가져와서 비교 안해도 됨)
+        List<ResponseNetworkDTO.EdgeInfo> mutableLinkList = new ArrayList<>(response.getLinks());
+        mutableLinkList.addAll(edgeInfoList);
+        mutableLinkList = mutableLinkList.stream().distinct().toList();
+        response.setLinks(mutableLinkList);
+
+
+        //4. 해당 엣지들로 노드 검색
+        stopWatch.start("엣지들의 노드조회");
+        if(edgeInfoList.isEmpty()) return;
+
+        Map<String, List<Object>> typeEdgeInfoList = new HashMap<>();
+        for(ResponseNetworkDTO.EdgeInfo target : edgeInfoList){
+            typeEdgeInfoList.computeIfAbsent((String) target.getStartType(), k -> new ArrayList<>()).add(target.getStart());
+            typeEdgeInfoList.computeIfAbsent((String) target.getEndType(), k -> new ArrayList<>()).add(target.getEnd());
+        }
+        List<Criteria> criteriaList2 = typeEdgeInfoList.entrySet().stream()
+                .map(entry -> Criteria.where("label").is(entry.getKey()).and("id").in(entry.getValue()))
+                .toList();
+        Criteria combinedCriteria2 = new Criteria().orOperator(criteriaList2.toArray(new Criteria[0]));
+        Query query = Query.query(combinedCriteria2);
+        List<Node> nodeList = mongoTemplate.find(query, Node.class);
+        stopWatch.stop();
+
+        //5. 조회된 노드 response 용으로 변경
+        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodeList.stream().map(target ->
+                ResponseNetworkDTO.NodeInfo.builder()
+                        .nodeId(target.getNodeId())
+                        .label(target.getLabel())
+                        .properties(target.getProperties())
+                        .build()
+        ).toList();
+
+
+        //6. 중복제거(override 해놓음) 및 response에 담기
+        List<ResponseNetworkDTO.NodeInfo> mutableNodeList = new ArrayList<>(response.getNodes());
+        mutableNodeList.addAll(nodeInfoList);
+        mutableNodeList = mutableNodeList.stream().distinct().toList();
+        response.setNodes(mutableNodeList);
+
+        log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());
+    }
+}
