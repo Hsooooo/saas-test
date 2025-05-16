@@ -108,15 +108,15 @@ public class ProjectController {
     /**
      * 프로젝트 카테고리 이동
      * @param memberVO
-     * @param projectId
+     * @param projectIdList
      * @return
      * @throws CustomException
      */
     @PatchMapping("/move")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> moveProject(@CurrentMember MemberVO memberVO,
-                                         @RequestBody List<RequestProjectDTO.ProjectId> projectId) throws CustomException {
-        return projectService.moveProject(memberVO, projectId);
+                                         @RequestBody List<RequestProjectDTO.ProjectId> projectIdList) throws CustomException {
+        return projectService.moveProject(memberVO, projectIdList);
     }
 
     /**

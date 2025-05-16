@@ -7,7 +7,6 @@ import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
-import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +46,7 @@ public class PartnershipComponent {
      * @return
      * @throws CustomException
      */
-    public PartnershipMemberVO checkPartnershipMember2(MemberVO memberVO, Integer projectCategoryIdx) throws CustomException {
+    public PartnershipMemberVO checkPartnershipMemberCategory(MemberVO memberVO, Integer projectCategoryIdx) throws CustomException {
         // 프로젝트 조회
         ProjectCategoryVO projectCategoryVO = projectCategoryMapper.selectByProjectCategoryIdx(projectCategoryIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));

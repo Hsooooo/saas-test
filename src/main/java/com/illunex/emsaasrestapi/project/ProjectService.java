@@ -132,7 +132,7 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
         return CustomResponse.builder()
                 .data(projectComponent.createResponseProject(projectIdx))
@@ -148,7 +148,7 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, project.getProjectIdx());
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(project.getProjectIdx(), partnershipMemberVO.getIdx());
 
         // RDB 처리 부분
         ProjectVO projectVO = projectMapper.selectByIdx(project.getProjectIdx())
@@ -233,7 +233,7 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
         // RDB 프로젝트 조회
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
@@ -263,7 +263,7 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
         // 프로젝트 생성 여부 확인
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
@@ -310,7 +310,7 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
         // 1. RDB 프로젝트 조회
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
@@ -402,22 +402,22 @@ public class ProjectService {
 
     /**
      * 프로젝트 카테고리 이동
-     * @param projectId
+     * @param projectIdList
      * @return
      * @throws CustomException
      */
     @Transactional
-    public CustomResponse<?> moveProject(MemberVO memberVO, List<RequestProjectDTO.ProjectId> projectId) throws CustomException {
-        for(RequestProjectDTO.ProjectId dto : projectId){
+    public CustomResponse<?> moveProject(MemberVO memberVO, List<RequestProjectDTO.ProjectId> projectIdList) throws CustomException {
+        for(RequestProjectDTO.ProjectId projectId : projectIdList){
             // 파트너쉽 회원 여부 체크
-            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, dto.getProjectIdx());
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectId.getProjectIdx());
             // 프로젝트 구성원 여부 체크
-            projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+            projectComponent.checkProjectMember(projectId.getProjectIdx(), partnershipMemberVO.getIdx());
 
             //maraiDB
             ProjectVO projectVO = ProjectVO.builder()
-                    .idx(dto.getProjectIdx())
-                    .projectCategoryIdx(dto.getProjectCategoryIdx())
+                    .idx(projectId.getProjectIdx())
+                    .projectCategoryIdx(projectId.getProjectCategoryIdx())
                     .build();
 
             projectMapper.updateProjectCategoryIdxByProjectVO(projectVO);
@@ -439,12 +439,11 @@ public class ProjectService {
      */
     public CustomResponse<?> getProjectList(MemberVO memberVO, Integer projectCategoryIdx, CustomPageRequest pageRequest, String[] sort) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember2(memberVO, projectCategoryIdx);
-        // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberCategory(memberVO, projectCategoryIdx);
 
         Pageable pageable = pageRequest.of(sort);
         // 프로젝트 조회
+        // TODO : 카테고리 조회 시에 projectMember로 포함이 되어 있는거만 조회해야 함. [CJW]
         List<ProjectVO> projectList = projectMapper.selectAllByPartnershipIdxAndProjectCategoryIdx(partnershipMemberVO.getPartnershipIdx() ,projectCategoryIdx, pageable);
         Integer totalProjectList = projectMapper.countAllByPartnershipIdxAndProjectCategoryIdx(partnershipMemberVO.getPartnershipIdx(), projectCategoryIdx);
 
@@ -487,7 +486,7 @@ public class ProjectService {
             // 파트너쉽 회원 여부 체크
             PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
             // 프로젝트 구성원 여부 체크
-            projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+            projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
             // MariaDB 프로젝트 조회
             ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)

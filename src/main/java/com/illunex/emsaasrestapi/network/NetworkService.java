@@ -362,7 +362,7 @@ public class NetworkService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, autoCompleteSearch.getProjectIdx());
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(autoCompleteSearch.getProjectIdx(), partnershipMemberVO.getIdx());
 
         // 프로젝트 조회
         Project project = mongoTemplate.findOne(new Query(Criteria.where("_id").is(autoCompleteSearch.getProjectIdx())), Project.class);

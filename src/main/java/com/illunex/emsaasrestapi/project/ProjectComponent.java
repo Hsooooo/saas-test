@@ -56,12 +56,12 @@ public class ProjectComponent {
 
     /**
      * 프로젝트 구성원 여부 체크
-     * @param projectMemberIdx
      * @param projectIdx
+     * @param projectMemberIdx
      * @return
      * @throws CustomException
      */
-    public ProjectMemberVO checkProjectMember(Integer projectMemberIdx, Integer projectIdx) throws CustomException {
+    public ProjectMemberVO checkProjectMember(Integer projectIdx, Integer projectMemberIdx) throws CustomException {
         // 프로젝트 구성원 조회
         ProjectMemberVO projectMemberVO = projectMemberMapper.selectByProjectIdxAndPartnershipMemberIdx(projectIdx, projectMemberIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_INVALID_MEMBER));
