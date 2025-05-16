@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS `em_stock`.`code`
+CREATE TABLE IF NOT EXISTS `em_saas`.`code`
 (
     code        VARCHAR(7)   NOT NULL COMMENT '코드',
     first_code  VARCHAR(3)   NULL COMMENT '첫번째 코드',
@@ -213,6 +213,22 @@ create index if not exists partnership_idx
 
 create index if not exists partnership_member_idx
     on em_saas.partnership_invited_member (partnership_member_idx);
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_additional` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너쉽 부가정보 번호',
+    `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 번호',
+    `attr_key` VARCHAR(255) NULL DEFAULT NULL COMMENT '파트너쉽 부가정보 속성 키' COLLATE 'utf8mb4_general_ci',
+    `attr_value` VARCHAR(255) NULL DEFAULT NULL COMMENT '파트너쉽 부가정보 속성 값' COLLATE 'utf8mb4_general_ci',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `fk_partnership_additional_partnership_idx` (`partnership_idx`) USING BTREE,
+    CONSTRAINT `fk_partnership_additional_partnership_idx` FOREIGN KEY (`partnership_idx`) REFERENCES `partnership` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+    UNIQUE INDEX `partnership_idx_attr_key` (`partnership_idx`, `attr_key`) USING BTREE
+)
+COMMENT='파트너쉽 부가정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`project_category` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '카테고리번호',

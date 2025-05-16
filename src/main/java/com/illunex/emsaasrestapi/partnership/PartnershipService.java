@@ -16,13 +16,11 @@ import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.dto.PartnershipCreateDTO;
 import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipAdditionalMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipPositionMapper;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipInvitedMemberVO;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipPositionVO;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
+import com.illunex.emsaasrestapi.partnership.vo.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +44,7 @@ public class PartnershipService {
     private final PartnershipMemberMapper partnershipMemberMapper;
     private final PartnershipPositionMapper partnershipPositionMapper;
     private final LicensePartnershipMapper licensePartnershipMapper;
+    private final PartnershipAdditionalMapper partnershipAdditionalMapper;
     private final EmailHistoryMapper emailHistoryMapper;
     private final MemberMapper memberMapper;
     private final MemberJoinMapper memberJoinMapper;
@@ -306,4 +306,35 @@ public class PartnershipService {
                 .build();
     }
 
+
+    /**
+     * 파트너쉽 부가정보 저장
+     * @param partnershipIdx
+     * @param request
+     * @return
+     */
+    public CustomResponse<?> updatePartnershipAdditionalInfo(Integer partnershipIdx, RequestPartnershipDTO.AdditionalInfo request) {
+        partnershipAdditionalMapper.deleteByPartnershipIdx(partnershipIdx);
+
+        Field[] fields = RequestPartnershipDTO.AdditionalInfo.class.getDeclaredFields();
+        for (Field field : fields) {
+            field.setAccessible(true);
+            try {
+                String key = field.getName();
+                String value = (String) field.get(request);
+
+                if (value != null && !value.isBlank()) {
+                    PartnershipAdditionalVO additionalVO = new PartnershipAdditionalVO();
+                    additionalVO.setPartnershipIdx(partnershipIdx);
+                    additionalVO.setAttrKey(key);
+                    additionalVO.setAttrValue(value);
+                    partnershipAdditionalMapper.insertByPartnershipAdditionalVO(additionalVO);
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("속성 접근 실패", e);
+            }
+        }
+
+        return CustomResponse.builder().build();
+    }
 }
