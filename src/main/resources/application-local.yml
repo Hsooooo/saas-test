@@ -49,7 +49,7 @@ spring:
       port: 27017
       username: root
       password: Illunex123!
-      database: em_saas
+      database: em_saas_test
       authentication-database: admin
       auto-index-creation: true
 
