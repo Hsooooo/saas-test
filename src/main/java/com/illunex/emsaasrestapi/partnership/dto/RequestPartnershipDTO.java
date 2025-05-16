@@ -34,12 +34,19 @@ public class RequestPartnershipDTO {
 
     @Getter
     public static class AdditionalInfo {
+        // 방문 목적(안녕하세요? 무슨 일로 찾아오셨나요?)
         private String purpose;
+        // 직무(직무를 선택해주세요.)
         private String position;
+        // 팀규모(팀의 규모를 선택해주세요.)
         private String teamSize;
+        // 회사규모(회사의 규모를 선택해주세요.)
         private String companySize;
+        //우선관리사항 (어떤 관리 사항을 우선적으로 하고 싶은지 알려주세요)
         private String managementItem;
+        //집중분야 (집중하실 분야를 선택해주세요)
         private String focusTopic;
+        // 유입경로 (마지막으로, 저희를 어떻게 알게 되었나요?)
         private String referrer;
     }
 }
