@@ -19,6 +19,8 @@ public class Excel {
     private Integer projectIdx;
     @Comment("엑셀시트 목록")
     private List<ExcelSheet> excelSheetList;
+    @Comment("엑셀파일 목록")
+    private List<ExcelFile> excelFileList;
     @Comment("등록일")
     private LocalDateTime createDate;
 }

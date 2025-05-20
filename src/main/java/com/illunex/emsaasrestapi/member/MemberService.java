@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -117,7 +118,7 @@ public class MemberService {
             loginHistoryMapper.insertLoginHistory(loginHistoryVO);
 
             // 리프레시 토큰 쿠키 등록
-            response.addCookie(tokenProvider.createCookie("refreshToken", tokenProvider.generateRefreshToken(auth)));
+            response.addCookie(tokenProvider.createCookie("refreshToken", tokenProvider.generateRefreshToken(auth), MemberComponent.getClientIpAddr(request)));
 
             return CustomResponse.builder()
                     .data(responseLoginDto)
@@ -136,6 +137,9 @@ public class MemberService {
     public CustomResponse<?> reissue(HttpServletRequest request) throws CustomException {
         String refreshToken = null;
         Cookie[] cookies = request.getCookies();
+        if(cookies == null) {
+            throw new AccessDeniedException("Cookie is not empty");
+        }
         for (Cookie cookie : cookies) {
             if(cookie.getName().equals("refreshToken")) {
                 refreshToken = cookie.getValue();
