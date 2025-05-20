@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS `em_saas`.`partnership_invited_member`;
 DROP TABLE IF EXISTS `em_saas`.`partnership_member`;
 DROP TABLE IF EXISTS `em_saas`.`partnership_position`;
 DROP TABLE IF EXISTS `em_saas`.`partnership_team`;
+DROP TABLE IF EXISTS `em_saas`.`partnership_additional`;
 DROP TABLE IF EXISTS `em_saas`.`partnership`;
 -- 회원 관련 테이블
 DROP TABLE IF EXISTS `em_saas`.`member_email_history`;
