@@ -334,6 +334,10 @@ public class ProjectService {
             throw new RuntimeException("정제에 필요한 엑셀 파일 정보 없음");
         }
 
+        // 프로젝트 상태 정제중으로 변경
+        projectVO.setStatusCd(EnumCode.Project.StatusCd.Step5.getCode());
+        projectMapper.updateByProjectVO(projectVO);
+
         // 여기까지 확인됐으면, 워커에 요청만 전달
         projectProcessingService.processAsync(projectIdx);
 
