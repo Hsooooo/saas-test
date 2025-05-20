@@ -3,13 +3,9 @@ package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
-import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.network.dto.ResponseNetworkDTO;
-import com.illunex.emsaasrestapi.project.document.excel.Excel;
-import com.illunex.emsaasrestapi.project.document.excel.ExcelRow;
-import com.illunex.emsaasrestapi.project.document.excel.ExcelRowId;
-import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
+import com.illunex.emsaasrestapi.project.document.excel.*;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
@@ -22,6 +18,7 @@ import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -46,6 +43,7 @@ import java.util.stream.Stream;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ProjectComponent {
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
@@ -97,7 +95,7 @@ public class ProjectComponent {
      * @throws CustomException
      * @throws IOException
      */
-    public void parseExcel(Integer projectIdx, MultipartFile excelFile) throws CustomException, IOException {
+    public void parseExcel(Integer projectIdx, MultipartFile excelFile, ProjectFileVO projectFileVO) throws CustomException, IOException {
         // 확장자 체크
         String ext = FilenameUtils.getExtension(excelFile.getOriginalFilename());
         if(ext == null || !ext.equals("xlsx") && !ext.equals("xls")) {
@@ -110,11 +108,13 @@ public class ProjectComponent {
         } else {
             workbook = new HSSFWorkbook(excelFile.getInputStream());
         }
+        ExcelFile excelFileDoc = modelMapper.map(projectFileVO, ExcelFile.class);
 
         // 엑셀 파싱 구조 생성
         Excel excel = com.illunex.emsaasrestapi.project.document.excel.Excel.builder()
                 .projectIdx(projectIdx)
                 .excelSheetList(new ArrayList<>())
+                .excelFileList(Collections.singletonList(excelFileDoc))
                 .build();
 
         // 엑셀 데이터 Row 데이터 삭제
@@ -157,33 +157,6 @@ public class ProjectComponent {
                 }
             }
 
-            // 엑셀 Row 개수 만큼 데이터 추출
-            for(int rowIdx = 1; rowIdx < totalRowCnt + 1; rowIdx++) {
-                Row row = workSheet.getRow(rowIdx);
-                if(row == null) {
-                    // Row 데이터가 없으면 종료
-                    totalRowCnt = rowIdx;
-                    break;
-                }
-                // 엑셀 데이터 Row 구조 생성
-                ExcelRow excelRow = ExcelRow.builder()
-                        .excelRowId(ExcelRowId.builder()
-                                .projectIdx(projectIdx)
-                                .excelSheetName(workSheet.getSheetName())
-                                .excelRowIdx(rowIdx)
-                                .build())
-                        .build();
-                LinkedHashMap<String, Object> dataMap = new LinkedHashMap<>();
-                // Cell 개수 만큼 데이터 추출
-                for (int cellCnt = 0; cellCnt < excelCellList.size(); cellCnt++) {
-                    dataMap.put(excelCellList.get(cellCnt), getExcelColumnData(row.getCell(cellCnt)));
-                }
-                excelRow.setData(dataMap);
-                excelRow.setCreateDate(LocalDateTime.now());
-                // 엑셀 데이터 Row 저장
-                mongoTemplate.insert(excelRow);
-            }
-
             // 엑셀 시트 정보 추가
             excel.getExcelSheetList()
                     .add(ExcelSheet.builder()
@@ -196,6 +169,50 @@ public class ProjectComponent {
 
         // 엑셀 파싱 정보 저장
         mongoTemplate.insert(excel);
+    }
+
+    /**
+     * 엑셀파일 excel_row 파싱 함수
+     * @param projectIdx
+     * @param workbook
+     * @throws CustomException
+     */
+    public void parseExcelRowsOnly(Integer projectIdx, Workbook workbook) throws CustomException {
+        // 기존 Row 데이터 삭제
+        mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)), ExcelRow.class);
+
+        // 이미 저장된 시트 정보 불러오기
+        Excel excel = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
+        if (excel == null) {
+            throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+        }
+
+        for (ExcelSheet sheetInfo : excel.getExcelSheetList()) {
+            Sheet workSheet = workbook.getSheet(sheetInfo.getExcelSheetName());
+            if (workSheet == null) continue;
+
+            for (int rowIdx = 1; rowIdx <= sheetInfo.getTotalRowCnt(); rowIdx++) {
+                Row row = workSheet.getRow(rowIdx);
+                if (row == null) break;
+
+                LinkedHashMap<String, Object> dataMap = new LinkedHashMap<>();
+                for (int cellIdx = 0; cellIdx < sheetInfo.getExcelCellList().size(); cellIdx++) {
+                    dataMap.put(sheetInfo.getExcelCellList().get(cellIdx), getExcelColumnData(row.getCell(cellIdx)));
+                }
+
+                ExcelRow excelRow = ExcelRow.builder()
+                        .excelRowId(ExcelRowId.builder()
+                                .projectIdx(projectIdx)
+                                .excelSheetName(sheetInfo.getExcelSheetName())
+                                .excelRowIdx(rowIdx)
+                                .build())
+                        .data(dataMap)
+                        .createDate(LocalDateTime.now())
+                        .build();
+
+                mongoTemplate.insert(excelRow);
+            }
+        }
     }
 
     /**
@@ -259,30 +276,45 @@ public class ProjectComponent {
         }
         // 응답 구조 맵핑
         ResponseProjectDTO.Excel response = modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class);
+        // 3. 시트별 row 정보 세팅
         response.getExcelSheetList().forEach(dataSheet -> {
-            // 응답 구조 안에 데이터 목록 추가
-            List<ExcelRow> excelRow = mongoTemplate.find(
-                    Query.query(
-                            Criteria.where("_id.projectIdx").is(projectIdx)
-                                    .and("_id.excelSheetName").is(dataSheet.getExcelSheetName())
-                    )
+            String sheetName = dataSheet.getExcelSheetName();
+
+            // 3-1. ExcelRow 미리보기 (10개)
+            List<ExcelRow> previewRows = mongoTemplate.find(
+                    Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
+                                    .and("_id.excelSheetName").is(sheetName))
                             .limit(10),
                     ExcelRow.class
             );
-            // row 카운트 추가
-            dataSheet.setExcelRowList(modelMapper.map(excelRow, new TypeToken<List<ResponseProjectDTO.ExcelRow>>(){}.getType()));
-            MatchOperation matchOperation = Aggregation.match(
-                    Criteria.where("_id.projectIdx")
-                            .is(projectIdx)
-                            .and("_id.excelSheetName")
-                            .is(dataSheet.getExcelSheetName())
+
+            List<ResponseProjectDTO.ExcelRow> mappedPreview = modelMapper.map(
+                    previewRows,
+                    new TypeToken<List<ResponseProjectDTO.ExcelRow>>() {}.getType()
             );
-            Integer rowCount = 0;
-            CountOperation countOperation = Aggregation.count().as("rowCount");
-            Aggregation aggregation = Aggregation.newAggregation(matchOperation, countOperation);
-            AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel_row", Document.class);
-            rowCount += Objects.requireNonNull(results.getUniqueMappedResult()).getInteger("rowCount");
-            dataSheet.setTotalRowCnt(rowCount);
+            dataSheet.setExcelRowList(mappedPreview);
+
+            // 3-2. 총 row 수 계산: 존재할 경우 집계, 없을 경우 fallback
+            if (!previewRows.isEmpty()) {
+                // ExcelRow가 존재하면 aggregation 수행
+                MatchOperation matchOperation = Aggregation.match(
+                        Criteria.where("_id.projectIdx").is(projectIdx)
+                                .and("_id.excelSheetName").is(sheetName)
+                );
+                CountOperation countOperation = Aggregation.count().as("rowCount");
+                Aggregation aggregation = Aggregation.newAggregation(matchOperation, countOperation);
+
+                AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel_row", Document.class);
+                int rowCount = Optional.ofNullable(results.getUniqueMappedResult())
+                        .map(doc -> doc.getInteger("rowCount"))
+                        .orElse(0);
+
+                dataSheet.setTotalRowCnt(rowCount);
+            } else {
+                // ExcelRow가 없으면 엑셀 시트 정보에 저장된 값 사용
+                log.info("[FALLBACK] ExcelRow 없음. totalRowCnt fallback 사용: {}:{}", projectIdx, sheetName);
+                dataSheet.setTotalRowCnt(dataSheet.getTotalRowCnt()); // 유지
+            }
         });
 
         return response;
