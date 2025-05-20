@@ -38,6 +38,9 @@ public class TokenProvider {
     private final int accessExpireSeconds;
     private final int refreshExpireSeconds;
 
+    @Value("${server.cors-list}")
+    private String[] corsList;
+
     @Autowired
     public TokenProvider(@Value("${jwt.secret}") String secretKey,
                          @Value("${jwt.access-token-expiration:1800}") int accessExpireSeconds,
@@ -78,10 +81,22 @@ public class TokenProvider {
                 .compact();
     }
 
-    public Cookie createCookie(String key, String value){
+    public Cookie createCookie(String key, String value, String ip){
         Cookie cookie = new Cookie(key, value);
-        cookie.setMaxAge(refreshExpireSeconds); // 12h
+        cookie.setMaxAge(refreshExpireSeconds);
         cookie.setHttpOnly(true);   //JS로 접근 불가, 탈취 위험 감소
+        cookie.setPath("/");
+        cookie.setSecure(false);
+        Arrays.stream(corsList)
+                .filter(cors -> ip.equals("127.0.0.1") ? cors.contains("localhost") : cors.contains(ip))
+                .findFirst()
+                .ifPresent(cors -> {
+                    if (ip.equals("127.0.0.1")) {
+                        cookie.setDomain("localhost");
+                    } else {
+                        cookie.setDomain(ip);
+                    }
+                });
         return cookie;
     }
 

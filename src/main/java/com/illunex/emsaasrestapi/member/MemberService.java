@@ -117,7 +117,7 @@ public class MemberService {
             loginHistoryMapper.insertLoginHistory(loginHistoryVO);
 
             // 리프레시 토큰 쿠키 등록
-            response.addCookie(tokenProvider.createCookie("refreshToken", tokenProvider.generateRefreshToken(auth)));
+            response.addCookie(tokenProvider.createCookie("refreshToken", tokenProvider.generateRefreshToken(auth), MemberComponent.getClientIpAddr(request)));
 
             return CustomResponse.builder()
                     .data(responseLoginDto)
