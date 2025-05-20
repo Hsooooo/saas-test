@@ -39,10 +39,7 @@ import org.modelmapper.TypeToken;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.springframework.data.mongodb.core.aggregation.CountOperation;
-import org.springframework.data.mongodb.core.aggregation.MatchOperation;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
@@ -53,6 +50,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -67,6 +65,7 @@ public class ProjectService {
     private final MongoTemplate mongoTemplate;
     private final ModelMapper modelMapper;
     private final PartnershipComponent partnershipComponent;
+    private final ProjectProcessingService projectProcessingService;
     private final ProjectComponent projectComponent;
     private final AwsS3Component awsS3Component;
 
@@ -157,37 +156,45 @@ public class ProjectService {
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
         if(projectVO.getDeleteDate() == null) {
-            Integer nodeCount = 0;
-            Integer edgeCount = 0;
-            // 노드&엣지 정의 정보가 있을 경우 노드&엣지 카운트 뽑기
-            if(project.getProjectNodeList() != null && project.getProjectEdgeList() != null) {
-                // 노드 정보 개수 만큼 노드 총 개수 추출
+            int nodeCount = 0;
+            int edgeCount = 0;
+            if (project.getProjectNodeList() != null) {
                 for (RequestProjectDTO.ProjectNode projectNode : project.getProjectNodeList()) {
-                    MatchOperation matchOperation = Aggregation.match(
-                            Criteria.where("_id.projectIdx")
-                                    .is(project.getProjectIdx())
-                                    .and("_id.excelSheetName")
-                                    .is(projectNode.getNodeType())
+                    MatchOperation match = Aggregation.match(Criteria.where("_id").is(project.getProjectIdx()));
+                    UnwindOperation unwind = Aggregation.unwind("excelSheetList");
+                    MatchOperation sheetMatch = Aggregation.match(
+                            Criteria.where("excelSheetList.excelSheetName").is(projectNode.getNodeType())
                     );
+                    GroupOperation group = Aggregation.group("_id")
+                            .sum("excelSheetList.totalRowCnt").as("nodeCount");
 
-                    CountOperation countOperation = Aggregation.count().as("nodeCount");
-                    Aggregation aggregation = Aggregation.newAggregation(matchOperation, countOperation);
-                    AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel_row", Document.class);
-                    nodeCount += results.getUniqueMappedResult().getInteger("nodeCount");
+                    Aggregation aggregation = Aggregation.newAggregation(match, unwind, sheetMatch, group);
+                    AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel", Document.class);
+
+                    int count = Optional.ofNullable(results.getUniqueMappedResult())
+                            .map(doc -> doc.getInteger("nodeCount"))
+                            .orElse(0);
+                    nodeCount += count;
                 }
-                // 엣지 정보 개수 만큼 엣지 총 개수 추출
-                for (RequestProjectDTO.ProjectEdge projectEdge : project.getProjectEdgeList()) {
-                    MatchOperation matchOperation = Aggregation.match(
-                            Criteria.where("_id.projectIdx")
-                                    .is(project.getProjectIdx())
-                                    .and("_id.excelSheetName")
-                                    .is(projectEdge.getEdgeType())
-                    );
+            }
 
-                    CountOperation countOperation = Aggregation.count().as("edgeCount");
-                    Aggregation aggregation = Aggregation.newAggregation(matchOperation, countOperation);
-                    AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel_row", Document.class);
-                    edgeCount += results.getUniqueMappedResult().getInteger("edgeCount");
+            if (project.getProjectEdgeList() != null) {
+                for (RequestProjectDTO.ProjectEdge projectEdge : project.getProjectEdgeList()) {
+                    MatchOperation match = Aggregation.match(Criteria.where("_id").is(project.getProjectIdx()));
+                    UnwindOperation unwind = Aggregation.unwind("excelSheetList");
+                    MatchOperation sheetMatch = Aggregation.match(
+                            Criteria.where("excelSheetList.excelSheetName").is(projectEdge.getEdgeType())
+                    );
+                    GroupOperation group = Aggregation.group("_id")
+                            .sum("excelSheetList.totalRowCnt").as("edgeCount");
+
+                    Aggregation aggregation = Aggregation.newAggregation(match, unwind, sheetMatch, group);
+                    AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel", Document.class);
+
+                    int count = Optional.ofNullable(results.getUniqueMappedResult())
+                            .map(doc -> doc.getInteger("edgeCount"))
+                            .orElse(0);
+                    edgeCount += count;
                 }
             }
             projectVO.setTitle(project.getTitle());
@@ -273,12 +280,6 @@ public class ProjectService {
 
         // 프로젝트 삭제 여부 확인
         if(projectVO.getDeleteDate() == null) {
-            // 엑셀 파싱 및 MongoDB 저장
-            projectComponent.parseExcel(projectVO.getIdx(), excelFile);
-            // 프로젝트 상태 변경(엑셀 업로드)
-            projectVO.setStatusCd(EnumCode.Project.StatusCd.Step1.getCode());
-            projectMapper.updateByProjectVO(projectVO);
-
             // s3 업로드
             AwsS3ResourceDTO awsS3ResourceDTO = AwsS3ResourceDTO.builder()
                     .fileName(excelFile.getOriginalFilename())
@@ -292,6 +293,12 @@ public class ProjectService {
             projectFileVO.setFileSize(awsS3ResourceDTO.getSize());
             projectFileVO.setFileCd(EnumCode.ProjectFile.FileCd.Single.getCode());
             Integer updateCnt = projectFileMapper.insertByProjectFileVO(projectFileVO);
+
+            // 엑셀 파싱 및 MongoDB 저장
+            projectComponent.parseExcel(projectVO.getIdx(), excelFile, projectFileVO);
+            // 프로젝트 상태 변경(엑셀 업로드)
+            projectVO.setStatusCd(EnumCode.Project.StatusCd.Step1.getCode());
+            projectMapper.updateByProjectVO(projectVO);
 
             return CustomResponse.builder()
                     .data(projectComponent.createResponseProjectExcel(projectIdx))
@@ -318,88 +325,20 @@ public class ProjectService {
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
-        if(projectVO.getDeleteDate() == null) {
-            // 1. MongoDB에 프로젝트 정보 조회
-            Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
-            // 2. MongoDB에 엑셀 시트 정보 조회
-            Excel excel = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
-
-            if(project == null || excel == null) {
-                throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
-            }
-
-            // 3. MongoDB에 프로젝트번호에 해당하는 Node 정보 모두 삭제
-            mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)), Node.class);
-
-            // 4. 프로젝트 정보와 엑셀 시트 정보로 노드 정보 정제 후 생성
-            for (ProjectNode projectNode : project.getProjectNodeList()) {
-                List<ExcelRow> rowList = mongoTemplate.find(
-                        Query.query(
-                                Criteria.where("_id.projectIdx").is(projectIdx)
-                                        .and("_id.excelSheetName").is(projectNode.getNodeType())
-                        ),
-                        ExcelRow.class
-                );
-                rowList.forEach(excelRow -> {
-                    Node node = Node.builder()
-                            .nodeId(NodeId.builder()
-                                    .projectIdx(projectIdx)
-                                    .type(excelRow.getExcelRowId().getExcelSheetName())
-                                    .nodeIdx(excelRow.getData().get(projectNode.getUniqueCellName()))       // 노드 고유키
-                                    .build()
-                            )
-                            .id(excelRow.getData().get(projectNode.getUniqueCellName()))                    // 노드 고유키
-                            .label(excelRow.getExcelRowId().getExcelSheetName())                            // 노드명
-                            .properties(excelRow.getData())
-                            .build();
-                    // 노드 저장
-                    mongoTemplate.save(node);
-                });
-            }
-            // 5. MongoDB에 프로젝트번호에 해당하는 Edge 정보 모두 삭제
-            mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)), Edge.class);
-
-            // 6. 프로젝트 정보와 엑셀 시트 정보로 엣지 정보 정제 후 생성
-            for (ProjectEdge projectEdge : project.getProjectEdgeList()) {
-                List<ExcelRow> rowList = mongoTemplate.find(
-                        Query.query(
-                                Criteria.where("_id.projectIdx").is(projectIdx)
-                                        .and("_id.excelSheetName").is(projectEdge.getEdgeType())
-                        ),
-                        ExcelRow.class
-                );
-                rowList.forEach(excelRow -> {
-                    Edge edge = Edge.builder()
-                            .edgeId(EdgeId.builder()
-                                    .projectIdx(projectIdx)
-                                    .type(excelRow.getExcelRowId().getExcelSheetName())
-                                    .edgeIdx(excelRow.getExcelRowId().getExcelRowIdx())                     // 엑셀 파싱 시 생성된 고유키
-                                    .build()
-                            )
-                            .id(excelRow.getExcelRowId().getExcelRowIdx())
-                            .startType(projectEdge.getSrcNodeType())                                        // 시작 노드 타입
-                            .start(excelRow.getData().get(projectEdge.getSrcEdgeCellName()))                // 시작 노드 id
-                            .endType(projectEdge.getDestNodeType())                                         // 도착 노드 타입
-                            .end(excelRow.getData().get(projectEdge.getDestEdgeCellName()))                 // 도착 노드 id
-                            .type(excelRow.getExcelRowId().getExcelSheetName())                             // 엣지명
-                            .properties(excelRow.getData())
-                            .build();
-                    // 엣지 저장
-                    mongoTemplate.save(edge);
-                });
-            }
-
-            // 프로젝트 상태 변경(프로젝트 설정 완료)
-            projectVO.setStatusCd(EnumCode.Project.StatusCd.Complete.getCode());
-            Integer updateCnt = projectMapper.updateByProjectVO(projectVO);
-
-            return CustomResponse.builder()
-                    .data(updateCnt)
-                    .build();
+        if(projectVO.getDeleteDate() != null) {
+            throw new CustomException(ErrorCode.PROJECT_DELETED);
         }
 
-        // 프로젝트 삭제 예외 응답
-        throw new CustomException(ErrorCode.PROJECT_DELETED);
+        Excel excel = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
+        if (excel == null || excel.getExcelFileList().isEmpty()) {
+            throw new RuntimeException("정제에 필요한 엑셀 파일 정보 없음");
+        }
+
+        // 여기까지 확인됐으면, 워커에 요청만 전달
+        projectProcessingService.processAsync(projectIdx);
+
+        return CustomResponse.builder()
+                .build();
     }
 
     /**

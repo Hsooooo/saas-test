@@ -58,6 +58,20 @@ public class AwsS3Component {
     }
 
     /**
+     * S3 파일 다운로드(InputStream)
+     * @param s3FileUrl
+     * @return
+     */
+    public InputStream downloadInputStream(String s3FileUrl) {
+        S3Resource s3Resource = s3Operations.download(bucket, s3FileUrl);
+        try {
+            return s3Resource.getInputStream();
+        } catch (IOException e) {
+            throw new RuntimeException("S3 파일 다운로드 실패: " + s3FileUrl, e);
+        }
+    }
+
+    /**
      * s3파일 삭제
      * @param key
      */
