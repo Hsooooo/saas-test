@@ -9,7 +9,6 @@ import com.illunex.emsaasrestapi.network.dto.ResponseNetworkDTO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.ProjectComponent;
-import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContent;
@@ -24,7 +23,6 @@ import org.springframework.util.StopWatch;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -45,7 +43,7 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkAll(MemberVO memberVO, Integer projectIdx) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
@@ -86,7 +84,7 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkSingleExtend(MemberVO memberVO, RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, selectNode.getProjectIdx());
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(selectNode.getProjectIdx(), partnershipMemberVO.getIdx());
 
@@ -126,7 +124,7 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkInfo(MemberVO memberVO, RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, selectNode.getProjectIdx());
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(selectNode.getProjectIdx(), partnershipMemberVO.getIdx());
 
@@ -194,7 +192,7 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkSearch(MemberVO memberVO, RequestNetworkDTO.Search search) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, search.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, search.getProjectIdx());
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(search.getProjectIdx(), partnershipMemberVO.getIdx());
 
@@ -286,7 +284,7 @@ public class NetworkService {
     public CustomResponse<?> getAutoComplete(MemberVO memberVO,
                                              RequestNetworkDTO.AutoCompleteSearch autoCompleteSearch) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, autoCompleteSearch.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, autoCompleteSearch.getProjectIdx());
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(autoCompleteSearch.getProjectIdx(), partnershipMemberVO.getIdx());
 

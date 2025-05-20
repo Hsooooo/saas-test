@@ -20,22 +20,31 @@ public class PartnershipComponent {
     private final PartnershipMemberMapper partnershipMemberMapper;
 
     /**
+     * 파트너쉽 회원 여부 체크
+     * @param memberVO
+     * @param partnershipIdx
+     * @return
+     * @throws CustomException
+     */
+    public PartnershipMemberVO checkPartnershipMember(MemberVO memberVO, Integer partnershipIdx) throws CustomException {
+        // 파트너쉽 회원 조회
+        return partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+    }
+
+    /**
      * 프로젝트 및 파트너쉽 회원 여부 체크
      * @param memberVO
      * @param projectIdx
      * @return
      * @throws CustomException
      */
-    public PartnershipMemberVO checkPartnershipMember(MemberVO memberVO, Integer projectIdx) throws CustomException {
+    public PartnershipMemberVO checkPartnershipMemberAndProject(MemberVO memberVO, Integer projectIdx) throws CustomException {
         // 프로젝트 조회
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
-        // 파트너쉽 회원 조회
-        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(projectVO.getPartnershipIdx(), memberVO.getIdx())
-                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
-
-        return partnershipMemberVO;
+        return checkPartnershipMember(memberVO, projectVO.getPartnershipIdx());
     }
 
 
@@ -46,15 +55,11 @@ public class PartnershipComponent {
      * @return
      * @throws CustomException
      */
-    public PartnershipMemberVO checkPartnershipMemberCategory(MemberVO memberVO, Integer projectCategoryIdx) throws CustomException {
+    public PartnershipMemberVO checkPartnershipMemberAndProjectCategory(MemberVO memberVO, Integer projectCategoryIdx) throws CustomException {
         // 프로젝트 조회
         ProjectCategoryVO projectCategoryVO = projectCategoryMapper.selectByProjectCategoryIdx(projectCategoryIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
-        // 파트너쉽 회원 조회
-        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(projectCategoryVO.getPartnershipIdx(), memberVO.getIdx())
-                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
-
-        return partnershipMemberVO;
+        return checkPartnershipMember(memberVO, projectCategoryVO.getPartnershipIdx());
     }
 }

@@ -90,7 +90,7 @@ public class ProjectService {
 
         if(insertCnt > 0) {
             // 파트너쉽 회원 여부 체크
-            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectVO.getIdx());
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectVO.getIdx());
 
             // MongoDB 처리 부분
             // Document 맵핑
@@ -132,7 +132,7 @@ public class ProjectService {
      */
     public CustomResponse<?> getProjectDetail(MemberVO memberVO, Integer projectIdx) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
@@ -148,7 +148,7 @@ public class ProjectService {
      */
     public CustomResponse<?> replaceProject(MemberVO memberVO, RequestProjectDTO.Project project) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, project.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, project.getProjectIdx());
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(project.getProjectIdx(), partnershipMemberVO.getIdx());
 
@@ -233,7 +233,7 @@ public class ProjectService {
     @Transactional
     public CustomResponse<?> deleteProject(MemberVO memberVO, Integer projectIdx) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
@@ -263,7 +263,7 @@ public class ProjectService {
     @Transactional
     public CustomResponse<?> uploadSingleExcelFile(MemberVO memberVO, Integer projectIdx, MultipartFile excelFile) throws CustomException, IOException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
@@ -310,7 +310,7 @@ public class ProjectService {
     @Transactional
     public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
@@ -412,7 +412,7 @@ public class ProjectService {
     public CustomResponse<?> moveProject(MemberVO memberVO, List<RequestProjectDTO.ProjectId> projectIdList) throws CustomException {
         for(RequestProjectDTO.ProjectId projectId : projectIdList){
             // 파트너쉽 회원 여부 체크
-            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectId.getProjectIdx());
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectId.getProjectIdx());
             // 프로젝트 구성원 여부 체크
             projectComponent.checkProjectMember(projectId.getProjectIdx(), partnershipMemberVO.getIdx());
 
@@ -441,7 +441,7 @@ public class ProjectService {
      */
     public CustomResponse<?> getProjectList(MemberVO memberVO, Integer projectCategoryIdx, CustomPageRequest pageRequest, String[] sort) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberCategory(memberVO, projectCategoryIdx);
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProjectCategory(memberVO, projectCategoryIdx);
 
         Pageable pageable = pageRequest.of(sort);
         // 프로젝트 조회
@@ -486,7 +486,7 @@ public class ProjectService {
     public CustomResponse<?> copyProject(MemberVO memberVO, List<Integer> proejectIdList) throws CustomException {
         for(Integer projectIdx : proejectIdList){
             // 파트너쉽 회원 여부 체크
-            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
             // 프로젝트 구성원 여부 체크
             projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 

@@ -3,20 +3,20 @@ package com.illunex.emsaasrestapi.project;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
-import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
-import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
-import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
-import com.illunex.emsaasrestapi.project.vo.ProjectVO;
+import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectCategoryDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
@@ -27,48 +27,50 @@ import java.util.List;
 public class ProjectCategoryService {
     private final ProjectMapper projectMapper;
     private final ProjectCategoryMapper projectCategoryMapper;
-    private final PartnershipMapper partnershipMapper;
 
+    private final PartnershipComponent partnershipComponent;
+    private final ProjectComponent projectComponent;
     private final ModelMapper modelMapper;
 
     /**
-     * 프로젝트 카테고리 조회
+     * 프로젝트 카테고리 목록 조회
+     * @param memberVO
      * @param partnershipIdx
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> getProjectCategory(Integer partnershipIdx) {
-        List<ProjectCategoryVO> projectCategoryVOList = projectCategoryMapper.selectAllByPartnershipIdx(partnershipIdx);
-
-        List<ResponseProjectDTO.ProjectCategory> result = modelMapper.map(projectCategoryVOList, new TypeToken<List<ResponseProjectDTO.ProjectCategory>>() {}.getType());
-
-        // 카테고리별 프로젝트 개수 세팅
-        for(ResponseProjectDTO.ProjectCategory res : result){
-            Integer cnt = projectMapper.countByProjectCategoryIdx(res.getIdx());
-            res.setProjectCnt(cnt);
-        }
+    public CustomResponse<?> getProjectCategory(MemberVO memberVO, Integer partnershipIdx) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
 
         return CustomResponse.builder()
-                .data(result)
+                .data(projectComponent.createResponseProjectCategory(partnershipMemberVO))
                 .build();
     }
 
     /**
      * 프로젝트 카테고리 수정,삭제,순서변경
+     * @param memberVO
      * @param projectCategoryModify
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> updateProjectCategory(RequestProjectCategoryDTO.ProjectCategoryModify projectCategoryModify) {
-        Integer partnershipIdx = projectCategoryModify.getProjectCategoryList().get(0).getPartnershipIdx();
+    @Transactional
+    public CustomResponse<?> updateProjectCategory(MemberVO memberVO, RequestProjectCategoryDTO.ProjectCategoryModify projectCategoryModify) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectCategoryModify.getPartnershipIdx());
 
         List<ProjectCategoryVO> projectCategoryVOList = modelMapper.map(projectCategoryModify.getProjectCategoryList(), new TypeToken<List<ProjectCategoryVO>>() {}.getType());
 
         // 카테고리 삭제
-        if (!CollectionUtils.isEmpty(projectCategoryModify.getDeleteCategoryIds())) {
-            for (Integer idx : projectCategoryModify.getDeleteCategoryIds()) {
+        if (!CollectionUtils.isEmpty(projectCategoryModify.getDeleteCategoryIdxList())) {
+            for (Integer deleteCategoryIdx : projectCategoryModify.getDeleteCategoryIdxList()) {
+                // 삭제하려는 카테고리에 파트너쉽 회원 체크
+                projectCategoryMapper.selectByProjectCategoryIdxAndPartnershipIdx(deleteCategoryIdx, partnershipMemberVO.getPartnershipIdx())
+                        .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+
                 // 삭제되는 카테고리에 포함된 프로젝트는 기본 카테고리로 넣어줌
-                List<ProjectVO> projectVOList = projectMapper.selectAllByProjectCategoryIdx(idx);
+                List<ProjectVO> projectVOList = projectMapper.selectAllByProjectCategoryIdx(deleteCategoryIdx);
                 if (!CollectionUtils.isEmpty(projectVOList)) {
                     // 카테고리가 삭제된 프로젝트는 '보관함' 카테고리로 프론트에 보여짐. project_category_idx = null
                     for (ProjectVO projectVO : projectVOList) {
@@ -76,35 +78,25 @@ public class ProjectCategoryService {
                         projectMapper.updateProjectCategoryIdxByProjectVO(projectVO);
                     }
                 }
-                projectCategoryMapper.deleteByIdx(idx);
+                projectCategoryMapper.deleteByIdx(deleteCategoryIdx);
             }
         }
 
         // 카테고리 추가 & 수정
         for (ProjectCategoryVO projectCategoryVO : projectCategoryVOList) {
+            projectCategoryVO.setPartnershipIdx(partnershipMemberVO.getPartnershipIdx());
             if (projectCategoryVO.getIdx() == null) {
-                projectCategoryVO.setPartnershipIdx(partnershipIdx);
                 projectCategoryMapper.insertByProjectCategoryVO(projectCategoryVO);
             } else {
+                // 수정하려는 카테고리에 파트너쉽 회원 체크
+                projectCategoryMapper.selectByProjectCategoryIdxAndPartnershipIdx(projectCategoryVO.getIdx(), partnershipMemberVO.getPartnershipIdx())
+                        .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
                 projectCategoryMapper.updateByProjectCategoryVO(projectCategoryVO);
             }
         }
 
-        // 추가 및 수정 완료된 카테고리 리스트를 재조회
-        List<ProjectCategoryVO> result = projectCategoryMapper.selectAllByPartnershipIdx(partnershipIdx);
-
-        // response DTO 맵핑
-        List<ResponseProjectDTO.ProjectCategory> response = modelMapper
-                .map(result, new TypeToken<List<ResponseProjectDTO.ProjectCategory>>() {}.getType());
-
-        // 카테고리별 프로젝트 개수 세팅
-        for (ResponseProjectDTO.ProjectCategory projectCategory : response) {
-            Integer cnt = projectMapper.countByProjectCategoryIdx(projectCategory.getIdx());
-            projectCategory.setProjectCnt(cnt);
-        }
-
         return CustomResponse.builder()
-                .data(response)
+                .data(projectComponent.createResponseProjectCategory(partnershipMemberVO))
                 .build();
     }
 }

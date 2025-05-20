@@ -3,21 +3,20 @@ package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
-import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
-import com.illunex.emsaasrestapi.network.dto.ResponseNetworkDTO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelRow;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelRowId;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
-import com.illunex.emsaasrestapi.project.document.network.Edge;
-import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
@@ -41,8 +40,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -50,6 +51,7 @@ public class ProjectComponent {
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
     private final ProjectFileMapper projectFileMapper;
+    private final ProjectCategoryMapper projectCategoryMapper;
 
     private final ModelMapper modelMapper;
     private final MongoTemplate mongoTemplate;
@@ -57,13 +59,13 @@ public class ProjectComponent {
     /**
      * 프로젝트 구성원 여부 체크
      * @param projectIdx
-     * @param projectMemberIdx
+     * @param partnershipMemberIdx
      * @return
      * @throws CustomException
      */
-    public ProjectMemberVO checkProjectMember(Integer projectIdx, Integer projectMemberIdx) throws CustomException {
+    public ProjectMemberVO checkProjectMember(Integer projectIdx, Integer partnershipMemberIdx) throws CustomException {
         // 프로젝트 구성원 조회
-        ProjectMemberVO projectMemberVO = projectMemberMapper.selectByProjectIdxAndPartnershipMemberIdx(projectIdx, projectMemberIdx)
+        ProjectMemberVO projectMemberVO = projectMemberMapper.selectByProjectIdxAndPartnershipMemberIdx(projectIdx, partnershipMemberIdx)
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_INVALID_MEMBER));
 
         return projectMemberVO;
@@ -199,6 +201,50 @@ public class ProjectComponent {
     }
 
     /**
+     * 프로젝트 카테고리 응답 구조 생성
+     * @param partnershipMemberVO
+     * @return
+     */
+    public List<ResponseProjectDTO.ProjectCategory> createResponseProjectCategory(PartnershipMemberVO partnershipMemberVO) {
+        List<ProjectCategoryVO> projectCategoryVOList = new ArrayList<>();
+        // 전체 카테고리 추가
+        projectCategoryVOList.add(ProjectCategoryVO.builder()
+                .name("전체")
+                .partnershipIdx(partnershipMemberVO.getPartnershipIdx())
+                .build()
+        );
+        // 미분류 카테고리 추가
+        projectCategoryVOList.add(ProjectCategoryVO.builder()
+                .name("미분류")
+                .partnershipIdx(partnershipMemberVO.getPartnershipIdx())
+                .build()
+        );
+
+        // 등록된 카테고리 추가
+        projectCategoryVOList.addAll(projectCategoryMapper.selectAllByPartnershipIdx(partnershipMemberVO.getPartnershipIdx()));
+
+        List<ResponseProjectDTO.ProjectCategory> response = modelMapper.map(projectCategoryVOList, new TypeToken<List<ResponseProjectDTO.ProjectCategory>>() {}.getType());
+
+        // 카테고리별 프로젝트 개수 조회
+        for(int i = 0; i < response.size(); i++){
+            Integer cnt;
+            if(i == 0) {
+                // 전체 프로젝트 카운트 조회
+                cnt = projectMapper.countAllByPartnershipMemberIdx(partnershipMemberVO.getIdx());
+            } else if(i == 1) {
+                // 미분류 프로젝트 카운트 조회
+                cnt = projectMapper.countAllByProjectCategoryIdxAndPartnershipMemberIdx(null, partnershipMemberVO.getIdx());
+            } else {
+                // 카테고리별 카운트 조회
+                cnt = projectMapper.countAllByProjectCategoryIdxAndPartnershipMemberIdx(response.get(i).getIdx(), partnershipMemberVO.getIdx());
+            }
+            response.get(i).setProjectCnt(cnt);
+        }
+
+        return response;
+    }
+
+    /**
      * RDB & MongoDB 데이터 조회 후 응답 구조 생성
      * @param projectIdx
      * @return
@@ -286,67 +332,6 @@ public class ProjectComponent {
         });
 
         return response;
-    }
-
-
-    /**
-     * 노드 전체검색
-     * @param response  리턴할 값
-     * @param nodes 검색할 노드
-     * @param depth 검색할 횟수(깊이)
-     */
-    public void extendRepeatNetworkSearch(ResponseNetworkDTO.Network response, List<Node> nodes, Integer depth){
-        //뎁스가 다할때 까지 재귀 조회
-        if(depth > 0){
-            if(nodes.isEmpty()) return;
-
-            List<Object> nodeIdxList = nodes.stream().map(m -> m.getNodeId().getNodeIdx()).toList();
-            String nodeType = nodes.get(0).getLabel().toString();
-
-            Query query = new Query(new Criteria().orOperator(
-                    Criteria.where("startType").is(nodeType)
-                            .and("start").in(nodeIdxList),
-                    Criteria.where("endType").is(nodeType)
-                            .and("end").in(nodeIdxList)
-            ));
-
-            //1. 엣지조회
-            List<Edge> edgeList = mongoTemplate.find(query, Edge.class);
-            if(edgeList.isEmpty()) return;
-
-            //2. 이미 있는 엣지는 필터
-            List<Edge> existingEdges = Optional.ofNullable(response.getLinks()).orElse(Collections.emptyList());
-            edgeList = edgeList.stream().filter(edge -> existingEdges.stream()
-                        .noneMatch(existing  -> existing.getId().equals(edge.getId()))).toList();
-
-            //3. 엣지 추가
-            response.getLinks().addAll(edgeList);
-
-            //4. start end의 노드들 검색해서 다음 뎁스 준비(중복 제거)
-            nodeIdxList = Stream.concat(
-                    edgeList.stream().map(Edge::getStart),
-                    edgeList.stream().map(Edge::getEnd)
-            ).distinct().toList();
-            nodeIdxList = nodeIdxList.stream().filter(nodeIdx ->
-                        response.getNodes().stream()
-                                .noneMatch(existing -> existing.getId().equals(nodeIdx))
-                    ).toList();
-            query = Query.query(Criteria.where("id").in(nodeIdxList));
-            List<Node> nodeList = mongoTemplate.find(query, Node.class);
-
-            //5. 노드 추가
-            response.getNodes().addAll(nodeList);
-
-            //6. 뎁스만큼 반복
-            extendRepeatNetworkSearch(response, nodeList, depth-1);
-        }
-
-        // 중복 노드 & 엣지 제거
-        response.setNodes(response.getNodes().stream().distinct().toList());
-        response.setLinks(response.getLinks().stream().distinct().toList());
-        // 노드 & 엣지 사이즈 추출
-        response.setNodeSize(response.getNodes().size());
-        response.setLinkSize(response.getLinks().size());
     }
 
     /**

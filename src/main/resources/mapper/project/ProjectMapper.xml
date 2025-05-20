@@ -48,10 +48,29 @@
             SET delete_date = now()
         WHERE idx = #{projectIdx}
     </update>
-
-    <select id="countByProjectCategoryIdx" parameterType="Integer" resultType="Integer">
-        SELECT COUNT(*) FROM project
-        WHERE project_category_idx = #{idx}
+<!--카테고리별 파트너쉽 구성원에 포함되어 있는 프로젝트 총 개수 조회-->
+    <select id="countAllByProjectCategoryIdxAndPartnershipMemberIdx" parameterType="Integer" resultType="Integer">
+        SELECT
+            COUNT(*)
+        FROM project a
+        INNER JOIN project_member b
+        ON a.idx = b.project_idx
+        <choose>
+            <when test="projectCategoryIdx == null">
+                WHERE a.project_category_idx IS NULL
+            </when>
+            <otherwise>
+                WHERE a.project_category_idx = #{projectCategoryIdx}
+            </otherwise>
+        </choose>
+        AND b.partnership_member_idx = #{partnershipMemberIdx}
+    </select>
+<!--파트너쉽 구성원에 포함되어 있는 프로젝트 총 개수 조회-->
+    <select id="countAllByPartnershipMemberIdx" parameterType="Integer" resultType="Integer">
+        SELECT
+            count(*)
+        FROM project_member
+        WHERE partnership_member_idx = #{partnershipMemberIdx}
     </select>
 
     <select id="selectAllByProjectCategoryIdx" parameterType="Integer" resultType="ProjectVO">

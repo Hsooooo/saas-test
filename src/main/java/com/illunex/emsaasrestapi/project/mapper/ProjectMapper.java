@@ -16,8 +16,10 @@ public interface ProjectMapper {
     Integer updateByProjectVO(ProjectVO projectVO);
     // 프로젝트 삭제 처리(삭제일 업데이트)
     Integer updateByDeleteDate(Integer projectIdx);
-    // project_category_idx로 프로젝트 총 개수 조회
-    Integer countByProjectCategoryIdx(Integer idx);
+    // 카테고리별 파트너쉽 구성원에 포함되어 있는 프로젝트 총 개수 조회
+    Integer countAllByProjectCategoryIdxAndPartnershipMemberIdx(Integer projectCategoryIdx, Integer partnershipMemberIdx);
+    // 파트너쉽 구성원에 포함되어 있는 프로젝트 총 개수 조회
+    Integer countAllByPartnershipMemberIdx(Integer partnershipMemberIdx);
     // project_category_idx로 프로젝트 조회
     List<ProjectVO> selectAllByProjectCategoryIdx(Integer projectCategoryIdx);
     // 프로젝트의 category 변경
