@@ -137,7 +137,9 @@ public class EnumCode {
             Step2("PJS0003", "노드/엣지 정의"),
             Step3("PJS0004", "기능 정의"),
             Step4("PJS0005", "속성 정의"),
-            Complete("PJS0006", "설정 완료");
+            Step5("PJS0006", "노드/엣지 정제중"),
+            Step6("PJS0007", "정제 오류"),
+            Complete("PJS0008", "설정 완료");
 
             private final String code;
             private final String value;
