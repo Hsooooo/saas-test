@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.Utils;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.excel.*;
@@ -237,6 +238,9 @@ public class ProjectComponent {
             Sheet workSheet = workbook.getSheet(sheetInfo.getExcelSheetName());
             if (workSheet == null) continue;
 
+            long startMillisecond = System.currentTimeMillis();
+            log.info(Utils.getLogMaker(Utils.eLogType.USER), "Start parse excel - projectIdx : {}, sheet : {}, size : {}", projectIdx, sheetInfo.getExcelSheetName(), sheetInfo.getTotalRowCnt());
+            List<ExcelRow> excelRowList = new ArrayList<>();
             for (int rowIdx = 1; rowIdx <= sheetInfo.getTotalRowCnt(); rowIdx++) {
                 Row row = workSheet.getRow(rowIdx);
                 if (row == null) break;
@@ -256,8 +260,10 @@ public class ProjectComponent {
                         .createDate(LocalDateTime.now())
                         .build();
 
-                mongoTemplate.insert(excelRow);
+                excelRowList.add(excelRow);
             }
+            mongoTemplate.insertAll(excelRowList);
+            log.info(Utils.getLogMaker(Utils.eLogType.USER), "End parse excel - projectIdx : {}, time : {}ms", projectIdx, System.currentTimeMillis() - startMillisecond);
         }
     }
 

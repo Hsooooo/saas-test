@@ -1,6 +1,7 @@
 package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.Utils;
 import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -91,6 +93,9 @@ public class ProjectProcessingService {
                                         .and("_id.excelSheetName").is(nodeDef.getNodeType())),
                         ExcelRow.class);
 
+                long startMillisecond = System.currentTimeMillis();
+                log.info(Utils.getLogMaker(Utils.eLogType.USER), "Start parse node - projectIdx : {}, type : {}, size : {}", projectIdx, nodeDef.getNodeType(), rows.size());
+                List<Node> nodeList = new ArrayList<>();
                 rows.forEach(excelRow -> {
                     Node node = Node.builder()
                             .nodeId(NodeId.builder()
@@ -102,8 +107,10 @@ public class ProjectProcessingService {
                             .label(excelRow.getExcelRowId().getExcelSheetName())
                             .properties(excelRow.getData())
                             .build();
-                    mongoTemplate.save(node);
+                    nodeList.add(node);
                 });
+                mongoTemplate.insertAll(nodeList);
+                log.info(Utils.getLogMaker(Utils.eLogType.USER), "End parse node - projectIdx : {},time : {}ms", projectIdx, System.currentTimeMillis() - startMillisecond);
             }
 
             mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)), Edge.class);
@@ -113,6 +120,9 @@ public class ProjectProcessingService {
                                         .and("_id.excelSheetName").is(edgeDef.getEdgeType())),
                         ExcelRow.class);
 
+                long startMillisecond = System.currentTimeMillis();
+                log.info(Utils.getLogMaker(Utils.eLogType.USER), "Start parse edge - projectIdx : {}, type : {}, size : {}", projectIdx, edgeDef.getEdgeType(), rows.size());
+                List<Edge> edgeList = new ArrayList<>();
                 rows.forEach(excelRow -> {
                     Edge edge = Edge.builder()
                             .edgeId(EdgeId.builder()
@@ -128,8 +138,10 @@ public class ProjectProcessingService {
                             .type(excelRow.getExcelRowId().getExcelSheetName())
                             .properties(excelRow.getData())
                             .build();
-                    mongoTemplate.save(edge);
+                    edgeList.add(edge);
                 });
+                mongoTemplate.insertAll(edgeList);
+                log.info(Utils.getLogMaker(Utils.eLogType.USER), "End parse edge - projectIdx : {}, time : {}ms", projectIdx, System.currentTimeMillis() - startMillisecond);
             }
 
             // 5. 상태 변경
