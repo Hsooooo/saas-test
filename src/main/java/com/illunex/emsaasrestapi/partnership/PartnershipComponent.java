@@ -46,20 +46,4 @@ public class PartnershipComponent {
 
         return checkPartnershipMember(memberVO, projectVO.getPartnershipIdx());
     }
-
-
-    /**
-     * 카테고리 및 파트너쉽 회원 여부 체크
-     * @param memberVO
-     * @param projectCategoryIdx
-     * @return
-     * @throws CustomException
-     */
-    public PartnershipMemberVO checkPartnershipMemberAndProjectCategory(MemberVO memberVO, Integer projectCategoryIdx) throws CustomException {
-        // 프로젝트 조회
-        ProjectCategoryVO projectCategoryVO = projectCategoryMapper.selectByProjectCategoryIdx(projectCategoryIdx)
-                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
-
-        return checkPartnershipMember(memberVO, projectCategoryVO.getPartnershipIdx());
-    }
 }

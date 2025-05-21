@@ -8,6 +8,7 @@ import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.excel.*;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
+import com.illunex.emsaasrestapi.project.dto.ResponseProjectCategoryDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
@@ -176,7 +177,7 @@ public class ProjectComponent {
      * @param partnershipMemberVO
      * @return
      */
-    public List<ResponseProjectDTO.ProjectCategory> createResponseProjectCategory(PartnershipMemberVO partnershipMemberVO) {
+    public List<ResponseProjectCategoryDTO.ProjectCategory> createResponseProjectCategory(PartnershipMemberVO partnershipMemberVO) {
         List<ProjectCategoryVO> projectCategoryVOList = new ArrayList<>();
         // 전체 카테고리 추가
         projectCategoryVOList.add(ProjectCategoryVO.builder()
@@ -194,7 +195,7 @@ public class ProjectComponent {
         // 등록된 카테고리 추가
         projectCategoryVOList.addAll(projectCategoryMapper.selectAllByPartnershipIdx(partnershipMemberVO.getPartnershipIdx()));
 
-        List<ResponseProjectDTO.ProjectCategory> response = modelMapper.map(projectCategoryVOList, new TypeToken<List<ResponseProjectDTO.ProjectCategory>>() {
+        List<ResponseProjectCategoryDTO.ProjectCategory> response = modelMapper.map(projectCategoryVOList, new TypeToken<List<ResponseProjectCategoryDTO.ProjectCategory>>() {
         }.getType());
 
         // 카테고리별 프로젝트 개수 조회
