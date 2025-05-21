@@ -53,8 +53,8 @@ create table if not exists em_saas.member_login_history
     idx         int auto_increment comment '로그인이력번호'
     primary key,
     member_idx  int                                  not null comment '회원번호',
-    browser     varchar(100)                         null comment '접속 브라우저',
-    platform    varchar(100)                         null comment '접속 환경',
+    browser     varchar(255)                         null comment '접속 브라우저',
+    platform    varchar(255)                         null comment '접속 환경',
     ip          varchar(15)                          null comment '접속 ip',
     create_date datetime default current_timestamp() not null comment '접속일',
     constraint member_login_history_member_idx_fk
