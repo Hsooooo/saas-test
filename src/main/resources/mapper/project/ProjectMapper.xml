@@ -139,10 +139,10 @@
         INNER JOIN project_member pm ON pm.project_idx = p.idx
         WHERE p.partnership_idx = #{searchProject.partnershipIdx}
         <choose>
-            <when test="searchProject.searchType != null and searchProject.searchType.equals('category')">
+            <when test="searchProject.searchType != null and searchProject.searchType.name().equals('category')">
                 AND p.project_category_idx = #{searchProject.projectCategoryIdx}
             </when>
-            <when test="searchProject.searchType != null and searchProject.searchType.equals('empty')">
+            <when test="searchProject.searchType != null and searchProject.searchType.name().equals('empty')">
                 AND p.project_category_idx IS NULL
             </when>
         </choose>
