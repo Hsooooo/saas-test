@@ -156,6 +156,14 @@ public class ProjectComponent {
                     excelCellList.add(firstRow.getCell(cellIdx).getStringCellValue());
                 }
             }
+            for(int rowIdx = 1; rowIdx < totalRowCnt + 1; rowIdx++) {
+                Row row = workSheet.getRow(rowIdx);
+                if (row == null || row.getLastCellNum() == -1) {
+                    // Row 데이터가 없으면 종료
+                    totalRowCnt = rowIdx;
+                    break;
+                }
+            }
 
             // 엑셀 시트 정보 추가
             excel.getExcelSheetList()

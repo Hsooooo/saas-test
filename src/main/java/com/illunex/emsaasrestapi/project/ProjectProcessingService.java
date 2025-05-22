@@ -1,11 +1,12 @@
 package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelFile;
-import com.illunex.emsaasrestapi.project.document.excel.ExcelRow;
+import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.EdgeId;
 import com.illunex.emsaasrestapi.project.document.network.Node;
@@ -18,8 +19,7 @@ import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.ss.usermodel.*;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -28,6 +28,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 @Service
@@ -59,84 +61,130 @@ public class ProjectProcessingService {
         }
     }
 
-    private void processProject(ProjectVO projectVO) throws IOException, CustomException {
-        int projectIdx = projectVO.getIdx();
-        // 1. 파일 정보 조회
-        Excel excel = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
-        if (excel == null || excel.getExcelFileList().isEmpty()) {
-            throw new RuntimeException("정제에 필요한 엑셀 파일 정보 없음");
+    private void processProject(ProjectVO vo) throws IOException, CustomException {
+        final int projectIdx = vo.getIdx();
+
+        /* 1. 엑셀 메타 & 프로젝트 정의 로드 */
+        Excel   excel   = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
+        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        if (excel == null || project == null || excel.getExcelFileList().isEmpty())
+            throw new RuntimeException("정제용 메타 또는 파일 정보 없음");
+
+        /* 2. S3 → Workbook */
+        ExcelFile meta   = excel.getExcelFileList().get(0);
+        try (InputStream is = awsS3Component.downloadInputStream(meta.getFilePath())) {
+            Workbook wb = WorkbookFactory.create(is);
+
+            /* 3. 기존 Node·Edge 삭제 */
+            Query byProject = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
+            mongoTemplate.remove(byProject, Node.class);
+            mongoTemplate.remove(byProject, Edge.class);
+
+            /* 4. 시트 단위로 Node 또는 Edge 생성 */
+            for (ExcelSheet sheet : excel.getExcelSheetList()) {
+                String sheetName = sheet.getExcelSheetName();
+                Sheet ws = wb.getSheet(sheetName);
+                if (ws == null) continue;
+
+                /* 4-1. 이 시트가 Node 정의인지 Edge 정의인지 결정 */
+                ProjectNode nodeDef = project.getProjectNodeList().stream()
+                        .filter(n -> n.getNodeType().equals(sheetName))
+                        .findFirst().orElse(null);
+
+                ProjectEdge edgeDef = project.getProjectEdgeList().stream()
+                        .filter(e -> e.getEdgeType().equals(sheetName))
+                        .findFirst().orElse(null);
+
+                if (nodeDef == null && edgeDef == null) continue;
+
+                /* 4-2. Row 루프 → Node/Edge 리스트 빌드 */
+                List<Node> nodeBatch = new ArrayList<>();
+                List<Edge> edgeBatch = new ArrayList<>();
+
+                List<String> columns = sheet.getExcelCellList();
+                int colCnt = columns.size();
+
+                for (int r = 1; r <= sheet.getTotalRowCnt(); r++) {
+                    Row row = ws.getRow(r);
+                    if (row == null || row.getLastCellNum() == -1) {
+                        break;
+                    }
+
+                    /* properties Map 구성 */
+                    LinkedHashMap<String,Object> props = new LinkedHashMap<>(colCnt);
+                    for (int c = 0; c < colCnt; c++) {
+                        props.put(columns.get(c), getExcelColumnData(row.getCell(c)));
+                    }
+
+                    if (nodeDef != null) {              // Node 시트
+                        Object key = props.get(nodeDef.getUniqueCellName());
+                        if (key != null) {
+                            nodeBatch.add(Node.builder()
+                                    .nodeId(new NodeId(projectIdx, sheetName, key))
+                                    .id(key)
+                                    .label(sheetName)
+                                    .properties(props)
+                                    .build());
+                        }
+                    } else {                            // Edge 시트
+                        Object src = props.get(edgeDef.getSrcEdgeCellName());
+                        Object dst = props.get(edgeDef.getDestEdgeCellName());
+                        if (src != null && dst != null) {
+                            edgeBatch.add(Edge.builder()
+                                    .edgeId(new EdgeId(projectIdx, sheetName, r))
+                                    .id(r)
+                                    .startType(edgeDef.getSrcNodeType())
+                                    .start(src)
+                                    .endType(edgeDef.getDestNodeType())
+                                    .end(dst)
+                                    .type(sheetName)
+                                    .properties(props)
+                                    .build());
+                        }
+                    }
+                }
+
+                /* 4-3. Mongo bulk insert */
+                if (!nodeBatch.isEmpty()) mongoTemplate.insertAll(nodeBatch);
+                if (!edgeBatch.isEmpty()) mongoTemplate.insertAll(edgeBatch);
+            }
+
+            /* 5. 상태 완료 */
+            vo.setStatusCd(EnumCode.Project.StatusCd.Complete.getCode());
+            projectMapper.updateByProjectVO(vo);
+            log.info("[THREAD-SUCCESS] 프로젝트 정제 완료 projectIdx={}", projectIdx);
         }
+    }
 
-        if (excel.getExcelFileList().size() == 1) {
-            ExcelFile excelFile = excel.getExcelFileList().get(0);
-            // 2. S3에서 엑셀 InputStream 로드
-            InputStream inputStream = awsS3Component.downloadInputStream(excelFile.getFilePath());
-            Workbook workbook = WorkbookFactory.create(inputStream);
-
-            // 3. ExcelRow 생성
-            log.info("[THREAD] ExcelRow 생성 시작 projectIdx={}", projectIdx);
-            projectComponent.parseExcelRowsOnly(projectIdx, workbook);
-
-            // 4. Node/Edge 생성
-            Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
-
-            if (project == null) {
-                throw new RuntimeException("정제용 Mongo 데이터 없음");
+    private Object getExcelColumnData(Cell cell) throws CustomException {
+        if (cell == null) {
+            return "";
+        }
+        switch (cell.getCellType()) {
+            case STRING -> {
+                return cell.getStringCellValue();
             }
-
-            mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)), Node.class);
-            for (ProjectNode nodeDef : project.getProjectNodeList()) {
-                List<ExcelRow> rows = mongoTemplate.find(Query.query(
-                                Criteria.where("_id.projectIdx").is(projectIdx)
-                                        .and("_id.excelSheetName").is(nodeDef.getNodeType())),
-                        ExcelRow.class);
-
-                rows.forEach(excelRow -> {
-                    Node node = Node.builder()
-                            .nodeId(NodeId.builder()
-                                    .projectIdx(projectIdx)
-                                    .type(excelRow.getExcelRowId().getExcelSheetName())
-                                    .nodeIdx(excelRow.getData().get(nodeDef.getUniqueCellName()))
-                                    .build())
-                            .id(excelRow.getData().get(nodeDef.getUniqueCellName()))
-                            .label(excelRow.getExcelRowId().getExcelSheetName())
-                            .properties(excelRow.getData())
-                            .build();
-                    mongoTemplate.save(node);
-                });
+            case NUMERIC -> {
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue();
+                } else {
+                    return cell.getNumericCellValue();
+                }
             }
-
-            mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)), Edge.class);
-            for (ProjectEdge edgeDef : project.getProjectEdgeList()) {
-                List<ExcelRow> rows = mongoTemplate.find(Query.query(
-                                Criteria.where("_id.projectIdx").is(projectIdx)
-                                        .and("_id.excelSheetName").is(edgeDef.getEdgeType())),
-                        ExcelRow.class);
-
-                rows.forEach(excelRow -> {
-                    Edge edge = Edge.builder()
-                            .edgeId(EdgeId.builder()
-                                    .projectIdx(projectIdx)
-                                    .type(excelRow.getExcelRowId().getExcelSheetName())
-                                    .edgeIdx(excelRow.getExcelRowId().getExcelRowIdx())
-                                    .build())
-                            .id(excelRow.getExcelRowId().getExcelRowIdx())
-                            .startType(edgeDef.getSrcNodeType())
-                            .start(excelRow.getData().get(edgeDef.getSrcEdgeCellName()))
-                            .endType(edgeDef.getDestNodeType())
-                            .end(excelRow.getData().get(edgeDef.getDestEdgeCellName()))
-                            .type(excelRow.getExcelRowId().getExcelSheetName())
-                            .properties(excelRow.getData())
-                            .build();
-                    mongoTemplate.save(edge);
-                });
+            case BOOLEAN -> {
+                return cell.getBooleanCellValue();
             }
-
-            // 5. 상태 변경
-            projectVO.setStatusCd(EnumCode.Project.StatusCd.Complete.getCode());
-            projectMapper.updateByProjectVO(projectVO);
-
-            log.info("[THREAD-SUCCESS] 정제 완료 projectIdx={}", projectIdx);
+            // 수식 셀은 getCellFormula() 또는 evaluate 사용
+            case FORMULA -> {
+                return cell.getCellFormula();
+            }
+            case BLANK -> {
+                return "";
+            }
+            case ERROR -> {
+                return cell.getErrorCellValue();
+            }
+            default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
         }
     }
 }
