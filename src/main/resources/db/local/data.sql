@@ -6,8 +6,8 @@ INSERT INTO `project_category` (`idx`, `partnership_idx`, `name`, `sort`, `updat
 # INSERT INTO `project` (`idx`, `partnership_idx`, `project_category_idx`, `title`, `description`, `status_cd`, `image_url`, `image_path`, `node_cnt`, `edge_cnt`, `update_date`, `create_date`) VALUES (1, 1, 1, 'test', 'test', NULL, NULL, NULL, 0, 0, '2025-04-23 06:36:16', '2025-04-23 06:36:16');
 INSERT INTO `member` (idx, email, password, name, profile_image_url, type_cd, state_cd, comment, last_login_date, leave_date, update_date, create_date) VALUES (1, 'test@test.com', '$2a$10$3yOGt4XE/3VNv3TxgGDM1.H76.NhggSfg2XuN7GgdhZxQDrlPnNIi', null, null, 'MTP0001', 'MST0002', null, null, null, '2025-04-25 11:07:09', '2025-04-25 11:07:09');
 INSERT INTO `member` (idx, email, password, name, profile_image_url, type_cd, state_cd, comment, last_login_date, leave_date, update_date, create_date) VALUES (2, 'test2@test.com', '$2a$10$3yOGt4XE/3VNv3TxgGDM1.H76.NhggSfg2XuN7GgdhZxQDrlPnNIi', null, null, 'MTP0001', 'MST0002', null, null, null, '2025-04-25 11:07:09', '2025-04-25 11:07:09');
-INSERT INTO `partnership_member` (idx, partnership_idx, member_idx) VALUES(1, 1, 1);
-INSERT INTO `partnership_member` (idx, partnership_idx, member_idx) VALUES(2, 1, 2);
+INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(1, 'PST0001', 'PMS0001', 1, 1);
+INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(2, 'PST0001', 'PMS0001', 1, 2);
 
 INSERT INTO `project` (`idx`, `project_category_idx`, `partnership_idx`, `title`, `description`, `status_cd`, `image_url`, `image_path`, `node_cnt`, `edge_cnt`, `update_date`, `create_date`, `delete_date`) VALUES (1, 1, 1, '프로젝트 제목2', '프로젝트 설명2', 'PJS0001', NULL, NULL, NULL, NULL, '2025-05-21 12:14:44', '2025-05-21 12:14:44', NULL);
 INSERT INTO `project` (`idx`, `project_category_idx`, `partnership_idx`, `title`, `description`, `status_cd`, `image_url`, `image_path`, `node_cnt`, `edge_cnt`, `update_date`, `create_date`, `delete_date`) VALUES (2, 1, 1, '프로젝트 제목2', '프로젝트 설명2', 'PJS0001', NULL, NULL, NULL, NULL, '2025-05-21 12:14:45', '2025-05-21 12:14:45', NULL);
