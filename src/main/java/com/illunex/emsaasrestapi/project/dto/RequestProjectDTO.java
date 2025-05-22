@@ -1,19 +1,29 @@
 package com.illunex.emsaasrestapi.project.dto;
 
-import lombok.*;
+import com.illunex.emsaasrestapi.project.ProjectComponent;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
 public class RequestProjectDTO {
 
     /**
+     * 프로젝트 목록 조회 요청 구조
+     */
+    @Getter
+    @Setter
+    public static class SearchProject {
+        private Integer partnershipIdx;                             // 파트너쉽 번호
+        private ProjectComponent.CategorySearchType searchType;     // 프로젝트 카테고리 타입
+        private Integer projectCategoryIdx;                         // 프로젝트 카테고리번호
+    }
+
+    /**
      * 프로젝트 설정 구조
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class Project {
         private Integer projectIdx;                                 // 프로젝트 번호
         private Integer partnershipIdx;                             // 파트너쉽 번호
@@ -32,9 +42,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class ProjectId {
         private Integer projectCategoryIdx;
         private Integer projectIdx;
@@ -45,9 +52,7 @@ public class RequestProjectDTO {
      * 노드 정보
      */
     @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Setter
     public static class ProjectNode {
         private String nodeType;
         private String uniqueCellName;
@@ -59,9 +64,7 @@ public class RequestProjectDTO {
      * 엣지 정보
      */
     @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Setter
     public static class ProjectEdge {
         private String edgeType;
         private String srcEdgeCellName;
@@ -83,9 +86,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class ProjectNodeSize {
         private String labelCategory;
         private List<ProjectItem> projectItemList;
@@ -96,9 +96,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class ProjectFilter {
         private String label;
         private List<ProjectItem> projectItemList;
@@ -109,9 +106,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class ProjectItem {
         private String label;
         private String nodeType;
@@ -125,9 +119,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class ProjectItemModel {
         private String label;
         private String color;
@@ -141,9 +132,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class ProjectNodeContent {
         private String nodeType;
         private String labelTitleCellName;
@@ -158,9 +146,6 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class ProjectNodeContentCell {
         private String label;
         private String cellName;

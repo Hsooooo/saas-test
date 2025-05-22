@@ -1,18 +1,14 @@
 package com.illunex.emsaasrestapi.project.dto;
 
-import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
-import com.illunex.emsaasrestapi.project.document.network.Edge;
-import com.illunex.emsaasrestapi.project.document.network.Node;
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
 
 public class ResponseProjectDTO {
 
@@ -45,7 +41,7 @@ public class ResponseProjectDTO {
 
         public void setStatusCd(String statusCd) {
             this.statusCd = statusCd;
-            this.statusCdDesc = Objects.requireNonNull(BaseCodeEnum.fromCode(EnumCode.Project.StatusCd.class, statusCd)).getValue();
+            this.statusCdDesc = EnumCode.getCodeDesc(statusCd);
         }
     }
 
@@ -68,7 +64,7 @@ public class ResponseProjectDTO {
 
         public void setFileCd(String fileCd) {
             this.fileCd = fileCd;
-            this.fileCdDesc = Objects.requireNonNull(BaseCodeEnum.fromCode(EnumCode.ProjectFile.FileCd.class, fileCd)).getValue();
+            this.fileCdDesc = EnumCode.getCodeDesc(fileCd);
         }
     }
 
@@ -131,9 +127,6 @@ public class ResponseProjectDTO {
      */
     @Getter
     @Setter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
     public static class ProjectFilter {
         private String label;
         private List<RequestProjectDTO.ProjectItem> projectItemList;
@@ -236,48 +229,28 @@ public class ResponseProjectDTO {
     public static class ExcelRow {
         private ExcelRowId excelRowId;
         private LinkedHashMap<String, Object> data;
-        // Row 데이터 정보
-    }
-
-    /**
-     * 카테고리 조회
-     */
-    @Getter
-    @Setter
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class ProjectCategory {
-        private Integer idx;        // 카테고리idx
-        private String name;        // 카테고리명
-        private Integer projectCnt; // 프로젝트 숫자
-        private Integer sort;       // 정렬순서
-        ZonedDateTime updateDate;   // 수정일
-        ZonedDateTime createDate;   // 생성일
     }
 
 
     /**
-     * 카테고리의 프로젝트들 조회
+     * 프로젝트 목록 응답 구조
      */
     @Getter
     @Setter
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class ProjectPreview {
-        Integer partnershipIdx;     // 파트너쉽idx
-        Integer categoryIdx;        // 카테고리idx
-        Integer projectIdx;         // 프로젝트idx
-        String title;               // 프로젝트명
-        Integer nodeCnt;            // 노드개수
-        Integer edgeCnt;            // 엣지개수
-        String imageUrl;            // 이미지url
-        String imagePath;           // 이미지 경로
-        ZonedDateTime createDate;   // 생성일
-        ZonedDateTime updateDate;   // 수정일
-        String statusCd;            // 상태
-        List<ResponseMemberDTO.Member> members;  // 프로젝트 구성원
+    public static class ProjectListItem {
+        private Integer idx;                    // 프로젝트번호
+        private Integer partnershipIdx;
+        private Integer projectCategoryIdx;
+        private String title;
+        private String description;
+        private String statusCd;
+        private String imageUrl;
+        private String imagePath;
+        private Integer nodeCnt;
+        private Integer edgeCnt;
+        private ZonedDateTime updateDate;
+        private ZonedDateTime createDate;
+        private List<ResponseMemberDTO.Member> members;  // 프로젝트 구성원
     }
 
 }

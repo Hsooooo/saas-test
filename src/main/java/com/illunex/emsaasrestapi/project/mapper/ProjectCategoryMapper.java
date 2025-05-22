@@ -13,4 +13,6 @@ public interface ProjectCategoryMapper {
     Integer deleteByIdx(Integer idx);
     List<ProjectCategoryVO> selectAllByPartnershipIdx(Integer partnershipIdx);
     Optional<ProjectCategoryVO> selectByProjectCategoryIdx(Integer projectCategoryIdx);
+    // 파트너쉽번호에 해당하는 모든 카테고리 조회
+    Optional<ProjectCategoryVO> selectByProjectCategoryIdxAndPartnershipIdx(Integer projectCategoryIdx, Integer partnershipIdx);
 }

@@ -9,7 +9,6 @@ import com.illunex.emsaasrestapi.network.dto.ResponseNetworkDTO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.ProjectComponent;
-import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContent;
@@ -20,13 +19,10 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StopWatch;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -35,6 +31,8 @@ public class NetworkService {
     private final MongoTemplate mongoTemplate;
     private final PartnershipComponent partnershipComponent;
     private final ProjectComponent projectComponent;
+    private final NetworkComponent networkComponent;
+
 
     /**
      * 전체 관계망 조회
@@ -45,20 +43,29 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkAll(MemberVO memberVO, Integer projectIdx) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, projectIdx);
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
-        ResponseNetworkDTO.Network response = new ResponseNetworkDTO.Network();
+        ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
-        //TODO [PYJ] 노드검색
+        StopWatch stopWatch = new StopWatch();
+
         Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
         List<Node> nodes = mongoTemplate.find(query, Node.class);
+        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
+                ResponseNetworkDTO.NodeInfo.builder()
+                        .nodeId(target.getNodeId())
+                        .label(target.getLabel())
+                        .properties(target.getProperties())
+                        .build()
+        ).toList();
 
-        response.setNodes(nodes);
+        response.setNodes(nodeInfoList);
 
-        //TODO [PYJ] 엣지검색
-        projectComponent.extendRepeatNetworkSearch(response, nodes, 1);
+
+        //관계망 검색
+        networkComponent.networkSearch(response, nodes);
 
         if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
         if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
@@ -77,22 +84,32 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkSingleExtend(MemberVO memberVO, RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, selectNode.getProjectIdx());
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(selectNode.getProjectIdx(), partnershipMemberVO.getIdx());
 
-        ResponseNetworkDTO.Network response = new ResponseNetworkDTO.Network();
+        ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
         //노드검색
         Query query = Query.query(Criteria.where("_id.projectIdx").is(selectNode.getProjectIdx())
                         .and("_id.nodeIdx").is(selectNode.getNodeIdx())
                         .and("label").is(selectNode.getLabel()));
         List<Node> nodes = mongoTemplate.find(query, Node.class);
+        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
+                ResponseNetworkDTO.NodeInfo.builder()
+                        .nodeId(target.getNodeId())
+                        .label(target.getLabel())
+                        .properties(target.getProperties())
+                        .build()
+        ).toList();
 
-        response.getNodes().addAll(nodes);
+        response.setNodes(nodeInfoList);
 
-        //엣지검색
-        projectComponent.extendRepeatNetworkSearch(response, nodes, 1);
+        //관계망 검색
+        networkComponent.networkSearch(response, nodes);
+
+        if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
+        if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
 
         return CustomResponse.builder()
                 .data(response)
@@ -107,9 +124,9 @@ public class NetworkService {
      */
     public CustomResponse<?> getNetworkInfo(MemberVO memberVO, RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, selectNode.getProjectIdx());
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, selectNode.getProjectIdx());
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(memberVO.getIdx(), partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(selectNode.getProjectIdx(), partnershipMemberVO.getIdx());
 
         List<ResponseNetworkDTO.NodeDetailInfo> data = new ArrayList<>();
 
@@ -135,6 +152,11 @@ public class NetworkService {
 
         List <ProjectNodeContent> nodeContentList = project.getProjectNodeContentList();
         ProjectNodeContent findNodeInfo = null;
+
+        // 프로젝트 필드 정보가 없을 경우 예외처리
+        if(nodeContentList == null) {
+            throw new CustomException(ErrorCode.PROJECT_CONTENT_EMPTY_DATA);
+        }
 
         for(ProjectNodeContent nodeContent : nodeContentList) {
             if(nodeContent.getNodeType().equals(node.getLabel())){
@@ -168,9 +190,12 @@ public class NetworkService {
      * @param search
      * @return
      */
-    public CustomResponse<?> getNetworkSearch(RequestNetworkDTO.Search search) throws CustomException {
-        // TODO : 파트너쉽에 속한 회원 여부 체크
-        // TODO : 해당 프로젝트 권한 여부 체크
+    public CustomResponse<?> getNetworkSearch(MemberVO memberVO, RequestNetworkDTO.Search search) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, search.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(search.getProjectIdx(), partnershipMemberVO.getIdx());
+
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
         //검색할 컬럼명 조회
@@ -183,14 +208,20 @@ public class NetworkService {
         }
 
         //노드검색
-        String labelTitleCellName = project.getProjectNodeContentList().get(0).getLabelTitleCellName();
-        String nodeType = project.getProjectNodeContentList().get(0).getNodeType();
-        Query query2 = Query.query(
-                new Criteria().andOperator(
-                        Criteria.where("properties." + labelTitleCellName).regex(".*" + search.getKeyword() + ".*"),
-                        Criteria.where("label").is(nodeType)
-                ));
-        List<Node> nodes = mongoTemplate.find(query2, Node.class);
+        List<ProjectNodeContent> projectNodeContentList = project.getProjectNodeContentList();
+        if(projectNodeContentList == null) {
+            throw new CustomException(ErrorCode.PROJECT_CONTENT_EMPTY_DATA);
+        }
+        List<Criteria> criteriaList = projectNodeContentList.stream().map(
+                target -> new Criteria().andOperator(
+                        Criteria.where("properties." + target.getLabelTitleCellName()).regex(".*" + search.getKeyword() + ".*"),
+                        Criteria.where("label").is(target.getNodeType())
+                )
+        ).toList();
+        Criteria combinedCriteria = new Criteria().orOperator(criteriaList.toArray(new Criteria[0]));
+        Query combinedQuery = Query.query(combinedCriteria);
+        List<Node> nodes = mongoTemplate.find(combinedQuery, Node.class);
+
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
                         ResponseNetworkDTO.NodeInfo.builder()
                                 .nodeId(target.getNodeId())
@@ -199,10 +230,10 @@ public class NetworkService {
                                 .build()
                         ).toList();
 
-        response.getNodes().addAll(nodeInfoList);
+        response.setNodes(nodeInfoList);
 
-        //엣지검색
-        networkSearch(response, nodes);
+        //관계망 검색
+        networkComponent.networkSearch(response, nodes);
 
         //node 정보 사용자가 지정한 정보만 보이도록 필터링
         Map<String, ProjectNodeContent> projectNodeContentMap = project.getProjectNodeContentList().stream()
@@ -214,8 +245,21 @@ public class NetworkService {
         nodeInfoList = response.getNodes();
         for(ResponseNetworkDTO.NodeInfo nodeInfo : nodeInfoList){
             ProjectNodeContent currentOption = projectNodeContentMap.get(nodeInfo.getLabel());
-            nodeInfo.getProperties().entrySet().removeIf(entry ->
-                    !currentOption.getLabelKeywordCellList().contains(entry.getKey()));
+            List<String> cellList = currentOption.getProjectNodeContentCellList().stream()
+                    .map(ProjectNodeContentCell::getCellName).toList();
+            List<ResponseNetworkDTO.NodeDetailInfo> props = new ArrayList<>();
+            for(ProjectNodeContentCell cell : currentOption.getProjectNodeContentCellList()){
+                ResponseNetworkDTO.NodeDetailInfo nodeDetailInfo = ResponseNetworkDTO.NodeDetailInfo.builder()
+                        .label((String) cell.getLabel())
+                        .cellName(cell.getCellName())
+                        .cellType(cell.getCellType())
+                        .value(nodeInfo.getProperties().get(cell.getCellName()))
+                        .build();
+                props.add(nodeDetailInfo);
+            }
+            LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+            map.put("data", props);
+            nodeInfo.setProperties(map);
             nodeInfo.setDelimiter(currentOption.getKeywordSplitUnit());
         }
         response.setNodes(nodeInfoList);
@@ -230,65 +274,65 @@ public class NetworkService {
                 .build();
     }
 
+
+
     /**
-     * 1뎁스로 노드의 관계망 검색
-     * @param response
-     * @param nodes
+     * 자동완성 조회
+     * @param memberVO
+     * @param autoCompleteSearch
      */
-    public void networkSearch(ResponseNetworkDTO.SearchNetwork response, List<Node> nodes){
-        if(nodes.isEmpty()) return;
+    public CustomResponse<?> getAutoComplete(MemberVO memberVO,
+                                             RequestNetworkDTO.AutoCompleteSearch autoCompleteSearch) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, autoCompleteSearch.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(autoCompleteSearch.getProjectIdx(), partnershipMemberVO.getIdx());
 
-        //1. 해당 노드들의 엣지 검색
-        List<Criteria> criteriaList = nodes.stream()
-                .map(node -> new Criteria().orOperator(
-                        Criteria.where("start").is(node.getId()).and("startType").is(node.getLabel()),
-                        Criteria.where("end").is(node.getId()).and("endType").is(node.getLabel())
-                ))
+        // 프로젝트 조회
+        Project project = mongoTemplate.findOne(new Query(Criteria.where("_id").is(autoCompleteSearch.getProjectIdx())), Project.class);
+        if (project == null || project.getProjectNodeContentList().isEmpty()) {
+            throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+        }
+
+        List<ProjectNodeContent> projectNodeContentList = project.getProjectNodeContentList();
+
+        // 타겟 노드 타입 필터링
+        List<ProjectNodeContent> filteredNodeContents = projectNodeContentList.stream()
+                .filter(content -> autoCompleteSearch.getNodeType().isEmpty() || autoCompleteSearch.getNodeType().contains(content.getNodeType()))
                 .toList();
-        Criteria combinedCriteria = new Criteria().orOperator(criteriaList.toArray(new Criteria[0]));
-        Query combinedQuery = Query.query(combinedCriteria);
-        List<Edge> edgeList = mongoTemplate.find(combinedQuery, Edge.class);
 
-        //2. 조회된 엣지 response 용으로 변경
-        List<ResponseNetworkDTO.EdgeInfo> edgeInfoList = edgeList.stream().map(target ->
-                ResponseNetworkDTO.EdgeInfo.builder()
-                        .edgeId(target.getEdgeId())
-                        .startType(target.getStartType())
-                        .start(target.getStart())
-                        .endType(target.getEndType())
-                        .end(target.getEnd())
-                        .build()
-        ).toList();
+        if (filteredNodeContents.isEmpty()) {
+            throw new CustomException(ErrorCode.COMMON_EMPTY);
+        }
 
-        //3. 중복제거(override 해놓음) 및 response에 담기
-        edgeInfoList = edgeInfoList.stream().distinct().toList();
-        response.getLinks().addAll(edgeInfoList);
+        Map<String, List<ResponseNetworkDTO.AutoComplete>> response = new HashMap<>();
 
-        //4. 해당 엣지들로 노드 검색
-        List<Criteria> criteriaList2 = edgeInfoList.stream()
-                .flatMap(edge -> Stream.of(
-                        Criteria.where("label").is(edge.getStartType()).and("id").is(edge.getStart()),
-                        Criteria.where("label").is(edge.getEndType()).and("id").is(edge.getEnd())
-                ))
-                .toList();
-        Criteria combinedCriteria2 = new Criteria().orOperator(criteriaList2.toArray(new Criteria[0]));
-        Query query = Query.query(combinedCriteria2);
-        List<Node> nodeList = mongoTemplate.find(query, Node.class);
+        // 노드 데이터 조회
+        for (ProjectNodeContent content : filteredNodeContents) {
+            String nodeType = content.getNodeType();
+            String labelTitleCellName = content.getLabelTitleCellName();
 
+            Criteria criteria = Criteria.where("_id.projectIdx").is(autoCompleteSearch.getProjectIdx())
+                    .and("_id.type").is(nodeType)
+                    .and("properties." + labelTitleCellName)
+                    .regex(".*" + autoCompleteSearch.getSearchKeyword() + ".*", "i");
 
-        //5. 조회된 노드 response 용으로 변경
-        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodeList.stream().map(target ->
-                ResponseNetworkDTO.NodeInfo.builder()
-                        .nodeId(target.getNodeId())
-                        .label(target.getLabel())
-                        .properties(target.getProperties())
-                        .build()
-        ).toList();
+            List<Node> nodes = mongoTemplate.find(new Query(criteria).limit(autoCompleteSearch.getLimit()), Node.class, "node");
 
+            List<ResponseNetworkDTO.AutoComplete> result = new ArrayList<>();
 
-        //6. 중복제거(override 해놓음) 및 response에 담기
-        nodeInfoList = nodeInfoList.stream().distinct().toList();
-        response.getNodes().addAll(nodeInfoList);
+            for (Node node : nodes) {
+                ResponseNetworkDTO.AutoComplete autoComplete = ResponseNetworkDTO.AutoComplete.builder()
+                        .nodeId(node.getNodeId())
+                        .nodeLabelTitle(node.getProperties().get(labelTitleCellName).toString())
+                        .build();
+
+                result.add(autoComplete);
+            }
+
+            response.put(nodeType, result);
+        }
+
+        return CustomResponse.builder().data(response).build();
     }
-
 }

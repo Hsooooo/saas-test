@@ -53,8 +53,8 @@ create table if not exists em_saas.member_login_history
     idx         int auto_increment comment '로그인이력번호'
     primary key,
     member_idx  int                                  not null comment '회원번호',
-    browser     varchar(100)                         null comment '접속 브라우저',
-    platform    varchar(100)                         null comment '접속 환경',
+    browser     varchar(255)                         null comment '접속 브라우저',
+    platform    varchar(255)                         null comment '접속 환경',
     ip          varchar(15)                          null comment '접속 ip',
     create_date datetime default current_timestamp() not null comment '접속일',
     constraint member_login_history_member_idx_fk
@@ -64,7 +64,7 @@ create table if not exists em_saas.member_login_history
     comment '로그인 이력 정보';
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`member_email_history` (
-    `idx` INT(11) NOT NULL COMMENT '이메일전송이력번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '이메일전송이력번호',
     `member_idx` INT(11) NULL DEFAULT NULL COMMENT '회원번호',
     `cert_data` VARCHAR(255) NULL DEFAULT NULL COMMENT '인증키' COLLATE 'utf8mb4_general_ci',
     `used` BIT(1) NULL DEFAULT NULL COMMENT '인증여부(1:인증, 0:미인증)',
@@ -177,7 +177,9 @@ create table if not exists em_saas.partnership_member
     on delete cascade,
     constraint partnership_member_partnership_team_idx_fk
     foreign key (partnership_team_idx) references em_saas.partnership_team (idx)
-    on delete cascade
+    on delete cascade,
+    INDEX `manager_cd` (`manager_cd`) USING BTREE,
+    INDEX `state_cd` (`state_cd`) USING BTREE
     )
     comment '파트너쉽 회원정보';
 

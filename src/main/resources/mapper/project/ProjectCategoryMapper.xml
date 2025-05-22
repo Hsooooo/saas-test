@@ -50,4 +50,12 @@
         FROM project_category
         WHERE idx = #{projectCategoryIdx}
     </select>
+<!--파트너쉽번호에 해당하는 모든 카테고리 조회-->
+    <select id="selectByProjectCategoryIdxAndPartnershipIdx" parameterType="Integer" resultType="ProjectCategoryVO">
+        SELECT
+            *
+        FROM project_category
+        WHERE idx = #{projectCategoryIdx}
+        AND partnership_idx = #{partnershipIdx}
+    </select>
 </mapper>

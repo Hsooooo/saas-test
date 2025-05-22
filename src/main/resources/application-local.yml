@@ -40,16 +40,16 @@ spring:
         - classpath*:db/local/schema.sql
         - classpath*:db/common/alter_table.sql
       data-locations:
-        - classpath*:db/common/code.sql,
+        - classpath*:db/common/code.sql
         - classpath*:db/local/data.sql
-    mode: always
+      mode: always
   data:
     mongodb:
       host: localhost
       port: 27017
       username: root
       password: Illunex123!
-      database: em_saas
+      database: em_saas_test
       authentication-database: admin
       auto-index-creation: true
 

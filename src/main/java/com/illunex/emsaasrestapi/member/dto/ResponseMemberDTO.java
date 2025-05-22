@@ -37,7 +37,7 @@ public class ResponseMemberDTO {
     @Setter
     public static class Member {
         private String email;
-        private String nickname;
+        private String name;
         private String profileImageUrl;
         private String comment;
     }

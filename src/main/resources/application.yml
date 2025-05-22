@@ -47,14 +47,21 @@ spring:
     open-in-view: false
   sql:
     init:
-#      schema-locations: classpath*:db/prod/schema.sql,
-#                        classpath*:db/common/alter_table.sql
-#      data-locations: classpath*:db/common/code.sql
+      schema-locations:
+        - classpath*:db/prod/schema.sql
+        - classpath*:db/common/alter_table.sql
+      data-locations:
+        - classpath*:db/common/code.sql
       mode: always
   data:
-    redis:
-      host: 220.118.147.58
-      port: 46379
+    mongodb:
+      host: ${mongo-host}
+      port: ${mongo-port}
+      username: ${mongo-user}
+      password: ${mongo-pass}
+      database: ${mongo-db}
+      authentication-database: admin
+      auto-index-creation: true
 
 mybatis:
   configuration:

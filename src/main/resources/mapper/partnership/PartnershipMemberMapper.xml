@@ -99,17 +99,6 @@
        )
     </insert>
 
-    <select id="selectAllByProjectIdx" parameterType="Integer" resultType="PartnershipMemberVO">
-        SELECT
-            *
-        FROM
-            project_member pmem
-                JOIN partnership_member pm ON pm.idx = pmem.partnership_member_idx
-                LEFT JOIN member m ON m.idx = pm.member_idx
-        WHERE
-            pmem.project_idx = #{projectIdx}
-    </select>
-
     <update id="updatePositionIdxAndPhoneByIdx">
         UPDATE partnership_member
         <set>
