@@ -55,6 +55,15 @@ public class ProjectComponent {
     private final MongoTemplate mongoTemplate;
 
     /**
+     * 프로젝트 카테고리 타입
+     */
+    public enum CategorySearchType {
+        all,                // 전체 조회
+        empty,              // 미분류 조회
+        category            // 카테고리번호 조회
+    }
+
+    /**
      * 프로젝트 구성원 여부 체크
      * @param projectIdx
      * @param partnershipMemberIdx
@@ -198,6 +207,15 @@ public class ProjectComponent {
 
         List<ResponseProjectCategoryDTO.ProjectCategory> response = modelMapper.map(projectCategoryVOList, new TypeToken<List<ResponseProjectCategoryDTO.ProjectCategory>>() {
         }.getType());
+        response.forEach(projectCategory -> {
+            if(projectCategory.getIdx() == null && projectCategory.getName().equals("전체")) {
+                projectCategory.setSearchType(CategorySearchType.all);
+            } else if(projectCategory.getIdx() == null && projectCategory.getName().equals("미분류")) {
+                projectCategory.setSearchType(CategorySearchType.empty);
+            } else {
+                projectCategory.setSearchType(CategorySearchType.category);
+            }
+        });
 
         // 카테고리별 프로젝트 개수 조회
         for (int i = 0; i < response.size(); i++) {

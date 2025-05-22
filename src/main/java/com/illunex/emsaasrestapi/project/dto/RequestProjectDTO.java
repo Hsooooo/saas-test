@@ -1,19 +1,12 @@
 package com.illunex.emsaasrestapi.project.dto;
 
+import com.illunex.emsaasrestapi.project.ProjectComponent;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
 
 public class RequestProjectDTO {
-    /**
-     * 목록 조회 방법 구분 값
-     */
-    public enum CategorySearchType {
-        all,                // 전체 조회
-        empty,              // 미분류 조회
-        category            // 카테고리번호 조회
-    }
 
     /**
      * 프로젝트 목록 조회 요청 구조
@@ -22,7 +15,7 @@ public class RequestProjectDTO {
     @Setter
     public static class SearchProject {
         private Integer partnershipIdx;                             // 파트너쉽 번호
-        private CategorySearchType searchType;                      // 검색타입
+        private ProjectComponent.CategorySearchType searchType;     // 프로젝트 카테고리 타입
         private Integer projectCategoryIdx;                         // 프로젝트 카테고리번호
     }
 
