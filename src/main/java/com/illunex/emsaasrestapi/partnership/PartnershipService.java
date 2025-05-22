@@ -76,7 +76,7 @@ public class PartnershipService {
         PartnershipMemberVO partnershipMember = new PartnershipMemberVO();
         partnershipMember.setMemberIdx(ownerMemberIdx);
         partnershipMember.setPartnershipIdx(partnership.getIdx());
-        partnershipMember.setManagerCd(EnumCode.PartnershipMember.ManagerCd.Manager.getValue());
+        partnershipMember.setManagerCd(EnumCode.PartnershipMember.ManagerCd.Manager.getCode());
         partnershipMember.setStateCd(EnumCode.PartnershipMember.StateCd.Normal.getCode());
         partnershipMemberMapper.insertByPartnershipMember(partnershipMember);
 
