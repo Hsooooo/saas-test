@@ -128,8 +128,6 @@ public class ProjectComponent {
                 .excelFileList(Collections.singletonList(excelFileDoc))
                 .build();
 
-        // 엑셀 데이터 Row 데이터 삭제
-        mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)), ExcelRow.class);
         // 엑셀 파싱 정보 삭제
         mongoTemplate.findAndRemove(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
 
@@ -242,55 +240,6 @@ public class ProjectComponent {
         }
 
         return response;
-    }
-
-    /**
-     * 엑셀파일 excel_row 파싱 함수
-     * @param projectIdx
-     * @param workbook
-     * @throws CustomException
-     */
-    public void parseExcelRowsOnly(Integer projectIdx, Workbook workbook) throws CustomException {
-        // 기존 Row 데이터 삭제
-        mongoTemplate.findAllAndRemove(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)), ExcelRow.class);
-
-        // 이미 저장된 시트 정보 불러오기
-        Excel excel = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
-        if (excel == null) {
-            throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
-        }
-
-        for (ExcelSheet sheetInfo : excel.getExcelSheetList()) {
-            Sheet workSheet = workbook.getSheet(sheetInfo.getExcelSheetName());
-            if (workSheet == null) continue;
-
-            long startMillisecond = System.currentTimeMillis();
-            log.info(Utils.getLogMaker(Utils.eLogType.USER), "Start parse excel - projectIdx : {}, sheet : {}, size : {}", projectIdx, sheetInfo.getExcelSheetName(), sheetInfo.getTotalRowCnt());
-            List<ExcelRow> excelRowList = new ArrayList<>();
-            for (int rowIdx = 1; rowIdx <= sheetInfo.getTotalRowCnt(); rowIdx++) {
-                Row row = workSheet.getRow(rowIdx);
-                if (row == null) break;
-
-                LinkedHashMap<String, Object> dataMap = new LinkedHashMap<>();
-                for (int cellIdx = 0; cellIdx < sheetInfo.getExcelCellList().size(); cellIdx++) {
-                    dataMap.put(sheetInfo.getExcelCellList().get(cellIdx), getExcelColumnData(row.getCell(cellIdx)));
-                }
-
-                ExcelRow excelRow = ExcelRow.builder()
-                        .excelRowId(ExcelRowId.builder()
-                                .projectIdx(projectIdx)
-                                .excelSheetName(sheetInfo.getExcelSheetName())
-                                .excelRowIdx(rowIdx)
-                                .build())
-                        .data(dataMap)
-                        .createDate(LocalDateTime.now())
-                        .build();
-
-                excelRowList.add(excelRow);
-            }
-            mongoTemplate.insertAll(excelRowList);
-            log.info(Utils.getLogMaker(Utils.eLogType.USER), "End parse excel - projectIdx : {}, time : {}ms", projectIdx, System.currentTimeMillis() - startMillisecond);
-        }
     }
 
     /**

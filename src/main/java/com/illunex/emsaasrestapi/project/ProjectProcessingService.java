@@ -53,7 +53,7 @@ public class ProjectProcessingService {
                 try {
                     processProject(projectVO);
                 } catch (Exception e) {
-                    projectVO.setStatusCd(EnumCode.Project.StatusCd.Step6.getCode());
+                    projectVO.setStatusCd(EnumCode.Project.StatusCd.Fail.getCode());
                     projectMapper.updateByProjectVO(projectVO);
                     log.error("[Thread-FAIl] 프로젝트 정제 실패 projectIdx={}", projectIdx, e);
                 }
@@ -61,26 +61,19 @@ public class ProjectProcessingService {
         }
     }
 
-    private void processProject(ProjectVO projectVO) throws IOException, CustomException {
-        int projectIdx = projectVO.getIdx();
-        // 1. 파일 정보 조회
-        Excel excel = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
-        if (excel == null || excel.getExcelFileList().isEmpty()) {
-            throw new RuntimeException("정제에 필요한 엑셀 파일 정보 없음");
-        }
+    private void processProject(ProjectVO vo) throws IOException, CustomException {
+        final int projectIdx = vo.getIdx();
 
-        if (excel.getExcelFileList().size() == 1) {
-            ExcelFile excelFile = excel.getExcelFileList().get(0);
-            // 2. S3에서 엑셀 InputStream 로드
-            InputStream inputStream = awsS3Component.downloadInputStream(excelFile.getFilePath());
-            Workbook workbook = WorkbookFactory.create(inputStream);
+        /* 1. 엑셀 메타 & 프로젝트 정의 로드 */
+        Excel   excel   = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
+        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        if (excel == null || project == null || excel.getExcelFileList().isEmpty())
+            throw new RuntimeException("정제용 메타 또는 파일 정보 없음");
 
-            // 3. ExcelRow 생성
-            log.info("[THREAD] ExcelRow 생성 시작 projectIdx={}", projectIdx);
-            projectComponent.parseExcelRowsOnly(projectIdx, workbook);
-
-            // 4. Node/Edge 생성
-            Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        /* 2. S3 → Workbook */
+        ExcelFile meta   = excel.getExcelFileList().get(0);
+        try (InputStream is = awsS3Component.downloadInputStream(meta.getFilePath())) {
+            Workbook wb = WorkbookFactory.create(is);
 
             /* 3. 기존 Node·Edge 삭제 */
             Query byProject = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
