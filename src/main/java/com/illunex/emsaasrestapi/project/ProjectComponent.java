@@ -173,6 +173,7 @@ public class ProjectComponent {
                     .add(ExcelSheet.builder()
                             .excelSheetName(workSheet.getSheetName())
                             .excelCellList(excelCellList)
+                            .filePath(excelFileDoc.getFilePath())
                             .totalRowCnt(totalRowCnt)
                             .build());
             excel.setCreateDate(LocalDateTime.now());
@@ -270,6 +271,19 @@ public class ProjectComponent {
             } else {
                 response.setProjectFileList(new ArrayList<>());
             }
+
+            // 저장된 엑셀 데이터 정보 조회
+            Excel selectExcel = mongoTemplate.findOne(
+                    Query.query(
+                            Criteria.where("_id").is(projectIdx)
+                    ),
+                    Excel.class
+            );
+            if(selectExcel == null) {
+                throw new CustomException(ErrorCode.COMMON_EMPTY);
+            }
+
+            response.setProjectExcel(modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class));
 
             return response;
         }

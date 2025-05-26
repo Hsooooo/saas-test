@@ -35,6 +35,7 @@ public class ResponseProjectDTO {
         private List<ProjectFilter> projectFilterList;              // 필터링정보
         private List<ProjectNodeContent> projectNodeContentList;    // 속성정보
         private List<ProjectFile> projectFileList;                  // 업로드 파일
+        private Excel projectExcel;
         private ZonedDateTime updateDate;
         private ZonedDateTime createDate;
         private ZonedDateTime deleteDate;
