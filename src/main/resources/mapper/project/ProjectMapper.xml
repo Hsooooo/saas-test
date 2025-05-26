@@ -115,6 +115,7 @@
         FROM project p
         INNER JOIN project_member pm ON pm.project_idx = p.idx
         WHERE p.partnership_idx = #{searchProject.partnershipIdx}
+        AND p.delete_date IS NULL
         <choose>
             <when test="searchProject.searchType != null and searchProject.searchType.name().equals('category')">
                 AND p.project_category_idx = #{searchProject.projectCategoryIdx}
@@ -138,6 +139,7 @@
         FROM project p
         INNER JOIN project_member pm ON pm.project_idx = p.idx
         WHERE p.partnership_idx = #{searchProject.partnershipIdx}
+        AND p.delete_date IS NULL
         <choose>
             <when test="searchProject.searchType != null and searchProject.searchType.name().equals('category')">
                 AND p.project_category_idx = #{searchProject.projectCategoryIdx}
