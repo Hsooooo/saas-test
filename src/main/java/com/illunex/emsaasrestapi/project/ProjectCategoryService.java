@@ -39,7 +39,7 @@ public class ProjectCategoryService {
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> getProjectCategory(MemberVO memberVO, Integer partnershipIdx) throws CustomException {
+    public CustomResponse<?> getProjectCategoryList(MemberVO memberVO, Integer partnershipIdx) throws CustomException {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
 
