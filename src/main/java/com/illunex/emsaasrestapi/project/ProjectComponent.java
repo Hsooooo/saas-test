@@ -3,7 +3,6 @@ package com.illunex.emsaasrestapi.project;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
-import com.illunex.emsaasrestapi.common.Utils;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.excel.*;
@@ -25,14 +24,9 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.bson.Document;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.springframework.data.mongodb.core.aggregation.CountOperation;
-import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
@@ -301,87 +295,8 @@ public class ProjectComponent {
         if(selectExcel == null) {
             throw new CustomException(ErrorCode.COMMON_EMPTY);
         }
-        // 응답 구조 맵핑
-        ResponseProjectDTO.Excel response = modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class);
         // 3. 시트별 row 정보 세팅
-        response.getExcelSheetList().forEach(dataSheet -> {
-            String sheetName = dataSheet.getExcelSheetName();
 
-            // 3-1. ExcelRow 미리보기 (10개)
-            List<ExcelRow> previewRows = mongoTemplate.find(
-                    Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                                    .and("_id.excelSheetName").is(sheetName))
-                            .limit(10),
-                    ExcelRow.class
-            );
-
-            List<ResponseProjectDTO.ExcelRow> mappedPreview = modelMapper.map(
-                    previewRows,
-                    new TypeToken<List<ResponseProjectDTO.ExcelRow>>() {}.getType()
-            );
-            dataSheet.setExcelRowList(mappedPreview);
-
-            // 3-2. 총 row 수 계산: 존재할 경우 집계, 없을 경우 fallback
-            if (!previewRows.isEmpty()) {
-                // ExcelRow가 존재하면 aggregation 수행
-                MatchOperation matchOperation = Aggregation.match(
-                        Criteria.where("_id.projectIdx").is(projectIdx)
-                                .and("_id.excelSheetName").is(sheetName)
-                );
-                CountOperation countOperation = Aggregation.count().as("rowCount");
-                Aggregation aggregation = Aggregation.newAggregation(matchOperation, countOperation);
-
-                AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel_row", Document.class);
-                int rowCount = Optional.ofNullable(results.getUniqueMappedResult())
-                        .map(doc -> doc.getInteger("rowCount"))
-                        .orElse(0);
-
-                dataSheet.setTotalRowCnt(rowCount);
-            } else {
-                // ExcelRow가 없으면 엑셀 시트 정보에 저장된 값 사용
-                log.info("[FALLBACK] ExcelRow 없음. totalRowCnt fallback 사용: {}:{}", projectIdx, sheetName);
-                dataSheet.setTotalRowCnt(dataSheet.getTotalRowCnt()); // 유지
-            }
-        });
-
-        return response;
-    }
-
-    /**
-     * 엑셀 cell 타입에 맞게 데이터 반환
-     * @param cell
-     * @return
-     * @throws CustomException
-     */
-    private Object getExcelColumnData(Cell cell) throws CustomException{
-        if(cell == null) {
-            return "";
-        }
-        switch (cell.getCellType()) {
-            case STRING -> {
-                return cell.getStringCellValue();
-            }
-            case NUMERIC -> {
-                if (DateUtil.isCellDateFormatted(cell)) {
-                    return cell.getDateCellValue();
-                } else {
-                    return cell.getNumericCellValue();
-                }
-            }
-            case BOOLEAN -> {
-                return cell.getBooleanCellValue();
-            }
-            // 수식 셀은 getCellFormula() 또는 evaluate 사용
-            case FORMULA -> {
-                return cell.getCellFormula();
-            }
-            case BLANK -> {
-                return "";
-            }
-            case ERROR -> {
-                return cell.getErrorCellValue();
-            }
-            default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
-        }
+        return modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class);
     }
 }
