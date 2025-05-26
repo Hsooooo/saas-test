@@ -344,27 +344,30 @@ public class ProjectService {
 
     /**
      * 프로젝트 삭제
-     * @param projectIdx
+     * @param projectIdxList
      * @return
      */
     @Transactional
-    public CustomResponse<?> deleteProject(MemberVO memberVO, Integer projectIdx) throws CustomException {
-        // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
-        // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+    public CustomResponse<?> deleteProject(MemberVO memberVO, List<Integer> projectIdxList) throws CustomException {
+        int deleteCnt = 0;
+        for(Integer projectIdx : projectIdxList) {
+            // 파트너쉽 회원 여부 체크
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
+            // 프로젝트 구성원 여부 체크
+            projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
-        // RDB 프로젝트 조회
-        ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
-                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+            // RDB 프로젝트 조회
+            ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
+                    .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
-        // MongoDB 프로젝트 조회
-        Project findProject = mongoTemplate.findById(projectIdx, Project.class);
-        if(projectVO == null || findProject == null) {
-            throw new CustomException(ErrorCode.COMMON_EMPTY);
+//            // MongoDB 프로젝트 조회
+//            Project findProject = mongoTemplate.findById(projectIdxList, Project.class);
+//            if(projectVO == null || findProject == null) {
+//                throw new CustomException(ErrorCode.COMMON_EMPTY);
+//            }
+            // 프로젝트 삭제일 저장
+            deleteCnt += projectMapper.updateByDeleteDate(projectIdx);
         }
-        // 프로젝트 삭제일 저장
-        int deleteCnt = projectMapper.updateByDeleteDate(projectIdx);
 
         return CustomResponse.builder()
                 .data(deleteCnt)
@@ -374,13 +377,13 @@ public class ProjectService {
     /**
      * 프로젝트 복제
      * @param memberVO
-     * @param proejectIdList
+     * @param proejectIdxList
      * @return
      * @throws CustomException
      */
     @Transactional(rollbackFor = Exception.class)
-    public CustomResponse<?> copyProject(MemberVO memberVO, List<Integer> proejectIdList) throws CustomException {
-        for(Integer projectIdx : proejectIdList){
+    public CustomResponse<?> copyProject(MemberVO memberVO, List<Integer> proejectIdxList) throws CustomException {
+        for(Integer projectIdx : proejectIdxList){
             // 파트너쉽 회원 여부 체크
             PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
             // 프로젝트 구성원 여부 체크
@@ -461,7 +464,7 @@ public class ProjectService {
         }
 
         return CustomResponse.builder()
-                .data(proejectIdList.size())
+                .data(proejectIdxList.size())
                 .build();
     }
 
