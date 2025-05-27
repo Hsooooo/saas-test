@@ -52,25 +52,29 @@
     <select id="countAllByProjectCategoryIdxAndPartnershipMemberIdx" parameterType="Integer" resultType="Integer">
         SELECT
             COUNT(*)
-        FROM project a
-        INNER JOIN project_member b
-        ON a.idx = b.project_idx
+        FROM project p
+        INNER JOIN project_member pm
+        ON p.idx = pm.project_idx
         <choose>
             <when test="projectCategoryIdx == null">
-                WHERE a.project_category_idx IS NULL
+                WHERE p.project_category_idx IS NULL
             </when>
             <otherwise>
-                WHERE a.project_category_idx = #{projectCategoryIdx}
+                WHERE p.project_category_idx = #{projectCategoryIdx}
             </otherwise>
         </choose>
-        AND b.partnership_member_idx = #{partnershipMemberIdx}
+        AND pm.partnership_member_idx = #{partnershipMemberIdx}
+        AND p.delete_date IS NULL
     </select>
 <!--파트너쉽 구성원에 포함되어 있는 프로젝트 총 개수 조회-->
     <select id="countAllByPartnershipMemberIdx" parameterType="Integer" resultType="Integer">
         SELECT
-            count(*)
-        FROM project_member
-        WHERE partnership_member_idx = #{partnershipMemberIdx}
+            COUNT(*)
+        FROM project p
+        INNER JOIN project_member pm
+        ON p.idx = pm.project_idx
+        AND pm.partnership_member_idx = #{partnershipMemberIdx}
+        AND p.delete_date IS NULL
     </select>
 
     <select id="selectAllByProjectCategoryIdx" parameterType="Integer" resultType="ProjectVO">
@@ -115,6 +119,7 @@
         FROM project p
         INNER JOIN project_member pm ON pm.project_idx = p.idx
         WHERE p.partnership_idx = #{searchProject.partnershipIdx}
+        AND p.delete_date IS NULL
         <choose>
             <when test="searchProject.searchType != null and searchProject.searchType.name().equals('category')">
                 AND p.project_category_idx = #{searchProject.projectCategoryIdx}
@@ -138,6 +143,7 @@
         FROM project p
         INNER JOIN project_member pm ON pm.project_idx = p.idx
         WHERE p.partnership_idx = #{searchProject.partnershipIdx}
+        AND p.delete_date IS NULL
         <choose>
             <when test="searchProject.searchType != null and searchProject.searchType.name().equals('category')">
                 AND p.project_category_idx = #{searchProject.projectCategoryIdx}

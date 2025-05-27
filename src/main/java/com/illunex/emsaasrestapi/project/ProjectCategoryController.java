@@ -6,8 +6,6 @@ import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectCategoryDTO;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,10 +22,10 @@ public class ProjectCategoryController {
      * @return
      * @throws CustomException
      */
-    @GetMapping()
-    public CustomResponse<?> getProjectCategory(@CurrentMember MemberVO memberVO,
+    @GetMapping("/list")
+    public CustomResponse<?> getProjectCategoryList(@CurrentMember MemberVO memberVO,
                                                 @RequestParam(name = "partnershipIdx") Integer partnershipIdx) throws CustomException {
-        return categoryService.getProjectCategory(memberVO, partnershipIdx);
+        return categoryService.getProjectCategoryList(memberVO, partnershipIdx);
     }
 
     /**

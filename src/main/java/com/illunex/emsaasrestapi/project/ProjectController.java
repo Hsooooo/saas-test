@@ -110,29 +110,29 @@ public class ProjectController {
     /**
      * 프로젝트 삭제
      * @param memberVO
-     * @param projectIdx
+     * @param proejectIdxList
      * @return
      * @throws CustomException
      */
     @DeleteMapping()
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> deleteProject(@CurrentMember MemberVO memberVO,
-                                           @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
-        return projectService.deleteProject(memberVO, projectIdx);
+                                           @RequestBody List<Integer> proejectIdxList) throws CustomException {
+        return projectService.deleteProject(memberVO, proejectIdxList);
     }
 
     /**
      * 프로젝트 복제
      * @param memberVO
-     * @param proejectIdList
+     * @param proejectIdxList
      * @return
      * @throws CustomException
      */
     @PostMapping("/copy")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> copyProject(@CurrentMember MemberVO memberVO,
-                                         @RequestBody List<Integer> proejectIdList) throws CustomException, JsonProcessingException {
-        return projectService.copyProject(memberVO, proejectIdList);
+                                         @RequestBody List<Integer> proejectIdxList) throws CustomException, JsonProcessingException {
+        return projectService.copyProject(memberVO, proejectIdxList);
     }
 
     /**

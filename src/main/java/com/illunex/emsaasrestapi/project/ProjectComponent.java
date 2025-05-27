@@ -279,11 +279,10 @@ public class ProjectComponent {
                     ),
                     Excel.class
             );
-            if(selectExcel == null) {
-                throw new CustomException(ErrorCode.COMMON_EMPTY);
+            // 엑셀 데이터가 있을 경우 맵핑
+            if(selectExcel != null) {
+                response.setProjectExcel(modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class));
             }
-
-            response.setProjectExcel(modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class));
 
             return response;
         }
