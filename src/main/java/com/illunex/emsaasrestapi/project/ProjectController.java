@@ -148,4 +148,23 @@ public class ProjectController {
                                          @RequestBody List<RequestProjectDTO.ProjectId> projectIdList) throws CustomException {
         return projectService.moveProject(memberVO, projectIdList);
     }
+
+    /**
+     * 엑셀 컬럼 요약 조회
+     * @param memberVO
+     * @param search
+     * @return
+     * @throws CustomException
+     * @throws Exception
+     */
+    @PostMapping("/excel/summary")
+    public CustomResponse<?> projectExcelSummary(@CurrentMember MemberVO memberVO,
+                                                @RequestBody RequestProjectDTO.ProjectExcelSummary search) throws CustomException, Exception {
+        if ("range".equals(search.getType())) {
+            return projectService.getExcelValueRange(memberVO, search);
+        } else if ("distinct".equals(search.getType())) {
+            return projectService.getExcelValueDistinct(memberVO, search);
+        }
+        return CustomResponse.builder().build();
+    }
 }

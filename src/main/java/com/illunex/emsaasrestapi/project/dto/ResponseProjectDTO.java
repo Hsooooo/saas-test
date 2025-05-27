@@ -254,4 +254,30 @@ public class ResponseProjectDTO {
         private List<ResponseMemberDTO.Member> members;  // 프로젝트 구성원
     }
 
+    /**
+     * 엑셀 컬럼 요약 조회(범위값) 응답
+     */
+    @Getter
+    @Setter
+    public static class ExcelValueRange {
+        private Object min;
+        private Object max;
+    }
+
+    /**
+     * 엑셀 컬럼 요약 조회(선택값) 응답
+     */
+    @Getter
+    @Setter
+    public static class ExcelValueDistinct {
+        private List<ExcelValueDistinctItem> list;
+    }
+
+    @Getter
+    @Setter
+    public static class ExcelValueDistinctItem {
+        private String value;
+        private Integer count;
+    }
+
 }

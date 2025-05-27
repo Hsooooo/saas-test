@@ -13,6 +13,7 @@ import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
+import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.EdgeId;
 import com.illunex.emsaasrestapi.project.document.network.Node;
@@ -29,6 +30,7 @@ import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.*;
 import org.bson.Document;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
@@ -40,13 +42,14 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ObjectUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -493,4 +496,164 @@ public class ProjectService {
                 .message("카테고리 이동 되었습니다.")
                 .build();
     }
+
+    /**
+     * 선택 컬럼 범위값 조회
+     * @param memberVO
+     * @param search
+     * @return
+     * @throws CustomException
+     * @throws IOException
+     */
+    public CustomResponse<?> getExcelValueRange(MemberVO memberVO, RequestProjectDTO.ProjectExcelSummary search) throws CustomException, IOException {
+        // 파트너쉽 회원 여부 체크
+        partnershipComponent.checkPartnershipMemberAndProject(memberVO, search.getProjectIdx());
+        long start = System.currentTimeMillis();
+
+        // 엑셀 정보 조회
+        Excel excel = mongoTemplate.findById(search.getProjectIdx(), Excel.class);
+        if (excel == null) throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+
+        // 저장된 엑셀 정보에 존재하는 시트명 여부 확인
+        ExcelSheet sheetInfo = excel.getExcelSheetList().stream()
+                .filter(s -> s.getExcelSheetName().equals(search.getExcelSheetName()))
+                .findFirst()
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY));
+
+        // 해당 엑셀 파일 workbook 변환
+        try (InputStream is = awsS3Component.downloadInputStream(sheetInfo.getFilePath());
+             Workbook workbook = WorkbookFactory.create(is)) {
+
+            Sheet sheet = workbook.getSheet(sheetInfo.getExcelSheetName());
+            if (sheet == null) throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+
+            Row header = sheet.getRow(0);
+            if (header == null) throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+
+            // 해당 컬럼명의 idx값 추출
+            int colIdx = findColumnIndex(header, search.getExcelCellName());
+
+            Comparable<?> min = null, max = null;
+            Class<?> type = null;
+
+            // 저장된 row count만큼 loop
+            for (int r = 1; r <= sheetInfo.getTotalRowCnt(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null || row.getLastCellNum() == -1) continue;
+
+                // 해당 컬럼의 row값 추출
+                Cell cell = row.getCell(colIdx);
+                Object raw = projectComponent.getExcelColumnData(cell);
+                // 빈 값이면 skip
+                if (!(raw instanceof Comparable<?> comp) || ObjectUtils.isEmpty(raw)) continue;
+
+                // 최초에 잡힌 변수타입으로 비교변수타입 설정
+                if (type == null) type = comp.getClass();
+                // 최초에 설정된 변수타입과 다른경우 skip
+                if (!type.isInstance(comp)) continue;
+
+                @SuppressWarnings("unchecked")
+                Comparable<Object> current = (Comparable<Object>) comp;
+
+                if (min == null || current.compareTo(min) < 0) min = current;
+                if (max == null || current.compareTo(max) > 0) max = current;
+            }
+
+            ResponseProjectDTO.ExcelValueRange range = new ResponseProjectDTO.ExcelValueRange();
+            range.setMax(max);
+            range.setMin(min);
+            log.info("Excel summary type={} {}ms", search.getType(), System.currentTimeMillis()-start);
+            return CustomResponse.builder().data(range).build();
+        }
+    }
+
+
+    /**
+     * 선택 컬럼 선택값 상위 20개 조회
+     * @param memberVO
+     * @param search
+     * @return
+     * @throws CustomException
+     * @throws IOException
+     */
+    public CustomResponse<?> getExcelValueDistinct(MemberVO memberVO, RequestProjectDTO.ProjectExcelSummary search) throws CustomException, IOException {
+        // 파트너쉽 회원 여부 체크
+        partnershipComponent.checkPartnershipMemberAndProject(memberVO, search.getProjectIdx());
+
+        long start = System.currentTimeMillis();
+        // 엑셀 정보 조회
+        Excel excel = mongoTemplate.findById(search.getProjectIdx(), Excel.class);
+        if (excel == null) throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+
+        // 저장된 엑셀 정보에 존재하는 시트명 여부 확인
+        ExcelSheet sheetInfo = excel.getExcelSheetList().stream()
+                .filter(s -> s.getExcelSheetName().equals(search.getExcelSheetName()))
+                .findFirst()
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY));
+
+        // 해당 엑셀 파일 workbook 변환
+        try (InputStream is = awsS3Component.downloadInputStream(sheetInfo.getFilePath());
+             Workbook workbook = WorkbookFactory.create(is)) {
+
+            Sheet sheet = workbook.getSheet(sheetInfo.getExcelSheetName());
+            if (sheet == null) throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+
+            Row header = sheet.getRow(0);
+            if (header == null) throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+
+            // 해당 컬럼명의 idx값 추출
+            int colIdx = findColumnIndex(header, search.getExcelCellName());
+
+            // 빈도수 저장 Map
+            Map<String, Integer> freq = new HashMap<>();
+
+            // 저장된 row Count 만큼 loop
+            for (int r = 1; r <= sheetInfo.getTotalRowCnt(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null || row.getLastCellNum() == -1) continue;
+
+                Cell cell = row.getCell(colIdx);
+                Object raw = projectComponent.getExcelColumnData(cell);
+                if (ObjectUtils.isEmpty(raw)) continue;
+
+                String key = raw.toString().trim();
+                freq.merge(key, 1, Integer::sum);
+            }
+
+            // 저장된 빈도수가 잦은 순대로 정렬 후 20개 cut
+            List<ResponseProjectDTO.ExcelValueDistinctItem> list = freq.entrySet().stream()
+                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                    .limit(20)
+                    .map(e -> {
+                        ResponseProjectDTO.ExcelValueDistinctItem item = new ResponseProjectDTO.ExcelValueDistinctItem();
+                        item.setValue(e.getKey());
+                        item.setCount(e.getValue());
+                        return item;
+                    })
+                    .toList();
+
+            ResponseProjectDTO.ExcelValueDistinct distinct = new ResponseProjectDTO.ExcelValueDistinct();
+            distinct.setList(list);
+            log.info("Excel summary type={} {}ms", search.getType(), System.currentTimeMillis()-start);
+            return CustomResponse.builder().data(distinct).build();
+        }
+    }
+
+    /**
+     * header row 에서 조회하고자 하는 col idx 추출
+     * @param header
+     * @param columnName
+     * @return
+     * @throws CustomException
+     */
+    private int findColumnIndex(Row header, String columnName) throws CustomException {
+        for (int i = 0; i < header.getLastCellNum(); i++) {
+            Cell c = header.getCell(i);
+            if (c != null && columnName.equals(c.getStringCellValue().trim())) {
+                return i;
+            }
+        }
+        throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+    }
+
 }

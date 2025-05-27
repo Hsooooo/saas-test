@@ -151,4 +151,16 @@ public class RequestProjectDTO {
         private String cellName;
         private String cellType;
     }
+
+    /**
+     * 엑셀 컬럼 요약
+     */
+    @Getter
+    @Setter
+    public static class ProjectExcelSummary {
+        private Integer projectIdx;
+        private String type;
+        private String excelSheetName;
+        private String excelCellName;
+    }
 }
