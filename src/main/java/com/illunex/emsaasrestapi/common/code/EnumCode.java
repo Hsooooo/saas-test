@@ -162,8 +162,13 @@ public class EnumCode {
         }
     }
 
-    // 이메일
+    /**
+     * 이메일
+     */
     public static class Email {
+        /**
+         * 이메일 구분
+         */
         @Getter
         @AllArgsConstructor
         public enum TypeCd {
@@ -177,6 +182,7 @@ public class EnumCode {
             private final String value;
         }
     }
+
     /**
      * 프로젝트 업로드 파일
      */
