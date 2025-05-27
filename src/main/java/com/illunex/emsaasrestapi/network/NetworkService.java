@@ -19,7 +19,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StopWatch;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -49,8 +48,7 @@ public class NetworkService {
 
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
-        StopWatch stopWatch = new StopWatch();
-
+        // 모든 노드 조회
         Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
         List<Node> nodes = mongoTemplate.find(query, Node.class);
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
@@ -60,7 +58,6 @@ public class NetworkService {
                         .properties(target.getProperties())
                         .build()
         ).toList();
-
         response.setNodes(nodeInfoList);
 
 
@@ -90,7 +87,7 @@ public class NetworkService {
 
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
-        //노드검색
+        // 노드검색
         Query query = Query.query(Criteria.where("_id.projectIdx").is(selectNode.getProjectIdx())
                         .and("_id.nodeIdx").is(selectNode.getNodeIdx())
                         .and("label").is(selectNode.getLabel()));
@@ -105,7 +102,7 @@ public class NetworkService {
 
         response.setNodes(nodeInfoList);
 
-        //관계망 검색
+        // 관계망 검색
         networkComponent.networkSearch(response, nodes);
 
         if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
@@ -130,7 +127,7 @@ public class NetworkService {
 
         List<ResponseNetworkDTO.NodeDetailInfo> data = new ArrayList<>();
 
-        //1. 노드 검색
+        // 1. 노드 검색
         Query query1 = Query.query(Criteria.where("_id.projectIdx").is(selectNode.getProjectIdx())
                 .and("_id.nodeIdx").is(selectNode.getNodeIdx())
                 .and("label").is(selectNode.getLabel()));
@@ -141,7 +138,7 @@ public class NetworkService {
             throw new CustomException(ErrorCode.COMMON_EMPTY);
         }
 
-        //2. 사용자가 세팅한 설정 검색
+        // 2. 사용자가 세팅한 설정 검색
         Query query2 = Query.query(Criteria.where("_id").is(selectNode.getProjectIdx()));
         Project project = mongoTemplate.findOne(query2, Project.class);
 
@@ -164,7 +161,7 @@ public class NetworkService {
             }
         }
 
-        //세팅한 정보만 추려내기
+        // 세팅한 정보만 추려내기
         List<ProjectNodeContentCell> cellList = findNodeInfo.getProjectNodeContentCellList();
         for(ProjectNodeContentCell cell : cellList) {
             node.getProperties().forEach((key, value) -> {
@@ -250,7 +247,7 @@ public class NetworkService {
             List<ResponseNetworkDTO.NodeDetailInfo> props = new ArrayList<>();
             for(ProjectNodeContentCell cell : currentOption.getProjectNodeContentCellList()){
                 ResponseNetworkDTO.NodeDetailInfo nodeDetailInfo = ResponseNetworkDTO.NodeDetailInfo.builder()
-                        .label((String) cell.getLabel())
+                        .label(cell.getLabel())
                         .cellName(cell.getCellName())
                         .cellType(cell.getCellType())
                         .value(nodeInfo.getProperties().get(cell.getCellName()))
@@ -260,7 +257,6 @@ public class NetworkService {
             LinkedHashMap<String, Object> map = new LinkedHashMap<>();
             map.put("data", props);
             nodeInfo.setProperties(map);
-            nodeInfo.setDelimiter(currentOption.getKeywordSplitUnit());
         }
         response.setNodes(nodeInfoList);
 

@@ -20,10 +20,10 @@ public class ResponseNetworkDTO {
     @Builder
     @AllArgsConstructor
     public static class Network {
-        Integer nodeSize;
-        Integer linkSize;
-        List<Node> nodes;
-        List<Edge> links;
+        private Integer nodeSize;
+        private Integer linkSize;
+        private List<Node> nodes;
+        private List<Edge> links;
 
         public Network() {
             if(nodes == null) nodes = new ArrayList<>();
@@ -39,10 +39,10 @@ public class ResponseNetworkDTO {
     @Builder
     @AllArgsConstructor
     public static class SearchNetwork {
-        Integer nodeSize;
-        Integer linkSize;
-        List<NodeInfo> nodes;
-        List<EdgeInfo> links;
+        private Integer nodeSize;
+        private Integer linkSize;
+        private List<NodeInfo> nodes;
+        private List<EdgeInfo> links;
 
         public SearchNetwork() {
             this.nodes = new ArrayList<>();
@@ -59,10 +59,10 @@ public class ResponseNetworkDTO {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class NodeDetailInfo {
-        String label;
-        String cellName;
-        String cellType;
-        Object value;
+        private String label;
+        private String cellName;
+        private String cellType;
+        private Object value;
     }
 
 
@@ -75,10 +75,9 @@ public class ResponseNetworkDTO {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class NodeInfo {
-        NodeId nodeId;
-        Object label;
-        String delimiter;
-        LinkedHashMap<String, Object> properties;
+        private NodeId nodeId;
+        private Object label;
+        private LinkedHashMap<String, Object> properties;
 
         @Override
         public boolean equals(Object o) {
@@ -104,11 +103,12 @@ public class ResponseNetworkDTO {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class EdgeInfo {
-        EdgeId edgeId;
-        Object startType;
-        Object start;
-        Object endType;
-        Object end;
+        private EdgeId edgeId;
+        private Object startType;
+        private Object start;
+        private Object endType;
+        private Object end;
+        private LinkedHashMap<String, Object> properties;
 
         @Override
         public boolean equals(Object o) {
