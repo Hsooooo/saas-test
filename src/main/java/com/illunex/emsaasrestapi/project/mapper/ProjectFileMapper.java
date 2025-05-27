@@ -9,4 +9,5 @@ import java.util.List;
 public interface ProjectFileMapper {
     Integer insertByProjectFileVO(ProjectFileVO projectFileVO);
     List<ProjectFileVO> selectAllByProjectIdx(Integer projectIdx);
+    Integer deleteAllByProjectIdx(Integer projectIdx);
 }

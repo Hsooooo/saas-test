@@ -37,4 +37,10 @@
         WHERE project_idx = #{projectIdx}
         ORDER BY project_idx desc;
     </select>
+
+<!--    프로젝트 파일 모두 삭제-->
+    <delete id="deleteAllByProjectIdx" parameterType="Integer" >
+        DELETE FROM project_file
+        WHERE project_idx = #{projectIdx};
+    </delete>
 </mapper>
