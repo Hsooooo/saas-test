@@ -312,4 +312,36 @@ public class ProjectComponent {
 
         return modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class);
     }
+
+    public Object getExcelColumnData(Cell cell) throws CustomException {
+        if (cell == null) {
+            return "";
+        }
+        switch (cell.getCellType()) {
+            case STRING -> {
+                return cell.getStringCellValue();
+            }
+            case NUMERIC -> {
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue();
+                } else {
+                    return cell.getNumericCellValue();
+                }
+            }
+            case BOOLEAN -> {
+                return cell.getBooleanCellValue();
+            }
+            // 수식 셀은 getCellFormula() 또는 evaluate 사용
+            case FORMULA -> {
+                return cell.getCellFormula();
+            }
+            case BLANK -> {
+                return "";
+            }
+            case ERROR -> {
+                return cell.getErrorCellValue();
+            }
+            default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
+        }
+    }
 }

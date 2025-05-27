@@ -113,7 +113,7 @@ public class ProjectProcessingService {
                     /* properties Map 구성 */
                     LinkedHashMap<String,Object> props = new LinkedHashMap<>(colCnt);
                     for (int c = 0; c < colCnt; c++) {
-                        props.put(columns.get(c), getExcelColumnData(row.getCell(c)));
+                        props.put(columns.get(c), projectComponent.getExcelColumnData(row.getCell(c)));
                     }
 
                     if (nodeDef != null) {              // Node 시트
@@ -156,35 +156,4 @@ public class ProjectProcessingService {
         }
     }
 
-    private Object getExcelColumnData(Cell cell) throws CustomException {
-        if (cell == null) {
-            return "";
-        }
-        switch (cell.getCellType()) {
-            case STRING -> {
-                return cell.getStringCellValue();
-            }
-            case NUMERIC -> {
-                if (DateUtil.isCellDateFormatted(cell)) {
-                    return cell.getDateCellValue();
-                } else {
-                    return cell.getNumericCellValue();
-                }
-            }
-            case BOOLEAN -> {
-                return cell.getBooleanCellValue();
-            }
-            // 수식 셀은 getCellFormula() 또는 evaluate 사용
-            case FORMULA -> {
-                return cell.getCellFormula();
-            }
-            case BLANK -> {
-                return "";
-            }
-            case ERROR -> {
-                return cell.getErrorCellValue();
-            }
-            default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
-        }
-    }
 }
