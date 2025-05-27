@@ -232,35 +232,6 @@ public class NetworkService {
         //관계망 검색
         networkComponent.networkSearch(response, nodes);
 
-        //node 정보 사용자가 지정한 정보만 보이도록 필터링
-        Map<String, ProjectNodeContent> projectNodeContentMap = project.getProjectNodeContentList().stream()
-                .collect(Collectors.toMap(
-                        ProjectNodeContent::getNodeType,
-                        nodeContent -> nodeContent
-                ));
-
-        nodeInfoList = response.getNodes();
-        for(ResponseNetworkDTO.NodeInfo nodeInfo : nodeInfoList){
-            ProjectNodeContent currentOption = projectNodeContentMap.get(nodeInfo.getLabel());
-            List<String> cellList = currentOption.getProjectNodeContentCellList().stream()
-                    .map(ProjectNodeContentCell::getCellName).toList();
-            List<ResponseNetworkDTO.NodeDetailInfo> props = new ArrayList<>();
-            for(ProjectNodeContentCell cell : currentOption.getProjectNodeContentCellList()){
-                ResponseNetworkDTO.NodeDetailInfo nodeDetailInfo = ResponseNetworkDTO.NodeDetailInfo.builder()
-                        .label(cell.getLabel())
-                        .cellName(cell.getCellName())
-                        .cellType(cell.getCellType())
-                        .value(nodeInfo.getProperties().get(cell.getCellName()))
-                        .build();
-                props.add(nodeDetailInfo);
-            }
-            LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-            map.put("data", props);
-            nodeInfo.setProperties(map);
-        }
-        response.setNodes(nodeInfoList);
-
-
         //노드, 엣지 개수 세팅
         response.setNodeSize(response.getNodes().size());
         response.setLinkSize(response.getLinks().size());
