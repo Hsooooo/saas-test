@@ -148,7 +148,7 @@ public class ProjectService {
                     .build();
             ProjectFileVO projectFileVO = new ProjectFileVO();
             projectFileVO.setProjectIdx(projectIdx);
-            projectFileVO.setFileName(awsS3ResourceDTO.getFileName());
+            projectFileVO.setFileName(awsS3ResourceDTO.getOrgFileName());
             projectFileVO.setFileUrl(awsS3ResourceDTO.getUrl());
             projectFileVO.setFilePath(awsS3ResourceDTO.getPath());
             projectFileVO.setFileSize(awsS3ResourceDTO.getSize());
