@@ -141,6 +141,13 @@ public class ProjectService {
 
         // 프로젝트 삭제 여부 확인
         if(projectVO.getDeleteDate() == null) {
+            // 등록된 엑셀 파일 찾아서 있을 경우 S3 삭제 및 데이터 삭제 처리
+            List<ProjectFileVO> projectFileVOList = projectFileMapper.selectAllByProjectIdx(projectIdx);
+            for (ProjectFileVO projectFileVO : projectFileVOList) {
+                awsS3Component.delete(projectFileVO.getFilePath());
+            }
+            Integer deleteCnt = projectFileMapper.deleteAllByProjectIdx(projectIdx);
+
             // s3 업로드
             AwsS3ResourceDTO awsS3ResourceDTO = AwsS3ResourceDTO.builder()
                     .fileName(excelFile.getOriginalFilename())

@@ -48,7 +48,6 @@ public class NetworkComponent {
         List<Edge> edgeList = mongoTemplate.find(combinedQuery, Edge.class);
         stopWatch.stop();
 
-
         //2. 조회된 엣지 response 용으로 변경
         List<ResponseNetworkDTO.EdgeInfo> edgeInfoList = edgeList.stream().map(target ->
                 ResponseNetworkDTO.EdgeInfo.builder()
@@ -57,6 +56,7 @@ public class NetworkComponent {
                         .start(target.getStart())
                         .endType(target.getEndType())
                         .end(target.getEnd())
+                        .properties(target.getProperties())
                         .build()
         ).toList();
 
