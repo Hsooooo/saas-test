@@ -57,7 +57,7 @@ public class ResponseProjectDTO {
         private String fileName;
         private String fileUrl;
         private String filePath;
-        private String fileSize;
+        private Long fileSize;
         private String fileCd;
         private String fileCdDesc;
         private ZonedDateTime updateDate;
