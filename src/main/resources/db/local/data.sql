@@ -24,3 +24,6 @@ INSERT INTO `project_member` (`idx`, `project_idx`, `partnership_member_idx`, `t
 INSERT INTO `project_member` (`idx`, `project_idx`, `partnership_member_idx`, `type_cd`, `disable_functions`, `update_date`, `create_date`) VALUES (7, 2, 2, 'PMT0001', NULL, '2025-05-21 12:14:45', '2025-05-21 12:14:45');
 INSERT INTO `project_member` (`idx`, `project_idx`, `partnership_member_idx`, `type_cd`, `disable_functions`, `update_date`, `create_date`) VALUES (8, 4, 2, 'PMT0001', NULL, '2025-05-21 12:14:49', '2025-05-21 12:14:49');
 INSERT INTO `project_member` (`idx`, `project_idx`, `partnership_member_idx`, `type_cd`, `disable_functions`, `update_date`, `create_date`) VALUES (9, 6, 2, 'PMT0001', NULL, '2025-05-21 12:14:54', '2025-05-21 12:14:54');
+
+INSERT INTO `member_term` (`idx`, `subject`, `content`, `active`, `required`, `update_date`, `create_date`) VALUES (1, '첫번째약관(필수)', '내용', true, true, now(), now());
+INSERT INTO `member_term` (`idx`, `subject`, `content`, `active`, `required`, `update_date`, `create_date`) VALUES (2, '두번째약관(선택)', '내용', true, false, now(), now());

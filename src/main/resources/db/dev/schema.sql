@@ -48,6 +48,35 @@ create table if not exists em_saas.member
     )
     comment '회원 정보';
 
+CREATE TABLE IF NOT EXISTS `em_saas`.`member_term` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '약관번호',
+    `subject` VARCHAR(255) NULL DEFAULT NULL COMMENT '약관 제목',
+    `content` TEXT NULL DEFAULT NULL COMMENT '약관 내용',
+    `active` BIT(1) NULL DEFAULT NULL COMMENT '활성화여부(1:활성화, 0:비활성화)',
+    `required` BIT(1) NULL DEFAULT NULL COMMENT '필수 여부(1:필수, 0:선택)',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE
+)
+COMMENT='약관 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`member_term_agree` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '약관 동의 정보 번호',
+    `member_idx` INT(11) NULL DEFAULT NULL COMMENT '회원번호',
+    `member_term_idx` INT(11) NULL DEFAULT NULL COMMENT '약관번호',
+    `agree` BIT(1) NULL DEFAULT NULL COMMENT '동의여부(1:동의, 0:미동의)',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    CONSTRAINT `fk_member_term_agree_member_idx` FOREIGN KEY (`member_idx`) REFERENCES `member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+    CONSTRAINT `fk_member_term_agree_member_term_idx` FOREIGN KEY (`member_term_idx`) REFERENCES `member_term` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='약관 동의 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
 create table if not exists em_saas.member_login_history
 (
     idx         int auto_increment comment '로그인이력번호'

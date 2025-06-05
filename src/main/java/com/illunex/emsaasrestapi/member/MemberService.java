@@ -11,12 +11,10 @@ import com.illunex.emsaasrestapi.common.jwt.TokenProvider;
 import com.illunex.emsaasrestapi.config.SecurityConfig;
 import com.illunex.emsaasrestapi.member.dto.RequestMemberDTO;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
-import com.illunex.emsaasrestapi.member.mapper.EmailHistoryMapper;
-import com.illunex.emsaasrestapi.member.mapper.LoginHistoryMapper;
-import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
-import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
+import com.illunex.emsaasrestapi.member.mapper.*;
 import com.illunex.emsaasrestapi.member.vo.MemberEmailHistoryVO;
 import com.illunex.emsaasrestapi.member.vo.MemberLoginHistoryVO;
+import com.illunex.emsaasrestapi.member.vo.MemberTermVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipService;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
@@ -29,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -61,6 +60,7 @@ public class MemberService {
     private final PartnershipMemberMapper partnershipMemberMapper;
     private final LoginHistoryMapper loginHistoryMapper;
     private final EmailHistoryMapper emailHistoryMapper;
+    private final MemberTermMapper memberTermMapper;
 
     private final AwsSESComponent awsSESComponent;
     private final AwsS3Component awsS3Component;
@@ -78,12 +78,9 @@ public class MemberService {
      * 약관 목록 조회
      */
     public CustomResponse<?> getTermList() {
-//        List<MemberTerm> memberTermList = memberTermRepository.findAllByActiveTrue();
-//        return CustomResponse.builder()
-//                .data(modelMapper.map(memberTermList, new TypeToken<List<ResponseMemberDTO.Term>>(){}.getType()))
-//                .build();
+        List<MemberTermVO> memberTermList = memberTermMapper.selectAllByActiveTrue();
         return CustomResponse.builder()
-                .data(null)
+                .data(modelMapper.map(memberTermList, new TypeToken<List<ResponseMemberDTO.Term>>(){}.getType()))
                 .build();
     }
 

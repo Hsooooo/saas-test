@@ -15,7 +15,7 @@ public class ResponseMemberDTO {
         private Integer idx;
         private String subject;
         private String content;
-        private String required;
+        private Boolean required;
         private ZonedDateTime updateDate;
         private ZonedDateTime createDate;
     }

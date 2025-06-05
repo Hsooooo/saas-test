@@ -18,4 +18,7 @@ DROP TABLE IF EXISTS `em_saas`.`partnership`;
 -- 회원 관련 테이블
 DROP TABLE IF EXISTS `em_saas`.`member_email_history`;
 DROP TABLE IF EXISTS `em_saas`.`member_login_history`;
+-- 약관 관련 테이블
+DROP TABLE IF EXISTS `em_saas`.`member_term_agree`;
+DROP TABLE IF EXISTS `em_saas`.`member_term`;
 DROP TABLE IF EXISTS `em_saas`.`member`;

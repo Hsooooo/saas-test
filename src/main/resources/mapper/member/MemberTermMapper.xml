@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.member.mapper.MemberTermMapper">
+
+
+    <select id="selectAllByActiveTrue" resultType="MemberTermVO">
+        SELECT idx,
+               subject,
+               content,
+               active,
+               required,
+               update_date,
+               create_date
+         FROM member_term
+        WHERE active = true
+        ORDER BY create_date DESC
+    </select>
+
+</mapper>

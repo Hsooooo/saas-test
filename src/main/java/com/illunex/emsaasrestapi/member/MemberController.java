@@ -59,7 +59,7 @@ public class MemberController {
     }
 
     /**
-     * TODO 약관 목록 조회
+     * 약관 목록 조회
      * @return
      */
     @GetMapping("terms")
