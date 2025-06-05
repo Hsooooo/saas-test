@@ -38,6 +38,12 @@ public class RequestMemberDTO {
         private String password;
     }
 
+    @Getter
+    public static class ResendJoinEmail {
+        private String type;
+        private String value;
+    }
+
     /**
      * 회원정보 수정
      */

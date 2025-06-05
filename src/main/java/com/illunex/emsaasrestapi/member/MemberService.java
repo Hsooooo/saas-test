@@ -237,92 +237,43 @@ public class MemberService {
      * @return
      */
     public CustomResponse<?> resendJoinEmail(String type, String value) throws Exception {
-//        String email;
-//        switch (type) {
-//            case "email" -> email = value;
-//            case "expire" -> {
-//                JSONObject data = new JSONObject(Utils.AES256.decrypt(encryptKey, URLDecoder.decode(value, StandardCharsets.UTF_8)));
-//                email = data.getString("email");
-//            }
-//            default -> throw new CustomException(ErrorCode.COMMON_INVALID);
-//        }
+        String email;
+        switch (type) {
+            case "email" -> email = value;
+            case "expire" -> {
+                String decrypted = Utils.AES256.decrypt(encryptKey, value);
+                JSONObject data = new JSONObject(decrypted);
+                email = data.getString("email");
+            }
+            default -> throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        MemberVO member = findByEmail(email);
+
+        if(!member.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
+            // 인증대기 상태가 아닐 경우
+            throw new CustomException(ErrorCode.MEMBER_ALREADY_EMAIL_CERTIFICATE);
+        }
+
+        // 회원가입 인증 이메일 발송
+        String certData = awsSESComponent.sendJoinEmail(
+                null,
+                email);
 //
-//        Member member = memberRepository.findByEmail(email)
-//                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_FAIL_AUTHENTICATION));
-//
-//        if(!member.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
-//            // 인증대기 상태가 아닐 경우
-//            throw new CustomException(ErrorCode.MEMBER_ALREADY_EMAIL_CERTIFICATE);
-//        }
-//
-//        // 회원가입 인증 이메일 발송
-//        String certData = awsSESComponent.sendJoinEmail(
-//                null,
-//                member.getEmail());
-//
-//        // 비밀번호 찾기 메일 이력 저장
-//        MemberEmailHistory memberEmailHistory = new MemberEmailHistory();
-//        memberEmailHistory.setMemberIdx(member.getIdx());
-//        memberEmailHistory.setCertData(certData);
-//        memberEmailHistory.setUsed(false);
-//        memberEmailHistory.setEmailType(EnumCode.Email.TypeCd.JoinEmail.getCode());
-//        memberEmailHistory.setExpireDate(ZonedDateTime.now().plusHours(1));
-//        memberPasswordHistoryRepository.save(memberEmailHistory);
+//        // 회원가입 인증 메일 이력 저장
+        MemberEmailHistoryVO emailHistoryVO = new MemberEmailHistoryVO();
+        emailHistoryVO.setMemberIdx(member.getIdx());
+        emailHistoryVO.setCertData(certData);
+        emailHistoryVO.setUsed(false);
+        emailHistoryVO.setEmailType(EnumCode.Email.TypeCd.JoinEmail.getCode());
+        emailHistoryVO.setExpireDate(ZonedDateTime.now().plusHours(1)); //1시간?
+
+        emailHistoryMapper.insertByMemberEmailHistoryVO(emailHistoryVO);
 
         return CustomResponse.builder()
                 .data(null)
                 .build();
     }
-
-    /**
-     * 회원가입 인증
-     * @param certData
-     * @return
-     */
-    @Transactional
-    public CustomResponse<?> certificateJoin(String certData) throws Exception {
-        String decrypted = Utils.AES256.decrypt(encryptKey, certData);
-        JSONObject data = new JSONObject(decrypted);
-        ZonedDateTime expireDate = ZonedDateTime.parse(data.getString("expire"));
-
-        // 회원가입용 인증키 확인
-        if(!data.getString("type").equals(AwsSESComponent.EmailType.join.getValue())) {
-            throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID);
-        }
-
-        // 회원 확인
-        MemberVO member = memberMapper.selectByEmail(data.getString("email"))
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
-
-        if(!member.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
-            // 인증대기 상태가 아닐 경우
-            throw new CustomException(ErrorCode.COMMON_ALREADY_EMAIL_CERTIFICATE);
-        }
-
-        // 인증키 유효 체크
-        MemberEmailHistoryVO history = emailHistoryMapper.selectTop1ByMemberIdxAndEmailTypeOrderByCreateDateDesc(member.getIdx(), EnumCode.Email.TypeCd.JoinEmail.getCode())
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
-
-        // 인증 만료 체크
-        if(expireDate.isBefore(ZonedDateTime.now())
-                || history.getExpireDate().isBefore(ZonedDateTime.now())
-                || !history.getCertData().equals(certData)
-                || history.isUsed()) {
-            throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_EXPIRE);
-        }
-
-        // 인증키 사용 처리
-        emailHistoryMapper.updateUsedByIdx(true, history.getIdx());
-
-        // 회원 상태 변경
-        member.setStateCd(EnumCode.Member.StateCd.Approval.getCode());
-
-        memberMapper.updateMemberStateByIdx(member.getIdx(), EnumCode.Member.StateCd.Approval.getCode());
-
-        return CustomResponse.builder()
-                .build();
-    }
-
 
     /**
      * 이메일/도메인 중복 체크

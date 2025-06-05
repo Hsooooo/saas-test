@@ -82,15 +82,13 @@ public class MemberController {
 
 
     /**
-     * TODO 회원가입 이메일 재전송
-     * @param type
-     * @param value
+     * 회원가입 이메일 재전송
+     * @param resendJoinEmail
      * @return
      */
     @PostMapping("join/resend")
-    public CustomResponse<?> resendJoinEmail(@RequestParam(name = "type") String type,
-                                             @RequestParam(name = "value") String value) throws Exception {
-        return memberService.resendJoinEmail(type, value);
+    public CustomResponse<?> resendJoinEmail(@RequestBody RequestMemberDTO.ResendJoinEmail resendJoinEmail) throws Exception {
+        return memberService.resendJoinEmail(resendJoinEmail.getType(), resendJoinEmail.getValue());
     }
 
     /**
