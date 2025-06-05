@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.member.mapper.MemberTermAgreeMapper">
+
+    <insert id="insertByMemberTermAgreeVO" parameterType="MemberEmailHistoryVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO member_term_agree (
+            member_idx,
+            member_term_idx,
+            agree,
+            update_date,
+            create_date
+        ) VALUES (
+            #{memberIdx},
+            #{memberTermIdx},
+            #{agree},
+            now(),
+            now()
+        )
+    </insert>
+
+</mapper>

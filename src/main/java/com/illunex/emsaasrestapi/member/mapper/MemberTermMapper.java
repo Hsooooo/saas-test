@@ -11,4 +11,5 @@ import java.util.Optional;
 @Mapper
 public interface MemberTermMapper {
     List<MemberTermVO> selectAllByActiveTrue();
+    Optional<MemberTermVO> selectByIdx(Integer idx);
 }

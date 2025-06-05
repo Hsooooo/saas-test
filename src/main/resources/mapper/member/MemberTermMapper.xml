@@ -19,4 +19,16 @@
         ORDER BY create_date DESC
     </select>
 
+    <select id="selectByIdx" resultType="MemberTermVO">
+        SELECT idx,
+               subject,
+               content,
+               active,
+               required,
+               update_date,
+               create_date
+         FROM member_term
+        WHERE idx = #{idx}
+    </select>
+
 </mapper>

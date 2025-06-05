@@ -12,10 +12,7 @@ import com.illunex.emsaasrestapi.config.SecurityConfig;
 import com.illunex.emsaasrestapi.member.dto.RequestMemberDTO;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.member.mapper.*;
-import com.illunex.emsaasrestapi.member.vo.MemberEmailHistoryVO;
-import com.illunex.emsaasrestapi.member.vo.MemberLoginHistoryVO;
-import com.illunex.emsaasrestapi.member.vo.MemberTermVO;
-import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.member.vo.*;
 import com.illunex.emsaasrestapi.partnership.PartnershipService;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
@@ -61,6 +58,7 @@ public class MemberService {
     private final LoginHistoryMapper loginHistoryMapper;
     private final EmailHistoryMapper emailHistoryMapper;
     private final MemberTermMapper memberTermMapper;
+    private final MemberTermAgreeMapper memberTermAgreeMapper;
 
     private final AwsSESComponent awsSESComponent;
     private final AwsS3Component awsS3Component;
@@ -173,14 +171,17 @@ public class MemberService {
             throw new CustomException(ErrorCode.MEMBER_ALREADY_EXISTS);
         }
 
-        // 약관 체크 TODO
-//        List<MemberTerm> memberTermList = memberTermRepository.findAllByActiveTrue();
-//        for (MemberTerm memberTerm : memberTermList) {
-//            joinData.getMemberTermAgreeList().stream()
-//                    .filter(memberTermAgree -> memberTermAgree.getMemberTermIdx().equals(memberTerm.getIdx()))
-//                    .findFirst()
-//                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
-//        }
+        // 약관 체크
+        List<MemberTermVO> memberTermList = memberTermMapper.selectAllByActiveTrue();
+        for (MemberTermVO memberTerm : memberTermList) {
+            // 약관정보 null 체크 로직 추후 확인 필요 TODO
+            if (joinData.getMemberTermAgreeList() != null && !joinData.getMemberTermAgreeList().isEmpty()) {
+                joinData.getMemberTermAgreeList().stream()
+                        .filter(memberTermAgree -> memberTermAgree.getMemberTermIdx().equals(memberTerm.getIdx()))
+                        .findFirst()
+                        .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+            }
+        }
 
         // 회원 등록
         MemberVO member = modelMapper.map(joinData, MemberVO.class);
@@ -197,22 +198,22 @@ public class MemberService {
         partnershipService.createPartnership(joinData.getPartnership(), member.getIdx());
 
         // 약관 동의 저장
-//        List<MemberTermAgree> memberMemberTermAgreeList = new ArrayList<>();
-//        for (RequestMemberDTO.MemberTermAgree inputMemberTermAgree : joinData.getMemberTermAgreeList()) {
-//            memberMemberTermAgreeList.add(com.illunex.emsaasrestapi.member.entity.MemberTermAgree.builder()
-//                    .agree(inputMemberTermAgree.getAgree())
-//                    .memberTerm(memberTermRepository.findById(inputMemberTermAgree.getMemberTermIdx()).orElseThrow())
-//                    .member(member)
-//                    .build());
-//        }
-//        memberTermAgreeRepository.saveAll(memberMemberTermAgreeList);
-//
-//        // 회원가입 이메일 발송
+        if (joinData.getMemberTermAgreeList() != null && !joinData.getMemberTermAgreeList().isEmpty()) {
+            for (RequestMemberDTO.MemberTermAgree inputMemberTermAgree : joinData.getMemberTermAgreeList()) {
+                MemberTermAgreeVO agreeVO = new MemberTermAgreeVO();
+                agreeVO.setAgree(inputMemberTermAgree.getAgree());
+                agreeVO.setMemberTermIdx(memberTermMapper.selectByIdx(inputMemberTermAgree.getMemberTermIdx()).orElseThrow().getIdx());
+                agreeVO.setMemberIdx(member.getIdx());
+                memberTermAgreeMapper.insertByMemberTermAgreeVO(agreeVO);
+            }
+        }
+
+        // 회원가입 이메일 발송
         String certData = awsSESComponent.sendJoinEmail(
                 null,
                 joinData.getEmail());
-//
-//        // 회원가입 인증 메일 이력 저장
+
+        // 회원가입 인증 메일 이력 저장
         MemberEmailHistoryVO emailHistoryVO = new MemberEmailHistoryVO();
         emailHistoryVO.setMemberIdx(member.getIdx());
         emailHistoryVO.setCertData(certData);
