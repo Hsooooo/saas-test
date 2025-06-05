@@ -350,44 +350,6 @@ public class MemberService {
                 .build();
     }
 
-    /**
-     * 인증코드 유효 체크
-     */
-    public CustomResponse<?> checkCertification(String certData) throws Exception {
-        JSONObject data = new JSONObject(Utils.AES256.decrypt(encryptKey, URLDecoder.decode(certData, StandardCharsets.UTF_8)));
-//        AwsSESComponent.EmailType emailType = AwsSESComponent.EmailType.stringToEnum(data.getString("type"));
-//        ZonedDateTime expireDate = ZonedDateTime.parse(data.getString("expire"));
-//
-//        // 회원 확인
-//        Member member = memberRepository.findByEmail(data.getString("email"))
-//                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID));
-//
-//        String typeCd;
-//        switch (emailType) {
-//            case join -> {
-//                typeCd = EnumCode.Email.TypeCd.JoinEmail.getCode();
-//            }
-//            case findPassword -> {
-//                typeCd = EnumCode.Email.TypeCd.FindPasswordEmail.getCode();
-//            }
-//            default -> throw new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID);
-//        }
-//
-//        // 인증키 유효 체크
-//        MemberEmailHistory history = memberPasswordHistoryRepository.findTop1ByMemberIdxAndEmailTypeOrderByCreateDateDesc(member.getIdx(), typeCd)
-//                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID));
-//
-//        // 인증 만료 체크
-//        if(expireDate.isBefore(ZonedDateTime.now())
-//                || history.getExpireDate().isBefore(ZonedDateTime.now())
-//                || !history.getCertData().equals(certData)
-//                || history.getUsed().equals(true)) {
-//            throw new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_EXPIRE);
-//        }
-
-        return CustomResponse.builder()
-                .build();
-    }
 
     /**
      * 비밀번호 찾기
@@ -395,22 +357,26 @@ public class MemberService {
      * @return
      */
     public CustomResponse<?> findPassword(RequestMemberDTO.FindPassword findPasswordData) throws Exception {
-//        Member member = memberRepository.findByEmail(findPasswordData.getEmail())
-//                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_FAIL_AUTHENTICATION));
-//
-//        // 비밀번호 변경 이메일 발송
-//        String certData = awsSESComponent.sendFindPasswordEmail(
-//                null,
-//                member.getEmail());
-//
-//        // 비밀번호 찾기 메일 이력 저장
-//        MemberEmailHistory memberEmailHistory = new MemberEmailHistory();
-//        memberEmailHistory.setMemberIdx(member.getIdx());
-//        memberEmailHistory.setCertData(certData);
-//        memberEmailHistory.setUsed(false);
-//        memberEmailHistory.setEmailType(EnumCode.Email.TypeCd.FindPasswordEmail.getCode());
-//        memberEmailHistory.setExpireDate(ZonedDateTime.now().plusHours(1));
-//        memberPasswordHistoryRepository.save(memberEmailHistory);
+        // 아이디 확인
+        MemberVO member = memberMapper.selectByEmail(findPasswordData.getEmail())
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMPTY_ACCOUNT));
+
+        // 회원 상태 체크
+        memberComponent.checkMemberState(member.getStateCd());
+        // 비밀번호 변경 이메일 발송
+        String certData = awsSESComponent.sendFindPasswordEmail(
+                null,
+                member.getEmail());
+
+        // 비밀번호 찾기 메일 이력 저장
+        MemberEmailHistoryVO emailHistoryVO = new MemberEmailHistoryVO();
+        emailHistoryVO.setMemberIdx(member.getIdx());
+        emailHistoryVO.setCertData(certData);
+        emailHistoryVO.setUsed(false);
+        emailHistoryVO.setEmailType(EnumCode.Email.TypeCd.FindPasswordEmail.getCode());
+        emailHistoryVO.setExpireDate(ZonedDateTime.now().plusHours(1)); //1시간?
+
+        emailHistoryMapper.insertByMemberEmailHistoryVO(emailHistoryVO);
 
         return CustomResponse.builder()
                 .data(null)
@@ -425,35 +391,37 @@ public class MemberService {
      */
     @Transactional
     public CustomResponse<?> changePassword(String certData, String password) throws Exception {
-//        JSONObject data = new JSONObject(Utils.AES256.decrypt(encryptKey, URLDecoder.decode(certData, StandardCharsets.UTF_8)));
-//        ZonedDateTime expireDate = ZonedDateTime.parse(data.getString("expire"));
-//
-//        // 비밀번호 변경용 인증키 확인
-//        if(!data.getString("type").equals(AwsSESComponent.EmailType.findPassword.getValue())) {
-//            throw new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID);
-//        }
-//
-//        // 회원 확인
-//        Member member = memberRepository.findByEmail(data.getString("email"))
-//                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID));
-//
-//        // 인증키 유효 체크
-//        MemberEmailHistory history = memberPasswordHistoryRepository.findTop1ByMemberIdxAndEmailTypeOrderByCreateDateDesc(member.getIdx(), EnumCode.Email.TypeCd.FindPasswordEmail.getCode())
-//                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID));
-//
-//        // 인증 만료 체크
-//        if(expireDate.isBefore(ZonedDateTime.now())
-//                || history.getExpireDate().isBefore(ZonedDateTime.now())
-//                || !history.getCertData().equals(certData)
-//                || history.getUsed().equals(true)) {
-//            throw new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_EXPIRE);
-//        }
-//
-//        // 인증키 사용 처리
-//        history.setUsed(true);
-//
-//        // 비밀번호 변경
-//        member.setPassword(passwordEncoder.encode(password));
+        String decrypted = Utils.AES256.decrypt(encryptKey, certData);
+        JSONObject data = new JSONObject(decrypted);
+        ZonedDateTime expireDate = ZonedDateTime.parse(data.getString("expire"));
+
+        // 비밀번호 변경용 인증키 확인
+        if(!data.getString("type").equals(AwsSESComponent.EmailType.findPassword.getValue())) {
+            throw new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_INVALID);
+        }
+
+        // 회원 확인
+        MemberVO member = findByEmail(data.getString("email"));
+
+        // 인증키 유효 체크
+        MemberEmailHistoryVO history = emailHistoryMapper.selectTop1ByMemberIdxAndEmailTypeOrderByCreateDateDesc(member.getIdx(), EnumCode.Email.TypeCd.FindPasswordEmail.getCode())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
+
+        // 인증 만료 체크
+        if(expireDate.isBefore(ZonedDateTime.now())
+                || history.getExpireDate().isBefore(ZonedDateTime.now())
+                || !history.getCertData().equals(certData)
+                || history.isUsed()) {
+            throw new CustomException(ErrorCode.MEMBER_EMAIL_CERTIFICATE_EXPIRE);
+        }
+
+        // 인증키 사용 처리
+        history.setUsed(true);
+        emailHistoryMapper.updateUsedByIdx(true, history.getIdx());
+
+        // 비밀번호 변경
+        member.setPassword(passwordEncoder.encode(password));
+        memberMapper.updateStateAndPasswordByIdx(member.getIdx(), member.getStateCd(), member.getPassword());
 
         return CustomResponse.builder()
                 .build();

@@ -92,31 +92,31 @@ public class AwsSESComponent {
      * @return
      * @throws Exception
      */
-//    public String sendFindPasswordEmail(AwsSESListener listener, String email) throws Exception {
-//        JSONObject certJson = new JSONObject()
-//                .put("type", EmailType.findPassword.getValue())
-//                .put("email", email)
-//                .put("expire", ZonedDateTime.now().plusHours(1).toString());
-//
-//        // 이메일 인증을 위한 암호화 - AES256 -> Base64
-//        String certData = Utils.AES256.encrypt(encryptKey, certJson.toString());
-//
-//        final SendEmailDTO senderDto = SendEmailDTO.builder()
-//                .senderAddress(managerEmail)
-//                .receiverAddress(email)
-//                .subject(EmailType.findPassword.getSubject())
+    public String sendFindPasswordEmail(AwsSESListener listener, String email) throws Exception {
+        JSONObject certJson = new JSONObject()
+                .put("type", EmailType.findPassword.getValue())
+                .put("email", email)
+                .put("expire", ZonedDateTime.now().plusHours(1).toString());
+
+        // 이메일 인증을 위한 암호화 - AES256 -> Base64
+        String certData = Utils.AES256.encrypt(encryptKey, certJson.toString());
+
+        final SendEmailDTO senderDto = SendEmailDTO.builder()
+                .senderAddress(managerEmail)
+                .receiverAddress(email)
+                .subject(EmailType.findPassword.getSubject())
 //                .certUrl(certPasswordUrl)
-//                .certData(certData)
-//                .build();
-//
-//        SendEmailRequest sendEmailRequest = senderDto.createSendEmailRequest(EmailType.findPassword);
-//
-//        SendEmailResponse sendEmailResponse = sesV2Client.sendEmail(sendEmailRequest);
-//
-//        sendingResultMustSuccess(listener, sendEmailResponse, sendEmailRequest);
-//
-//        return URLEncoder.encode(certData, StandardCharsets.UTF_8);
-//    }
+                .certData(certData)
+                .build();
+
+        SendEmailRequest sendEmailRequest = senderDto.createSendEmailRequest(EmailType.findPassword);
+
+        SendEmailResponse sendEmailResponse = sesV2Client.sendEmail(sendEmailRequest);
+
+        sendingResultMustSuccess(listener, sendEmailResponse, sendEmailRequest);
+
+        return certData;
+    }
 
     /**
      * 회원 초대 메일 발송

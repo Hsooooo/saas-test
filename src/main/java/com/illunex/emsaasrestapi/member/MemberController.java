@@ -94,18 +94,7 @@ public class MemberController {
     }
 
     /**
-     * TODO 인증코드 체크
-     * @param certData
-     * @return
-     * @throws Exception
-     */
-    @PostMapping("/check/cert")
-    public CustomResponse<?> checkCertification(@RequestParam(name = "certData") String certData) throws Exception {
-        return memberService.checkCertification(certData);
-    }
-
-    /**
-     * TODO 비밀번호 찾기
+     * 비밀번호 찾기
      * @param findPassword
      * @return
      */
@@ -115,13 +104,11 @@ public class MemberController {
     }
 
     /**
-     * TODO 비밀번호 변경
-     * @param certData
-     * @param password
+     * 비밀번호 변경
+     * @param resetPassword
      */
     @PutMapping("password")
-    public CustomResponse<?> changePassword(@RequestParam(name = "certData") String certData,
-                                            @RequestParam(name = "password") String password) throws Exception {
-        return memberService.changePassword(certData, password);
+    public CustomResponse<?> changePassword(@RequestBody RequestMemberDTO.ResetPassword resetPassword) throws Exception {
+        return memberService.changePassword(resetPassword.getCertData(), resetPassword.getPassword());
     }
 }

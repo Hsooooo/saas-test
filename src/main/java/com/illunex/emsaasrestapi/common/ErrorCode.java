@@ -35,6 +35,8 @@ public enum ErrorCode {
     MEMBER_STATE_WAIT(303, "메일 인증되지 않았습니다. 메일 인증을 진행해주세요."),
     MEMBER_STATE_SUSPEND(304, "정지된 회원입니다. 관리자에게 문의해주세요."),
     MEMBER_STATE_WITHDRAWAL(305, "탈퇴한 회원입니다. 재가입 후 로그인 해주세요."),
+    MEMBER_EMAIL_CERTIFICATE_EXPIRE(306, "인증이 만료 되었습니다."),
+    MEMBER_EMAIL_CERTIFICATE_INVALID(307, "인증이 유효 하지 않습니다."),
     MEMBER_NICKNAME_DUPLICATE(308, "중복된 닉네임이 있습니다."),
 
     /**

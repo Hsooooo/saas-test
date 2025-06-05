@@ -22,11 +22,20 @@ public class RequestMemberDTO {
     }
 
     /**
-     * 비밀번호 변경
+     * 비밀번호 찾기
      */
     @Getter
     public static class FindPassword {
         private String email;
+    }
+
+    /**
+     * 비밀번호 찾기
+     */
+    @Getter
+    public static class ResetPassword {
+        private String certData;
+        private String password;
     }
 
     /**
