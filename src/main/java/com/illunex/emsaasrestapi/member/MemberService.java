@@ -386,24 +386,24 @@ public class MemberService {
      * 내정보 > 비밀번호 변경
      * @param memberVO 로그인 회원 정보
      * @param password 기존 비밀번호
-     * @param rePassword 신규 비밀번호
+     * @param newPassword 신규 비밀번호
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> mypageChangePassword(MemberVO memberVO, String password, String rePassword) throws CustomException {
+    public CustomResponse<?> mypageChangePassword(MemberVO memberVO, String password, String newPassword) throws CustomException {
         memberVO = memberMapper.selectByIdx(memberVO.getIdx())
                         .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMPTY_ACCOUNT));
         memberComponent.checkMemberState(memberVO.getStateCd());
 
-        if(password == null || rePassword == null || password.isBlank() || rePassword.isBlank()) {
+        if(password == null || newPassword == null || password.isBlank() || newPassword.isBlank()) {
             throw new CustomException(ErrorCode.MEMBER_EMPTY_PASSWORD);
         }
         if(!passwordEncoder.matches(password, memberVO.getPassword())) {
             throw new CustomException(ErrorCode.MEMBER_NOT_MATCH_PASSWORD);
         } else {
             // 비밀번호 정규식 체크
-            if(Pattern.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[~!@#$%^&*()_+=])[A-Za-z\\d~!@#$%^&*()_+=]{8,16}$", rePassword)) {
-                memberMapper.updateStateAndPasswordByIdx(memberVO.getIdx(), memberVO.getStateCd(), passwordEncoder.encode(rePassword));
+            if(Pattern.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[~!@#$%^&*()_+=])[A-Za-z\\d~!@#$%^&*()_+=]{8,16}$", newPassword)) {
+                memberMapper.updateStateAndPasswordByIdx(memberVO.getIdx(), memberVO.getStateCd(), passwordEncoder.encode(newPassword));
             } else {
                 throw new CustomException(ErrorCode.MEMBER_REG_PASSWORD);
             }

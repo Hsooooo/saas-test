@@ -41,7 +41,7 @@ public class RequestMemberDTO {
     @Getter
     public static class UpdatePassword {
         private String password;
-        private String rePassword;
+        private String newPassword;
     }
 
     @Getter
