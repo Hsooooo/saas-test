@@ -39,6 +39,8 @@ public enum ErrorCode {
     MEMBER_EMAIL_CERTIFICATE_INVALID(307, "인증이 유효 하지 않습니다."),
     MEMBER_NICKNAME_DUPLICATE(308, "중복된 닉네임이 있습니다."),
     MEMBER_ALREADY_EMAIL_CERTIFICATE(309, "이미 인증이 완료된 계정입니다."),
+    MEMBER_REG_PASSWORD(310, "비밀번호는 8자리 이상 16자리 이하의 영문 대문자, 영문 소문자, 숫자, 특수문자를 포함하여 입력해주세요."),
+    MEMBER_EMPTY_PASSWORD(311, "비밀번호를 입력해주세요"),
 
     /**
      * 파트너쉽

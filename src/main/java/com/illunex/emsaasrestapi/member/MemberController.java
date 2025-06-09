@@ -25,6 +25,7 @@ public class MemberController {
 
     /**
      * 이메일/도메인 중복 체크
+     *
      * @param type
      * @param value
      * @return
@@ -37,6 +38,7 @@ public class MemberController {
 
     /**
      * 회원가입
+     *
      * @param join
      * @return
      */
@@ -47,6 +49,7 @@ public class MemberController {
 
     /**
      * 로그인
+     *
      * @param request
      * @param login
      * @return
@@ -60,6 +63,7 @@ public class MemberController {
 
     /**
      * 약관 목록 조회
+     *
      * @return
      */
     @GetMapping("terms")
@@ -68,9 +72,9 @@ public class MemberController {
     }
 
 
-
     /**
      * 엑세스 토큰 갱신
+     *
      * @param request
      * @return
      */
@@ -80,9 +84,9 @@ public class MemberController {
     }
 
 
-
     /**
      * 회원가입 이메일 재전송
+     *
      * @param resendJoinEmail
      * @return
      */
@@ -93,6 +97,7 @@ public class MemberController {
 
     /**
      * 비밀번호 찾기
+     *
      * @param findPassword
      * @return
      */
@@ -103,10 +108,24 @@ public class MemberController {
 
     /**
      * 비밀번호 변경
+     *
      * @param resetPassword
      */
     @PutMapping("password")
     public CustomResponse<?> changePassword(@RequestBody RequestMemberDTO.ResetPassword resetPassword) throws Exception {
         return memberService.changePassword(resetPassword.getCertData(), resetPassword.getPassword());
+    }
+
+    /**
+     * 내정보 > 비밀번호 변경
+     * @param request
+     * @param memberVO
+     * @return
+     * @throws Exception
+     */
+    @PutMapping("mypage/password")
+    public CustomResponse<?> mypageChangePassword(@RequestBody RequestMemberDTO.UpdatePassword request,
+                                                  @CurrentMember MemberVO memberVO) throws Exception {
+        return memberService.mypageChangePassword(memberVO, request.getPassword(), request.getRePassword());
     }
 }

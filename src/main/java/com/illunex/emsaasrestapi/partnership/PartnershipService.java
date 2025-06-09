@@ -60,7 +60,7 @@ public class PartnershipService {
      * @param ownerMemberIdx 파트너십 생성자 IDX
      * @return partnershipIdx 파트너십 IDX
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PartnershipVO createPartnership(PartnershipCreateDTO partnershipDTO, Integer ownerMemberIdx) throws CustomException {
         //파트너쉽 도메인 중복체크
         if(partnershipMapper.selectByDomain(partnershipDTO.getDomain()).isPresent()) {
@@ -102,7 +102,7 @@ public class PartnershipService {
      * @return
      * @throws CustomException
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ResponsePartnershipDTO.InviteMember invitePartnershipMember(Integer partnershipIdx, Integer memberIdx, RequestPartnershipDTO.InviteMember inviteMember) throws CustomException {
         // 파트너쉽 관리자 여부 확인
         Optional<PartnershipMemberVO> partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberIdx);
@@ -240,7 +240,7 @@ public class PartnershipService {
      * @return
      * @throws CustomException
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Object updateMyInfo(Integer partnershipIdx, MemberVO memberVO, RequestPartnershipDTO.@Valid UpdateMyInfo updateInfo) throws CustomException {
         PartnershipMemberVO partnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
@@ -281,7 +281,7 @@ public class PartnershipService {
      * @throws CustomException
      * @throws IOException
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CustomResponse<?> updateProfileImage(Integer partnershipIdx, MemberVO memberVO, MultipartFile file) throws CustomException, IOException {
         PartnershipMemberVO partnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
@@ -313,6 +313,7 @@ public class PartnershipService {
      * @param request
      * @return
      */
+    @Transactional(rollbackFor = Exception.class)
     public CustomResponse<?> updatePartnershipAdditionalInfo(Integer partnershipIdx, RequestPartnershipDTO.AdditionalInfo request) {
         partnershipAdditionalMapper.deleteByPartnershipIdx(partnershipIdx);
 

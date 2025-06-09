@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers(CorsUtils::isPreFlightRequest).permitAll()
                         .requestMatchers("/").permitAll()
+                        .requestMatchers("/member/mypage/**").hasAnyAuthority(MEMBER)
                         .requestMatchers("/member/**").permitAll()
                         .requestMatchers("/cert/**").permitAll()
                         .requestMatchers("/project/**").hasAnyAuthority(MEMBER)

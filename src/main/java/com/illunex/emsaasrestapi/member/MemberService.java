@@ -43,6 +43,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -163,7 +164,7 @@ public class MemberService {
      * @param joinData
      * @return
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CustomResponse<?> join(RequestMemberDTO.Join joinData) throws Exception {
         // 가입 체크
         if(memberMapper.selectByEmail(joinData.getEmail()).isPresent()) {
@@ -333,12 +334,12 @@ public class MemberService {
     }
 
     /**
-     * 비밀번호 변경
+     * 비밀번호 변경(이메일)
      * @param certData
      * @param password
      * @throws Exception
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CustomResponse<?> changePassword(String certData, String password) throws Exception {
         String decrypted = Utils.AES256.decrypt(encryptKey, certData);
         JSONObject data = new JSONObject(decrypted);
@@ -379,5 +380,37 @@ public class MemberService {
     public MemberVO findByEmail(String email) throws CustomException {
         return memberMapper.selectByEmail(email)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+    }
+
+    /**
+     * 내정보 > 비밀번호 변경
+     * @param memberVO 로그인 회원 정보
+     * @param password 기존 비밀번호
+     * @param rePassword 신규 비밀번호
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> mypageChangePassword(MemberVO memberVO, String password, String rePassword) throws CustomException {
+        memberVO = memberMapper.selectByIdx(memberVO.getIdx())
+                        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMPTY_ACCOUNT));
+        memberComponent.checkMemberState(memberVO.getStateCd());
+
+        if(password == null || rePassword == null || password.isBlank() || rePassword.isBlank()) {
+            throw new CustomException(ErrorCode.MEMBER_EMPTY_PASSWORD);
+        }
+        if(!passwordEncoder.matches(password, memberVO.getPassword())) {
+            throw new CustomException(ErrorCode.MEMBER_NOT_MATCH_PASSWORD);
+        } else {
+            // 비밀번호 정규식 체크
+            if(Pattern.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[~!@#$%^&*()_+=])[A-Za-z\\d~!@#$%^&*()_+=]{8,16}$", rePassword)) {
+                memberMapper.updateStateAndPasswordByIdx(memberVO.getIdx(), memberVO.getStateCd(), passwordEncoder.encode(rePassword));
+            } else {
+                throw new CustomException(ErrorCode.MEMBER_REG_PASSWORD);
+            }
+        }
+        return CustomResponse.builder()
+                .message(ErrorCode.OK.getMessage())
+                .status(ErrorCode.OK.getStatus())
+                .build();
     }
 }

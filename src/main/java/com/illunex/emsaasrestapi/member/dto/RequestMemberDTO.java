@@ -39,6 +39,12 @@ public class RequestMemberDTO {
     }
 
     @Getter
+    public static class UpdatePassword {
+        private String password;
+        private String rePassword;
+    }
+
+    @Getter
     public static class ResendJoinEmail {
         private String type;
         private String value;

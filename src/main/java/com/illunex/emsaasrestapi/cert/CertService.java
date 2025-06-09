@@ -42,7 +42,7 @@ public class CertService {
      * @param certData
      * @return
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CustomResponse<?> certificateJoin(String certData) throws Exception {
         String decrypted = Utils.AES256.decrypt(encryptKey, certData);
         JSONObject data = new JSONObject(decrypted);
@@ -139,7 +139,7 @@ public class CertService {
      * @return
      * @throws Exception
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CustomResponse<?> certificateInviteSignup(RequestCertDTO.InviteSignup request) throws Exception {
         final String INVITE_MAIL_TYPE = AwsSESComponent.EmailType.invite.getValue();
         final String INVITE_PROJECT_MAIL_TYPE = AwsSESComponent.EmailType.inviteProject.getValue();
@@ -182,7 +182,7 @@ public class CertService {
      * @return
      * @throws Exception
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CustomResponse<?> certificateInviteApprove(String certData) throws Exception {
         final String INVITE_MAIL_TYPE = AwsSESComponent.EmailType.invite.getValue();
         final String INVITE_PROJECT_MAIL_TYPE = AwsSESComponent.EmailType.inviteProject.getValue();
