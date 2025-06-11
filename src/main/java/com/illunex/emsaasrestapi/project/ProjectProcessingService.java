@@ -63,6 +63,7 @@ public class ProjectProcessingService {
 
     private void processProject(ProjectVO vo) throws IOException, CustomException {
         final int projectIdx = vo.getIdx();
+        long start = System.currentTimeMillis();
 
         /* 1. 엑셀 메타 & 프로젝트 정의 로드 */
         Excel   excel   = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
@@ -152,7 +153,7 @@ public class ProjectProcessingService {
             /* 5. 상태 완료 */
             vo.setStatusCd(EnumCode.Project.StatusCd.Complete.getCode());
             projectMapper.updateByProjectVO(vo);
-            log.info("[THREAD-SUCCESS] 프로젝트 정제 완료 projectIdx={}", projectIdx);
+            log.info("[THREAD-SUCCESS] 프로젝트 정제 완료 projectIdx={} {}ms", projectIdx, System.currentTimeMillis()-start);
         }
     }
 
