@@ -3,7 +3,6 @@ package com.illunex.emsaasrestapi.database;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
-import com.illunex.emsaasrestapi.database.dto.ResponseDatabaseDTO;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +12,9 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -62,5 +63,39 @@ public class DatabaseService {
             case Link -> Edge.class; // Link 클래스
             default -> throw new IllegalArgumentException("Unsupported DocType: " + docType);
         };
+    }
+
+    /**
+     * 데이터베이스 목록 조회 기능
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @return 데이터베이스 목록을 포함한 CustomResponse 객체
+     */
+    public CustomResponse<?> getDatabaseList(Integer projectIdx) {
+        // Node 타입 조회
+        List<String> nodeTypes = mongoTemplate.findDistinct(
+                Query.query(Criteria.where("_id.projectIdx").is(projectIdx)),
+                "_id.type",
+                Node.class,
+                String.class
+        );
+
+        // Link 타입 조회
+        List<String> linkTypes = mongoTemplate.findDistinct(
+                Query.query(Criteria.where("_id.projectIdx").is(projectIdx)),
+                "_id.type",
+                Edge.class,
+                String.class
+        );
+
+        // 계층 구조 생성
+        Map<String, List<String>> response = new LinkedHashMap<>();
+        response.put("Node", nodeTypes);
+        response.put("Link", linkTypes);
+
+        // 결과 반환
+        return CustomResponse.builder()
+                .data(response)
+                .build();
     }
 }

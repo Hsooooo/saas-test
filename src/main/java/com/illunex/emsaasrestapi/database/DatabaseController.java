@@ -15,6 +15,12 @@ import org.springframework.web.bind.annotation.*;
 public class DatabaseController {
     private final DatabaseService databaseService;
 
+    @GetMapping("/list")
+    public CustomResponse<?> getDatabaseList(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        log.info("Received request to get database list for project index: {}", projectIdx);
+        return databaseService.getDatabaseList(projectIdx);
+    }
+
     @PostMapping("/search")
     public CustomResponse<?> searchDatabase(@RequestParam(name = "projectIdx") Integer projectIdx,
                                             @RequestBody RequestDatabaseDTO.Search query,
