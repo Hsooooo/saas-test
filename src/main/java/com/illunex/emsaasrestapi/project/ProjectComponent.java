@@ -5,6 +5,8 @@ import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
+import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
+import com.illunex.emsaasrestapi.project.document.database.Column;
 import com.illunex.emsaasrestapi.project.document.excel.*;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
@@ -107,12 +109,9 @@ public class ProjectComponent {
             throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_EXTENSION);
         }
 
-        Workbook workbook = null;
-        if (ext.equals("xlsx")) {
-            workbook = new XSSFWorkbook(excelFile.getInputStream());
-        } else {
-            workbook = new HSSFWorkbook(excelFile.getInputStream());
-        }
+        Workbook workbook = ext.equals("xlsx")
+                ? new XSSFWorkbook(excelFile.getInputStream())
+                : new HSSFWorkbook(excelFile.getInputStream());
         ExcelFile excelFileDoc = modelMapper.map(projectFileVO, ExcelFile.class);
 
         // 엑셀 파싱 구조 생성
@@ -124,6 +123,9 @@ public class ProjectComponent {
 
         // 엑셀 파싱 정보 삭제
         mongoTemplate.findAndRemove(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
+
+        // 컬럼 순서 저장용 Map
+        Map<String, List<String>> columnOrderMap = new LinkedHashMap<>();
 
         // 엑셀 시트 읽기
         for(int sheetIdx = 0; sheetIdx < workbook.getNumberOfSheets(); sheetIdx++) {
@@ -151,12 +153,14 @@ public class ProjectComponent {
             int totalRowCnt = workSheet.getLastRowNum();
 
             // 첫번째 Row에 Cell 개수 만큼 컬럼명 추출
+            List<String> columnOrder = new ArrayList<>();
             for(int cellIdx = 0; cellIdx < totalCellCnt; cellIdx++) {
                 if(firstRow.getCell(cellIdx).getStringCellValue().isEmpty()) {
                     // 셀에 빈값이면 컬럼 총개수 감소
                     totalCellCnt--;
                 } else {
                     excelCellList.add(firstRow.getCell(cellIdx).getStringCellValue());
+                    columnOrder.add(firstRow.getCell(cellIdx).getStringCellValue().trim());
                 }
             }
             for(int rowIdx = 1; rowIdx < totalRowCnt + 1; rowIdx++) {
@@ -167,6 +171,9 @@ public class ProjectComponent {
                     break;
                 }
             }
+
+            // 컬럼 순서 저장
+            columnOrderMap.put(workSheet.getSheetName(), columnOrder);
 
             // 엑셀 시트 정보 추가
             excel.getExcelSheetList()
@@ -181,6 +188,32 @@ public class ProjectComponent {
 
         // 엑셀 파싱 정보 저장
         mongoTemplate.insert(excel);
+
+        // 컬럼 순서 저장
+        columnOrderMap.forEach((sheetName, columnOrder) -> {
+            Query query = Query.query(Criteria.where("projectIdx").is(projectIdx).and("type").is(sheetName));
+            Column existingOrder = mongoTemplate.findOne(query, Column.class);
+
+            if (existingOrder == null) {
+                existingOrder = new Column();
+                existingOrder.setProjectIdx(projectIdx);
+                existingOrder.setType(sheetName);
+                existingOrder.setColumnDetailList(new ArrayList<>());
+            }
+            int columnOrderIdx = 0;
+            LinkedList<ColumnDetail> columnDetailList = new LinkedList<>();
+            for (String columnName : columnOrder) {
+                ColumnDetail columnDetail = new ColumnDetail();
+                columnDetail.setColumnName(columnName);
+                columnDetail.setVisible(true);
+                columnDetail.setColumnNameKor("");
+                columnDetail.setOrder(columnOrderIdx++);
+                columnDetailList.add(columnDetail);
+            }
+            existingOrder.setColumnDetailList(columnDetailList);
+
+            mongoTemplate.save(existingOrder);
+        });
     }
 
     /**
@@ -258,16 +291,16 @@ public class ProjectComponent {
                     Project.class
             );
 
-            if(project == null) {
-                throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
-            }
+                if(project == null) {
+                    throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
+                }
 
-            modelMapper.map(project, response);
+                modelMapper.map(project, response);
 
-            // 프로젝트 파일 업로드 맵핑
-            List<ProjectFileVO> projectFileList = projectFileMapper.selectAllByProjectIdx(projectIdx);
-            if(projectFileList.size() > 0) {
-                response.setProjectFileList(modelMapper.map(projectFileList, new TypeToken<List<ResponseProjectDTO.ProjectFile>>(){}.getType()));
+                // 프로젝트 파일 업로드 맵핑
+                List<ProjectFileVO> projectFileList = projectFileMapper.selectAllByProjectIdx(projectIdx);
+                if(projectFileList.size() > 0) {
+                    response.setProjectFileList(modelMapper.map(projectFileList, new TypeToken<List<ResponseProjectDTO.ProjectFile>>(){}.getType()));
             } else {
                 response.setProjectFileList(new ArrayList<>());
             }

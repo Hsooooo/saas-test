@@ -15,4 +15,11 @@ public class ResponseDatabaseDTO {
         private Integer size;
         private Integer totalCount;
     }
+
+    @Getter
+    @Setter
+    public static class DatabaseList {
+        private List<String> nodeTypes;
+        private List<String> linkTypes;
+    }
 }

@@ -29,4 +29,16 @@ public class DatabaseController {
         return databaseService.searchDatabase(projectIdx, query, pageRequest, sort);
     }
 
+    @GetMapping("/column")
+    public CustomResponse<?> getColumnList(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                           @RequestParam(name = "type") String type) throws CustomException {
+        log.info("Received request to get column list for project index: {}", projectIdx);
+        return databaseService.getColumnList(projectIdx, type);
+    }
+
+    @PutMapping("/column")
+    public CustomResponse<?> updateColumn(@RequestBody RequestDatabaseDTO.ColumnOrder columnOrder) throws CustomException {
+        return databaseService.saveColumnOrder(columnOrder);
+    }
+
 }
