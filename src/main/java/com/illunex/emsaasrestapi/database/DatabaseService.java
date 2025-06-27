@@ -40,6 +40,7 @@ public class DatabaseService {
         Class<?> docTypeClass = getDocTypeClass(query.getDocType());
         String docName = query.getDocName();
 
+
         // MongoDB 쿼리 생성
         Query mongoQuery = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
                         .and("_id.type").is(docName))
@@ -189,5 +190,56 @@ public class DatabaseService {
         return CustomResponse.builder()
                 .data(columnDetails)
                 .build();
+    }
+
+    public CustomResponse<?> addData(Integer projectIdx, String type, Object id, LinkedHashMap<String, Object> data) {
+        // 1. 컬럼 정보 조회 및 유효성 검사
+        Query columnQuery = Query.query(Criteria.where("projectIdx").is(projectIdx).and("type").is(type));
+        Column column = mongoTemplate.findOne(columnQuery, Column.class);
+        if (column == null || column.getColumnDetailList() == null) {
+            return CustomResponse.builder().message("컬럼 정보가 없습니다.").build();
+        }
+        List<String> validColumns = column.getColumnDetailList().stream()
+                .map(ColumnDetail::getColumnName)
+                .toList();
+
+        // 입력 데이터 유효성 검사
+        for (String key : data.keySet()) {
+            if (!validColumns.contains(key)) {
+                return CustomResponse.builder().message("정의되지 않은 컬럼: " + key).build();
+            }
+        }
+
+        // 2. Node/Edge 타입 결정
+        Class<?> docType = null;
+        if (mongoTemplate.exists(Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.type").is(type)), Node.class)) {
+            docType = Node.class;
+        } else if (mongoTemplate.exists(Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.type").is(type)), Edge.class)) {
+            docType = Edge.class;
+        } else {
+            return CustomResponse.builder().message("해당 타입의 데이터가 없습니다.").build();
+        }
+
+        // 3. 객체 생성 및 저장
+        // TODO id값 생성 로직 체크 필요
+        if (docType == Node.class) {
+            Node node = Node.builder()
+                    .nodeId(new com.illunex.emsaasrestapi.project.document.network.NodeId(projectIdx, type, id))
+                    .id(id)
+                    .label(type)
+                    .properties(data)
+                    .build();
+            mongoTemplate.insert(node);
+        } else {
+            Edge edge = Edge.builder()
+                    .edgeId(new com.illunex.emsaasrestapi.project.document.network.EdgeId(projectIdx, type, id))
+                    .id(id)
+                    .type(type)
+                    .properties(data)
+                    .build();
+            mongoTemplate.insert(edge);
+        }
+
+        return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
     }
 }

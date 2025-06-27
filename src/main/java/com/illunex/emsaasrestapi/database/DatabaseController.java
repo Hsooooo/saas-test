@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("database")
@@ -27,6 +29,14 @@ public class DatabaseController {
                                             CustomPageRequest pageRequest, String sort) throws CustomException {
         log.info("Received database search request with query: {}", query);
         return databaseService.searchDatabase(projectIdx, query, pageRequest, sort);
+    }
+
+    @PostMapping("/data")
+    public CustomResponse<?> addData(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                     @RequestParam(name = "type") String type,
+                                     @RequestParam(name = "id") Object id,
+                                     @RequestBody LinkedHashMap<String, Object> data) {
+        return databaseService.addData(projectIdx, type, id, data);
     }
 
     @GetMapping("/column")
