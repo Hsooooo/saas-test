@@ -8,6 +8,7 @@ import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.document.database.Column;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
+import com.illunex.emsaasrestapi.project.document.project.Project;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,15 +18,13 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class DatabaseService {
     private final MongoTemplate mongoTemplate;
+    private final DatabaseComponent databaseComponent;
 
     /**
      * 데이터베이스 검색 기능
@@ -192,52 +191,24 @@ public class DatabaseService {
                 .build();
     }
 
-    public CustomResponse<?> addData(Integer projectIdx, String type, Object id, LinkedHashMap<String, Object> data) {
-        // 1. 컬럼 정보 조회 및 유효성 검사
-        Query columnQuery = Query.query(Criteria.where("projectIdx").is(projectIdx).and("type").is(type));
-        Column column = mongoTemplate.findOne(columnQuery, Column.class);
-        if (column == null || column.getColumnDetailList() == null) {
-            return CustomResponse.builder().message("컬럼 정보가 없습니다.").build();
-        }
-        List<String> validColumns = column.getColumnDetailList().stream()
-                .map(ColumnDetail::getColumnName)
-                .toList();
+    /**
+     * 데이터 추가 기능
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param type       Node 또는 Edge의 타입
+     * @param data       추가할 데이터
+     * @param docType    요청된 DocType
+     * @return 성공 메시지를 포함한 CustomResponse 객체
+     */
+    public CustomResponse<?> addData(Integer projectIdx, String type, LinkedHashMap<String, Object> data, RequestDatabaseDTO.DocType docType) {
+        Class<?> docTypeClass = getDocTypeClass(docType);
+        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        if (project == null) throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
 
-        // 입력 데이터 유효성 검사
-        for (String key : data.keySet()) {
-            if (!validColumns.contains(key)) {
-                return CustomResponse.builder().message("정의되지 않은 컬럼: " + key).build();
-            }
-        }
-
-        // 2. Node/Edge 타입 결정
-        Class<?> docType = null;
-        if (mongoTemplate.exists(Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.type").is(type)), Node.class)) {
-            docType = Node.class;
-        } else if (mongoTemplate.exists(Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.type").is(type)), Edge.class)) {
-            docType = Edge.class;
-        } else {
-            return CustomResponse.builder().message("해당 타입의 데이터가 없습니다.").build();
-        }
-
-        // 3. 객체 생성 및 저장
-        // TODO id값 생성 로직 체크 필요
-        if (docType == Node.class) {
-            Node node = Node.builder()
-                    .nodeId(new com.illunex.emsaasrestapi.project.document.network.NodeId(projectIdx, type, id))
-                    .id(id)
-                    .label(type)
-                    .properties(data)
-                    .build();
-            mongoTemplate.insert(node);
-        } else {
-            Edge edge = Edge.builder()
-                    .edgeId(new com.illunex.emsaasrestapi.project.document.network.EdgeId(projectIdx, type, id))
-                    .id(id)
-                    .type(type)
-                    .properties(data)
-                    .build();
-            mongoTemplate.insert(edge);
+        if (docTypeClass == Node.class) {
+            databaseComponent.handleNodeSave(project, projectIdx, type, data);
+        } else if (docTypeClass == Edge.class) {
+            databaseComponent.handleEdgeSave(project, projectIdx, type, data);
         }
 
         return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
