@@ -42,8 +42,23 @@ public class DatabaseService {
 
         // MongoDB 쿼리 생성
         Query mongoQuery = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                        .and("_id.type").is(docName))
-                .with(pageRequest.of("properties." + sort));
+                        .and("_id.type").is(docName));
+
+        if (sort != null && !sort.isEmpty()) {
+            mongoQuery.with(pageRequest.of("properties." + sort));
+        } else {
+            mongoQuery.with(pageRequest.of("properties._id,DESC")); // 기본 정렬 기준
+        }
+
+        // 검색어와 검색 대상 컬럼 조건 추가
+        if (query.getSearchString() != null && query.getColumnNames() != null && !query.getColumnNames().isEmpty()) {
+            List<Criteria> orCriteria = new ArrayList<>();
+            for (String columnName : query.getColumnNames()) {
+                orCriteria.add(Criteria.where("properties." + columnName)
+                        .regex(query.getSearchString(), "i")); // 대소문자 구분 없이 like 검색
+            }
+            mongoQuery.addCriteria(new Criteria().orOperator(orCriteria.toArray(new Criteria[0])));
+        }
 
         // 데이터 조회
         List<?> results = mongoTemplate.find(mongoQuery, docTypeClass);

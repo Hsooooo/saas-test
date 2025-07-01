@@ -9,6 +9,8 @@ public class RequestDatabaseDTO {
     public static class Search {
         private DocType docType;
         private String docName;
+        private String searchString; // 검색어
+        private List<String> columnNames; // 검색할 컬럼 이름들
     }
 
     public enum DocType {
