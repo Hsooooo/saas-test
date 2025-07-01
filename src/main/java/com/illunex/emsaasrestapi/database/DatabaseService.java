@@ -8,6 +8,7 @@ import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.document.database.Column;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
+import com.illunex.emsaasrestapi.project.document.project.Project;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,15 +18,13 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class DatabaseService {
     private final MongoTemplate mongoTemplate;
+    private final DatabaseComponent databaseComponent;
 
     /**
      * 데이터베이스 검색 기능
@@ -40,10 +39,26 @@ public class DatabaseService {
         Class<?> docTypeClass = getDocTypeClass(query.getDocType());
         String docName = query.getDocName();
 
+
         // MongoDB 쿼리 생성
         Query mongoQuery = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                        .and("_id.type").is(docName))
-                .with(pageRequest.of("properties." + sort));
+                        .and("_id.type").is(docName));
+
+        if (sort != null && !sort.isEmpty()) {
+            mongoQuery.with(pageRequest.of("properties." + sort));
+        } else {
+            mongoQuery.with(pageRequest.of("properties._id,DESC")); // 기본 정렬 기준
+        }
+
+        // 검색어와 검색 대상 컬럼 조건 추가
+        if (query.getSearchString() != null && query.getColumnNames() != null && !query.getColumnNames().isEmpty()) {
+            List<Criteria> orCriteria = new ArrayList<>();
+            for (String columnName : query.getColumnNames()) {
+                orCriteria.add(Criteria.where("properties." + columnName)
+                        .regex(query.getSearchString(), "i")); // 대소문자 구분 없이 like 검색
+            }
+            mongoQuery.addCriteria(new Criteria().orOperator(orCriteria.toArray(new Criteria[0])));
+        }
 
         // 데이터 조회
         List<?> results = mongoTemplate.find(mongoQuery, docTypeClass);
@@ -189,5 +204,28 @@ public class DatabaseService {
         return CustomResponse.builder()
                 .data(columnDetails)
                 .build();
+    }
+
+    /**
+     * 데이터 추가 기능
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param type       Node 또는 Edge의 타입
+     * @param data       추가할 데이터
+     * @param docType    요청된 DocType
+     * @return 성공 메시지를 포함한 CustomResponse 객체
+     */
+    public CustomResponse<?> addData(Integer projectIdx, String type, LinkedHashMap<String, Object> data, RequestDatabaseDTO.DocType docType) {
+        Class<?> docTypeClass = getDocTypeClass(docType);
+        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        if (project == null) throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
+
+        if (docTypeClass == Node.class) {
+            databaseComponent.handleNodeSave(project, projectIdx, type, data);
+        } else if (docTypeClass == Edge.class) {
+            databaseComponent.handleEdgeSave(project, projectIdx, type, data);
+        }
+
+        return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
     }
 }
