@@ -108,6 +108,21 @@ public class ProjectController {
     }
 
     /**
+     * 카테고리에 속한 프로젝트 목록 조회 (드롭다운용)
+     * @param memberVO
+     * partnershipIdx
+     * @param searchProject
+     * @return
+     * @throws CustomException
+     */
+    @PatchMapping("/dropdown")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getProjectListDropdown(@CurrentMember MemberVO memberVO,
+                                                    @RequestBody RequestProjectDTO.SearchProject searchProject) throws CustomException {
+        return projectService.getProjectListDropdown(memberVO, searchProject);
+    }
+
+    /**
      * 프로젝트 삭제
      * @param memberVO
      * @param proejectIdxList

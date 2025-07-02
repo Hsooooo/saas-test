@@ -353,6 +353,33 @@ public class ProjectService {
     }
 
     /**
+     * 카테고리에 속한 프로젝트 목록 조회 (드롭다운용)
+     * @param searchProject
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> getProjectListDropdown(MemberVO memberVO, RequestProjectDTO.SearchProject searchProject) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, searchProject.getPartnershipIdx());
+
+        // 프로젝트 목록 조회
+        List<ProjectVO> projectList = projectMapper.selectAllBySearchProjectListAndPartnershipMemberIdxNotPaging(searchProject, partnershipMemberVO.getIdx());
+
+        List<ResponseProjectDTO.ProjectListItem> response = modelMapper.map(projectList, new TypeToken<List<ResponseProjectDTO.ProjectListItem>>(){}.getType());
+
+        for(ResponseProjectDTO.ProjectListItem projectListItem : response){
+            // 프로젝트 구성원 조회
+            List<MemberVO> projectMemberList = memberMapper.selectByProjectIdx(projectListItem.getIdx());
+            List<ResponseMemberDTO.Member> members = modelMapper.map(projectMemberList, new TypeToken<List<ResponseMemberDTO.Member>>(){}.getType());
+            projectListItem.setMembers(members);
+        }
+
+        return CustomResponse.builder()
+                .data(response)
+                .build();
+    }
+
+    /**
      * 프로젝트 삭제
      * @param projectIdxList
      * @return

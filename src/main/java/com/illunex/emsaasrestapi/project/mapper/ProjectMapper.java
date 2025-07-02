@@ -27,6 +27,7 @@ public interface ProjectMapper {
     Optional<ProjectVO> selectByIdx(Integer idx);
     // 파트너쉽&카테고리&프로젝트 구성원에 포함된 목록 조회
     List<ProjectVO> selectAllBySearchProjectListAndPartnershipMemberIdx(RequestProjectDTO.SearchProject searchProject, Integer partnershipMemberIdx, Pageable pageable);
+    List<ProjectVO> selectAllBySearchProjectListAndPartnershipMemberIdxNotPaging(RequestProjectDTO.SearchProject searchProject, Integer partnershipMemberIdx);
     // 파트너쉽&카테고리&프로젝트 구성원에 포함된 총 개수 조회
     Integer countAllBySearchProjectListAndPartnershipMemberIdx(RequestProjectDTO.SearchProject searchProject, Integer partnershipMemberIdx);
 }
