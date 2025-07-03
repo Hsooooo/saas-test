@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.database.dto;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ResponseDatabaseDTO {
@@ -19,7 +20,28 @@ public class ResponseDatabaseDTO {
     @Getter
     @Setter
     public static class DatabaseList {
-        private List<String> nodeTypes;
-        private List<String> linkTypes;
+        private List<NodeStat> nodeStatList = new ArrayList<>();
+        private List<EdgeStat> edgeStatList = new ArrayList<>();
     }
+
+    @Getter
+    @Setter
+    public static class NodeStat {
+        private String type;
+        private String uniqueCellName;
+        private String labelCellName;
+        private Long count;
+    }
+
+    @Getter
+    @Setter
+    public static class EdgeStat {
+        private String type;
+        private String unit;
+        private String color;
+        private Boolean isDirection;
+        private Boolean isWeight;
+        private Long count;
+    }
+
 }

@@ -9,6 +9,8 @@ import com.illunex.emsaasrestapi.project.document.database.Column;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
+import com.illunex.emsaasrestapi.project.document.project.ProjectEdge;
+import com.illunex.emsaasrestapi.project.document.project.ProjectNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -120,28 +122,43 @@ public class DatabaseService {
      * @return 데이터베이스 목록을 포함한 CustomResponse 객체
      */
     public CustomResponse<?> getDatabaseList(Integer projectIdx) {
-        // Node 타입 조회
-        List<String> nodeTypes = mongoTemplate.findDistinct(
-                Query.query(Criteria.where("_id.projectIdx").is(projectIdx)),
-                "_id.type",
-                Node.class,
-                String.class
-        );
-
-        // Link 타입 조회
-        List<String> linkTypes = mongoTemplate.findDistinct(
-                Query.query(Criteria.where("_id.projectIdx").is(projectIdx)),
-                "_id.type",
-                Edge.class,
-                String.class
-        );
-
-        // 계층 구조 생성
+        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        if (project == null) {
+            throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
+        }
         ResponseDatabaseDTO.DatabaseList response = new ResponseDatabaseDTO.DatabaseList();
-        response.setNodeTypes(nodeTypes);
-        response.setLinkTypes(linkTypes);
 
-        // 결과 반환
+        // 노드와 엣지의 하위 타입 목록을 조회
+        for (ProjectNode projectNode : Optional.ofNullable(project.getProjectNodeList()).orElse(Collections.emptyList())) {
+            // Node 통계 정보 생성
+            ResponseDatabaseDTO.NodeStat nodeStat = new ResponseDatabaseDTO.NodeStat();
+            nodeStat.setType(projectNode.getNodeType());
+            nodeStat.setUniqueCellName(projectNode.getUniqueCellName());
+            nodeStat.setLabelCellName(projectNode.getLabelCellName());
+
+            long count = mongoTemplate.count(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
+                    .and("_id.type").is(projectNode.getNodeType())), Node.class);
+            nodeStat.setCount(count);
+
+            response.getNodeStatList().add(nodeStat);
+        }
+
+        for (ProjectEdge projectEdge : Optional.ofNullable(project.getProjectEdgeList()).orElse(Collections.emptyList())) {
+            // 엣지 통계 정보 생성
+            ResponseDatabaseDTO.EdgeStat edgeStat = new ResponseDatabaseDTO.EdgeStat();
+            edgeStat.setType(projectEdge.getEdgeType());
+            edgeStat.setUnit(projectEdge.getUnit());
+            edgeStat.setColor(projectEdge.getColor());
+            edgeStat.setIsDirection(projectEdge.getUseDirection());
+            edgeStat.setIsWeight(projectEdge.getWeight());
+
+            long count = mongoTemplate.count(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
+                    .and("_id.type").is(projectEdge.getEdgeType())), Edge.class);
+            edgeStat.setCount(count);
+
+            response.getEdgeStatList().add(edgeStat);
+        }
+
         return CustomResponse.builder()
                 .data(response)
                 .build();
@@ -228,4 +245,5 @@ public class DatabaseService {
 
         return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
     }
+
 }

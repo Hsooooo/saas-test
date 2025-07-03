@@ -29,6 +29,12 @@ public class DatabaseController {
         return databaseService.getDatabaseList(projectIdx);
     }
 
+//    @GetMapping("/summary")
+//    public CustomResponse<?> getDatabaseSummary(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+//        log.info("Received request to get database summary for project index: {}", projectIdx);
+//        return databaseService.getDatabaseSummary(projectIdx);
+//    }
+
     /**
      * 프로젝트 데이터베이스 검색
      *
