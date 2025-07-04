@@ -73,7 +73,7 @@ public class DatabaseComponent {
      * @param type        Edge 타입
      * @param data        저장할 데이터
      */
-    public void handleEdgeSave(Project project, Integer projectIdx, String type, LinkedHashMap<String, Object> data) {
+    public void handleEdgeSave(Project project, Integer projectIdx, String type, LinkedHashMap<String, Object> data, Object id) {
         ProjectEdge projectEdge = project.getProjectEdgeList().stream()
                 .filter(e -> e.getEdgeType().equals(type))
                 .findFirst()
@@ -84,8 +84,14 @@ public class DatabaseComponent {
 
         Map<String, Object> baseProperties = existEdge.getProperties();
         validateFields(baseProperties.keySet(), data.keySet(), "Edge");
-        int maxEdgeIdx = getMaxEdgeIdx(projectIdx, type);
-        Object id = convertIdType(existEdge.getId(), maxEdgeIdx + 1);
+        // ID가 null인 경우, 최대 Edge 인덱스를 조회하여 새 ID를 생성
+        if (id == null) {
+            int maxEdgeIdx = getMaxEdgeIdx(projectIdx, type);
+            id = convertIdType(existEdge.getId(), maxEdgeIdx + 1);
+        // ID가 존재하는 경우, 해당 ID 타입으로 변환
+        } else {
+            id = convertIdType(existEdge.getId(), id);
+        }
         LinkedHashMap<String, Object> transformedData = transformData(existEdge.getProperties(), data);
 
         EdgeId edgeId = existEdge.getEdgeId();

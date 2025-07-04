@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public class ResponseDatabaseDTO {
@@ -15,6 +16,13 @@ public class ResponseDatabaseDTO {
         private Integer page;
         private Integer size;
         private Integer totalCount;
+    }
+
+    @Getter
+    @Setter
+    public static class EdgeResult {
+        private Object id;
+        private LinkedHashMap<String, Object> properties;
     }
 
     @Getter

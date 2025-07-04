@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.database;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
+import com.illunex.emsaasrestapi.database.dto.EdgeDataDTO;
 import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,6 +68,29 @@ public class DatabaseController {
                                      @RequestParam(name = "docType") RequestDatabaseDTO.DocType docType,
                                      @RequestBody LinkedHashMap<String, Object> data) {
         return databaseService.addData(projectIdx, type, data, docType);
+    }
+
+    /**
+     * 노드 데이터 수정
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param type 시트명
+     * @param docType 데이터 타입 (Node 또는 Edge)
+     * @param data 추가할 데이터 (LinkedHashMap 형태)
+     * @return
+     */
+    @PutMapping("/data/node")
+    public CustomResponse<?> updateNode(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                     @RequestParam(name = "type") String type,
+                                     @RequestBody LinkedHashMap<String, Object> data) {
+        return databaseService.updateNode(projectIdx, type, data);
+    }
+
+    @PutMapping("/data/edge")
+    public CustomResponse<?> updateEdge(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                        @RequestParam(name = "type") String type,
+                                        @RequestBody EdgeDataDTO data) {
+        return databaseService.updateEdge(projectIdx, type, data);
     }
 
     @GetMapping("/column")

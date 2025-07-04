@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.database;
 
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
+import com.illunex.emsaasrestapi.database.dto.EdgeDataDTO;
 import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
 import com.illunex.emsaasrestapi.database.dto.ResponseDatabaseDTO;
 import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
@@ -70,11 +71,11 @@ public class DatabaseService {
         Column column = mongoTemplate.findOne(columnOrderQuery, Column.class);
 
         // 컬럼 순서에 따라 데이터 매핑
-        List<Map<String, Object>> mappedResults = new ArrayList<>();
+        List<Object> mappedResults = new ArrayList<>();
         if (column != null && column.getColumnDetailList() != null) {
             for (Object result : results) {
                 if (result instanceof Node node) {
-                    Map<String, Object> mappedData = new LinkedHashMap<>();
+                    LinkedHashMap<String, Object> mappedData = new LinkedHashMap<>();
                     for (ColumnDetail columnDetail : column.getColumnDetailList()) {
                         String columnName = columnDetail.getColumnName();
                         mappedData.put(columnName, node.getProperties().get(columnName));
@@ -82,12 +83,15 @@ public class DatabaseService {
                     mappedResults.add(mappedData);
                 }
                 if (result instanceof Edge edge) {
-                    Map<String, Object> mappedData = new LinkedHashMap<>();
+                    EdgeDataDTO edgeResult = new EdgeDataDTO();
+                    LinkedHashMap<String, Object> mappedData = new LinkedHashMap<>();
                     for (ColumnDetail columnDetail : column.getColumnDetailList()) {
                         String columnName = columnDetail.getColumnName();
                         mappedData.put(columnName, edge.getProperties().get(columnName));
                     }
-                    mappedResults.add(mappedData);
+                    edgeResult.setId(edge.getId());
+                    edgeResult.setProperties(mappedData);
+                    mappedResults.add(edgeResult);
                 }
             }
         }
@@ -240,10 +244,23 @@ public class DatabaseService {
         if (docTypeClass == Node.class) {
             databaseComponent.handleNodeSave(project, projectIdx, type, data);
         } else if (docTypeClass == Edge.class) {
-            databaseComponent.handleEdgeSave(project, projectIdx, type, data);
+            databaseComponent.handleEdgeSave(project, projectIdx, type, data, null);
         }
 
         return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
     }
 
+    public CustomResponse<?> updateNode(Integer projectIdx, String type, LinkedHashMap<String, Object> data) {
+        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        if (project == null) throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
+        databaseComponent.handleNodeSave(project, projectIdx, type, data);
+        return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
+    }
+
+    public CustomResponse<?> updateEdge(Integer projectIdx, String type, EdgeDataDTO data) {
+        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        if (project == null) throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
+        databaseComponent.handleEdgeSave(project, projectIdx, type, data.getProperties(), data.getId());
+        return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
+    }
 }
