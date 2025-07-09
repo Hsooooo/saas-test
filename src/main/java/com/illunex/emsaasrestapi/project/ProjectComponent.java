@@ -377,4 +377,57 @@ public class ProjectComponent {
             default -> throw new CustomException(ErrorCode.COMMON_INVALID_FILE_EXTENSION);
         }
     }
+
+    /**
+     * 프로젝트 드롭다운 응답 구조 생성
+     * @param searchProject
+     * @param partnershipMemberVO
+     * @return
+     * @throws CustomException
+     */
+    public ResponseProjectDTO.ProjectDropdown createResponseProjectDropdown(RequestProjectDTO.SearchProject searchProject, PartnershipMemberVO partnershipMemberVO) throws CustomException {
+        // 파트너쉽 구성원에 포함된 프로젝트 목록 조회
+        List<ProjectVO> projectList = projectMapper.selectAllBySearchProjectListAndPartnershipMemberIdxNotPaging(searchProject, partnershipMemberVO.getIdx());
+
+        if (projectList.isEmpty()) {
+            return new ResponseProjectDTO.ProjectDropdown();
+        }
+
+        Map<Integer, ResponseProjectDTO.CategoryItem> categoryMap = new HashMap<>();
+
+        // 프로젝트 목록을 카테고리별로 그룹화
+        for (ProjectVO projectVO : projectList) {
+            Integer categoryIdx = projectVO.getProjectCategoryIdx();
+            ResponseProjectDTO.CategoryItem categoryItem = categoryMap.computeIfAbsent(categoryIdx, idx -> {
+                ResponseProjectDTO.CategoryItem newCategory = new ResponseProjectDTO.CategoryItem();
+                newCategory.setCategoryIdx(categoryIdx);
+                if (categoryIdx == null) {
+                    newCategory.setName("미분류");
+                } else {
+                    ProjectCategoryVO projectCategoryVO = projectCategoryMapper.selectByIdx(categoryIdx)
+                            .orElseGet(() -> {
+                                // 카테고리 정보가 없을 경우 기본값 설정
+                                ProjectCategoryVO defaultCategory = new ProjectCategoryVO();
+                                defaultCategory.setIdx(categoryIdx);
+                                defaultCategory.setName("");
+                                return defaultCategory;
+                            });
+                    newCategory.setName(projectCategoryVO.getName());
+                }
+                newCategory.setProjectItemList(new ArrayList<>());
+                return newCategory;
+            });
+
+            // 프로젝트 아이템 생성 및 추가
+            ResponseProjectDTO.ProjectListItem projectItem = modelMapper.map(projectVO, ResponseProjectDTO.ProjectListItem.class);
+            categoryItem.getProjectItemList().add(projectItem);
+        }
+
+        // 카테고리 맵을 리스트로 변환
+        List<ResponseProjectDTO.CategoryItem> categoryList = new ArrayList<>(categoryMap.values());
+        ResponseProjectDTO.ProjectDropdown dropdown = new ResponseProjectDTO.ProjectDropdown();
+        dropdown.setCategoryList(categoryList);
+        return dropdown;
+    }
+
 }

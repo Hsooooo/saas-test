@@ -138,7 +138,7 @@
         LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
     </select>
 
-    <select id="selectAllBySearchProjectPageAndPartnershipMemberIdxNotPaging" resultType="ProjectVO">
+    <select id="selectAllBySearchProjectListAndPartnershipMemberIdxNotPaging" resultType="ProjectVO">
         SELECT *
         FROM project p
         INNER JOIN project_member pm ON pm.project_idx = p.idx

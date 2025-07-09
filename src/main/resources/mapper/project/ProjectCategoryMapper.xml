@@ -23,6 +23,13 @@
         </selectKey>
     </insert>
 
+    <select id = "selectByIdx" parameterType="Integer" resultType="ProjectCategoryVO">
+        SELECT
+            *
+        FROM project_category
+        WHERE idx = #{idx}
+    </select>
+
     <select id="selectAllByPartnershipIdx" parameterType="Integer" resultType="ProjectCategoryVO">
         SELECT
             *

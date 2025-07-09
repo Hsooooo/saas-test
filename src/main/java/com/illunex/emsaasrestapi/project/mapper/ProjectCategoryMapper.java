@@ -11,6 +11,7 @@ public interface ProjectCategoryMapper {
     Integer insertByProjectCategoryVO(ProjectCategoryVO projectCategoryVO);
     Integer updateByProjectCategoryVO(ProjectCategoryVO projectCategoryVO);
     Integer deleteByIdx(Integer idx);
+    Optional<ProjectCategoryVO> selectByIdx(Integer idx);
     List<ProjectCategoryVO> selectAllByPartnershipIdx(Integer partnershipIdx);
     Optional<ProjectCategoryVO> selectByProjectCategoryIdx(Integer projectCategoryIdx);
     // 파트너쉽번호에 해당하는 모든 카테고리 조회
