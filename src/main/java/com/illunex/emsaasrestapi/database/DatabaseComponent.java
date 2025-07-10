@@ -88,7 +88,7 @@ public class DatabaseComponent {
         if (id == null) {
             int maxEdgeIdx = getMaxEdgeIdx(projectIdx, type);
             id = convertIdType(existEdge.getId(), maxEdgeIdx + 1);
-        // ID가 존재하는 경우, 해당 ID 타입으로 변환
+        
         } else {
             id = convertIdType(existEdge.getId(), id);
         }

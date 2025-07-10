@@ -263,4 +263,55 @@ public class DatabaseService {
         databaseComponent.handleEdgeSave(project, projectIdx, type, data.getProperties(), data.getId());
         return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
     }
+
+    public CustomResponse<?> deleteData(Integer projectIdx, String type, LinkedHashMap<String, Object> data, RequestDatabaseDTO.DocType docType) {
+        return null;
+    }
+
+    /**
+     * 데이터베이스 커밋 기능
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param commit     커밋 요청 DTO
+     * @param type       Node 또는 Edge의 타입
+     * @param docType    요청된 DocType
+     * @return 성공 메시지를 포함한 CustomResponse 객체
+     */
+    public CustomResponse<?> commitDatabase(Integer projectIdx, RequestDatabaseDTO.Commit commit, String type, RequestDatabaseDTO.DocType docType) {
+        Class<?> docTypeClass = getDocTypeClass(docType);
+        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        if (project == null) throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
+
+        // 새 데이터 추가
+        if (commit.getNewData() != null) {
+            for (LinkedHashMap<String, Object> newData : commit.getNewData()) {
+                if (docTypeClass == Node.class) {
+                    databaseComponent.handleNodeSave(project, projectIdx, type, newData);
+                } else if (docTypeClass == Edge.class) {
+                    databaseComponent.handleEdgeSave(project, projectIdx, type, newData, null);
+                }
+            }
+        }
+
+        // 데이터 업데이트
+        if (commit.getUpdateData() != null) {
+            for (RequestDatabaseDTO.UpdateData updateData : commit.getUpdateData()) {
+                if (docTypeClass == Node.class) {
+                    databaseComponent.handleNodeSave(project, projectIdx, type, updateData.getData());
+                } else if (docTypeClass == Edge.class) {
+                    databaseComponent.handleEdgeSave(project, projectIdx, type, updateData.getData(), updateData.getId());
+                }
+            }
+        }
+
+        // 데이터 삭제
+        if (commit.getDeleteData() != null) {
+            for (Object id : commit.getDeleteData()) {
+                Query deleteQuery = Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.type").is(type).and("id").is(id));
+                mongoTemplate.remove(deleteQuery, docTypeClass);
+            }
+        }
+
+        return CustomResponse.builder().message("데이터베이스 커밋이 성공적으로 완료되었습니다.").build();
+    }
 }

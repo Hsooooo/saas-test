@@ -259,7 +259,6 @@ public class ResponseProjectDTO {
     public static class ProjectDropdown {
         List<CategoryItem> categoryList;
     }
-
     @Getter
     @Setter
     public static class CategoryItem {

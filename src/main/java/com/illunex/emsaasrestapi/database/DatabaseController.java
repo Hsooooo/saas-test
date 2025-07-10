@@ -93,6 +93,14 @@ public class DatabaseController {
         return databaseService.updateEdge(projectIdx, type, data);
     }
 
+    @DeleteMapping("/data")
+    public CustomResponse<?> deleteData(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                        @RequestParam(name = "type") String type,
+                                        @RequestParam(name = "docType") RequestDatabaseDTO.DocType docType,
+                                        @RequestBody LinkedHashMap<String, Object> data) {
+        return databaseService.deleteData(projectIdx, type, data, docType);
+    }
+
     @GetMapping("/column")
     public CustomResponse<?> getColumnList(@RequestParam(name = "projectIdx") Integer projectIdx,
                                            @RequestParam(name = "type") String type) throws CustomException {
@@ -103,6 +111,15 @@ public class DatabaseController {
     @PutMapping("/column")
     public CustomResponse<?> updateColumn(@RequestBody RequestDatabaseDTO.ColumnOrder columnOrder) throws CustomException {
         return databaseService.saveColumnOrder(columnOrder);
+    }
+
+    @PostMapping("/commit")
+    public CustomResponse<?> commitDatabase(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                            @RequestParam(name = "type") String type,
+                                            @RequestParam(name = "docType") RequestDatabaseDTO.DocType docType,
+                                            @RequestBody RequestDatabaseDTO.Commit commit) throws CustomException {
+        log.info("Received request to commit database for project index: {}", projectIdx);
+        return databaseService.commitDatabase(projectIdx, commit, type, docType);
     }
 
 }
