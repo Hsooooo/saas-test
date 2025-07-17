@@ -34,6 +34,19 @@ public class RequestNetworkDTO {
         private String keyword;
     }
 
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ExtendSearch {
+        private Integer projectIdx;         // 프로젝트 ID
+        private List<Object> searchIdxList; // 검색할 노드 인덱스 목록
+        private String type;                // 검색할 노드 타입
+        private Integer depth;              // 확장 깊이
+    }
+
     /**
      * 자동완성 검색
      */

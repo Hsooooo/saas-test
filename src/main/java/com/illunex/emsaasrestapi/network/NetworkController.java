@@ -72,6 +72,21 @@ public class NetworkController {
     }
 
     /**
+     * 관계망 확장 조회 API
+     * @param search
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/search/extend")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getExtendNetworkSearch(@CurrentMember MemberVO memberVO,
+                                              @RequestBody RequestNetworkDTO.ExtendSearch search) throws CustomException {
+        return networkService.getExtendNetworkSearch(memberVO, search);
+    }
+
+
+
+    /**
      * 자동완성 API
      * @param memberVO
      * @param autoCompleteSearch
