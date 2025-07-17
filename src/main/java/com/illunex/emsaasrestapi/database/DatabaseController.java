@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -71,12 +72,11 @@ public class DatabaseController {
     }
 
     /**
-     * 노드 데이터 수정
+     * 노드 또는 엣지 업데이트
      *
      * @param projectIdx 프로젝트 인덱스
      * @param type 시트명
-     * @param docType 데이터 타입 (Node 또는 Edge)
-     * @param data 추가할 데이터 (LinkedHashMap 형태)
+     * @param data 업데이트할 데이터 (LinkedHashMap 형태)
      * @return
      */
     @PutMapping("/data/node")
@@ -86,6 +86,14 @@ public class DatabaseController {
         return databaseService.updateNode(projectIdx, type, data);
     }
 
+    /**
+     * 엣지 업데이트
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param type 시트명
+     * @param data 업데이트할 엣지 데이터 (EdgeDataDTO 형태)
+     * @return
+     */
     @PutMapping("/data/edge")
     public CustomResponse<?> updateEdge(@RequestParam(name = "projectIdx") Integer projectIdx,
                                         @RequestParam(name = "type") String type,
@@ -93,14 +101,29 @@ public class DatabaseController {
         return databaseService.updateEdge(projectIdx, type, data);
     }
 
+    /**
+     * 데이터 삭제
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param type 시트명
+     * @param docType 데이터 타입 (Node 또는 Edge)
+     * @param data 삭제할 데이터 ID 목록 (Object 형태의 리스트)
+     * @return
+     */
     @DeleteMapping("/data")
     public CustomResponse<?> deleteData(@RequestParam(name = "projectIdx") Integer projectIdx,
                                         @RequestParam(name = "type") String type,
                                         @RequestParam(name = "docType") RequestDatabaseDTO.DocType docType,
-                                        @RequestBody LinkedHashMap<String, Object> data) {
+                                        @RequestBody List<Object> data) {
         return databaseService.deleteData(projectIdx, type, data, docType);
     }
 
+    /**
+     * 엑셀 컬럼 목록 조회
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @return
+     */
     @GetMapping("/column")
     public CustomResponse<?> getColumnList(@RequestParam(name = "projectIdx") Integer projectIdx,
                                            @RequestParam(name = "type") String type) throws CustomException {
@@ -108,11 +131,26 @@ public class DatabaseController {
         return databaseService.getColumnList(projectIdx, type);
     }
 
+    /**
+     * 엑셀 컬럼 정보 업데이트
+     *
+     * @param columnOrder 컬럼 정보
+     * @return
+     */
     @PutMapping("/column")
     public CustomResponse<?> updateColumn(@RequestBody RequestDatabaseDTO.ColumnOrder columnOrder) throws CustomException {
         return databaseService.saveColumnOrder(columnOrder);
     }
 
+    /**
+     * 데이터베이스 커밋
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param type 시트명
+     * @param docType 데이터 타입 (Node 또는 Edge)
+     * @param commit 커밋 정보
+     * @return 커밋 결과
+     */
     @PostMapping("/commit")
     public CustomResponse<?> commitDatabase(@RequestParam(name = "projectIdx") Integer projectIdx,
                                             @RequestParam(name = "type") String type,

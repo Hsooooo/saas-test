@@ -250,6 +250,14 @@ public class DatabaseService {
         return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
     }
 
+    /**
+     * 노드 데이터 업데이트 기능
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param type       노드 타입
+     * @param data       노드 데이터 DTO
+     * @return 성공 메시지를 포함한 CustomResponse 객체
+     */
     public CustomResponse<?> updateNode(Integer projectIdx, String type, LinkedHashMap<String, Object> data) {
         Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
         if (project == null) throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
@@ -257,6 +265,14 @@ public class DatabaseService {
         return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
     }
 
+    /**
+     * 엣지 데이터 업데이트 기능
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param type       엣지 타입
+     * @param data       엣지 데이터 DTO
+     * @return 성공 메시지를 포함한 CustomResponse 객체
+     */
     public CustomResponse<?> updateEdge(Integer projectIdx, String type, EdgeDataDTO data) {
         Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
         if (project == null) throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
@@ -264,7 +280,23 @@ public class DatabaseService {
         return CustomResponse.builder().message("데이터가 성공적으로 추가되었습니다.").build();
     }
 
-    public CustomResponse<?> deleteData(Integer projectIdx, String type, LinkedHashMap<String, Object> data, RequestDatabaseDTO.DocType docType) {
+    /**
+     * 데이터 삭제 기능
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param type       Node 또는 Edge의 타입
+     * @param data       삭제할 데이터 ID 목록
+     * @param docType    요청된 DocType
+     * @return 성공 메시지를 포함한 CustomResponse 객체
+     */
+    public CustomResponse<?> deleteData(Integer projectIdx, String type, List<Object> data, RequestDatabaseDTO.DocType docType) {
+        Class<?> docTypeClass = getDocTypeClass(docType);
+        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        if (project == null) throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
+        for (Object id : data) {
+            Query deleteQuery = Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.type").is(type).and("id").is(id));
+            mongoTemplate.remove(deleteQuery, docTypeClass);
+        }
         return null;
     }
 
