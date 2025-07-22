@@ -5,6 +5,7 @@ import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.database.dto.EdgeDataDTO;
 import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
 import com.illunex.emsaasrestapi.database.dto.ResponseDatabaseDTO;
+import com.illunex.emsaasrestapi.database.dto.SaveResultRecord;
 import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.document.database.Column;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
@@ -12,6 +13,7 @@ import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.document.project.ProjectEdge;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNode;
+import com.mongodb.client.result.DeleteResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -314,36 +316,53 @@ public class DatabaseService {
         Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
         if (project == null) throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
 
+        int createdCount = 0;
+        int updatedCount = 0;
+        int deletedCount = 0;
+
+
         // 새 데이터 추가
         if (commit.getNewData() != null) {
             for (LinkedHashMap<String, Object> newData : commit.getNewData()) {
-                if (docTypeClass == Node.class) {
-                    databaseComponent.handleNodeSave(project, projectIdx, type, newData);
-                } else if (docTypeClass == Edge.class) {
-                    databaseComponent.handleEdgeSave(project, projectIdx, type, newData, null);
-                }
+                SaveResultRecord result = (docTypeClass == Node.class)
+                        ? databaseComponent.handleNodeInsert(project, projectIdx, type, newData)
+                        : databaseComponent.handleEdgeInsert(project, projectIdx, type, newData);
+
+                if (result.action() == SaveResultRecord.SaveAction.CREATED) createdCount++;
             }
         }
 
         // 데이터 업데이트
         if (commit.getUpdateData() != null) {
             for (RequestDatabaseDTO.UpdateData updateData : commit.getUpdateData()) {
-                if (docTypeClass == Node.class) {
-                    databaseComponent.handleNodeSave(project, projectIdx, type, updateData.getData());
-                } else if (docTypeClass == Edge.class) {
-                    databaseComponent.handleEdgeSave(project, projectIdx, type, updateData.getData(), updateData.getId());
-                }
+                SaveResultRecord result = (docTypeClass == Node.class)
+                        ? databaseComponent.handleNodeUpdate(project, projectIdx, type, updateData.getId(), updateData.getData())
+                        : databaseComponent.handleEdgeUpdate(project, projectIdx, type, updateData.getId(), updateData.getData());
+
+                if (result.action() == SaveResultRecord.SaveAction.UPDATED) updatedCount++;
             }
         }
 
         // 데이터 삭제
         if (commit.getDeleteData() != null) {
             for (Object id : commit.getDeleteData()) {
-                Query deleteQuery = Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.type").is(type).and("id").is(id));
-                mongoTemplate.remove(deleteQuery, docTypeClass);
+                Query deleteQuery = Query.query(
+                        Criteria.where("_id.projectIdx").is(projectIdx)
+                                .and("_id.type").is(type)
+                                .and("id").is(id)
+                );
+                DeleteResult result = mongoTemplate.remove(deleteQuery, docTypeClass);
+                deletedCount += (int) result.getDeletedCount();
             }
         }
 
-        return CustomResponse.builder().message("데이터베이스 커밋이 성공적으로 완료되었습니다.").build();
+        // 커밋 결과 반환
+        ResponseDatabaseDTO.Commit responseCommit = new ResponseDatabaseDTO.Commit();
+        responseCommit.setCreatedCount(createdCount);
+        responseCommit.setUpdatedCount(updatedCount);
+        responseCommit.setDeletedCount(deletedCount);
+        return CustomResponse.builder().message("데이터베이스 커밋이 성공적으로 완료되었습니다.")
+                .data(responseCommit)
+                .build();
     }
 }

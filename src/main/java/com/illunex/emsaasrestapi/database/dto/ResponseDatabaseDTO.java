@@ -52,4 +52,12 @@ public class ResponseDatabaseDTO {
         private Long count;
     }
 
+    @Getter
+    @Setter
+    public static class Commit {
+        private Integer createdCount;
+        private Integer updatedCount;
+        private Integer deletedCount;
+    }
+
 }
