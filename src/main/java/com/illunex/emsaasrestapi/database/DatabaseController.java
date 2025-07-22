@@ -43,15 +43,14 @@ public class DatabaseController {
      * @param projectIdx 프로젝트 인덱스
      * @param query      검색 쿼리
      * @param pageRequest 페이지 요청 정보
-     * @param sort       정렬 기준
      * @return 검색 결과
      */
     @PostMapping("/search")
     public CustomResponse<?> searchDatabase(@RequestParam(name = "projectIdx") Integer projectIdx,
                                             @RequestBody RequestDatabaseDTO.Search query,
-                                            CustomPageRequest pageRequest, String sort) throws CustomException {
+                                            CustomPageRequest pageRequest) throws CustomException {
         log.info("Received database search request with query: {}", query);
-        return databaseService.searchDatabase(projectIdx, query, pageRequest, sort);
+        return databaseService.searchDatabase(projectIdx, query, pageRequest);
     }
 
     /**

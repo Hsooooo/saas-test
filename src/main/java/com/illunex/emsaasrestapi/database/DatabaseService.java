@@ -37,10 +37,9 @@ public class DatabaseService {
      * @param projectIdx  프로젝트 인덱스
      * @param query       검색 쿼리
      * @param pageRequest 페이지 요청 정보
-     * @param sort        정렬 기준
      * @return 검색 결과를 포함한 CustomResponse 객체
      */
-    public CustomResponse<?> searchDatabase(Integer projectIdx, RequestDatabaseDTO.Search query, CustomPageRequest pageRequest, String sort) {
+    public CustomResponse<?> searchDatabase(Integer projectIdx, RequestDatabaseDTO.Search query, CustomPageRequest pageRequest) {
         Class<?> docTypeClass = getDocTypeClass(query.getDocType());
         String docName = query.getDocName();
 
@@ -49,20 +48,61 @@ public class DatabaseService {
         Query mongoQuery = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
                         .and("_id.type").is(docName));
 
-        if (sort != null && !sort.isEmpty()) {
-            mongoQuery.with(pageRequest.of("properties." + sort));
+        List<String> sortList = new ArrayList<>();
+        if (query.getSorts() != null && !query.getSorts().isEmpty()) {
+            for (RequestDatabaseDTO.SearchSort sort : query.getSorts()) {
+                if (sort.getColumnName() == null || sort.getColumnName().isEmpty()) {
+                    throw new IllegalArgumentException("정렬 기준의 컬럼명이 비어있습니다.");
+                }
+                String sortColumn = "properties." + sort.getColumnName();
+                String sortDirection = sort.getIsAsc() ? "ASC" : "DESC";
+                sortList.add(sortColumn + "," + sortDirection);
+            }
+            mongoQuery.with(pageRequest.of(sortList.toArray(new String[0])));
         } else {
             mongoQuery.with(pageRequest.of("properties._id,DESC")); // 기본 정렬 기준
         }
 
         // 검색어와 검색 대상 컬럼 조건 추가
-        if (query.getSearchString() != null && query.getColumnNames() != null && !query.getColumnNames().isEmpty()) {
-            List<Criteria> orCriteria = new ArrayList<>();
-            for (String columnName : query.getColumnNames()) {
-                orCriteria.add(Criteria.where("properties." + columnName)
-                        .regex(query.getSearchString(), "i")); // 대소문자 구분 없이 like 검색
+        if (query.getFilters() != null && !query.getFilters().isEmpty()) {
+            List<Criteria> criteriaList = new ArrayList<>();
+            for (RequestDatabaseDTO.SearchFilter filter : query.getFilters()) {
+                Criteria criteria = Criteria.where("properties." + filter.getColumnName());
+                switch (filter.getFilterCondition()) {
+                    case EQUALS, IS:
+                        criteria.is(filter.getSearchString());
+                        break;
+                    case NOT_EQUALS, IS_NOT:
+                        criteria.ne(filter.getSearchString());
+                        break;
+                    case LESS_THAN:
+                        criteria.lt(filter.getSearchString());
+                        break;
+                    case LESS_THAN_OR_EQUAL:
+                        criteria.lte(filter.getSearchString());
+                        break;
+                    case GREATER_THAN:
+                        criteria.gt(filter.getSearchString());
+                        break;
+                    case GREATER_THAN_OR_EQUAL:
+                        criteria.gte(filter.getSearchString());
+                        break;
+                    case EMPTY:
+                        criteria.exists(false);
+                        break;
+                    case NOT_EMPTY:
+                        criteria.exists(true);
+                        break;
+                    case CONTAINS:
+                        criteria.regex(filter.getSearchString(), "i"); // 대소문자 구분 없이 like 검색
+                        break;
+                    case NOT_CONTAINS:
+                        criteria.not().regex(filter.getSearchString(), "i");
+                        break;
+                }
+                criteriaList.add(criteria);
             }
-            mongoQuery.addCriteria(new Criteria().orOperator(orCriteria.toArray(new Criteria[0])));
+            mongoQuery.addCriteria(new Criteria().andOperator(criteriaList.toArray(new Criteria[0])));
         }
 
         // 데이터 조회
@@ -98,8 +138,8 @@ public class DatabaseService {
             }
         }
 
-        // 전체 데이터 개수 조회
-        long totalCount = mongoTemplate.count(Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.type").is(docName)), docTypeClass);
+        // 전체 데이터 개수 조회 (필터 포함한 조건으로 count)
+        long totalCount = mongoTemplate.count(mongoQuery, docTypeClass);
 
         // 결과 반환
         return CustomResponse.builder()
@@ -202,7 +242,7 @@ public class DatabaseService {
             detail.setColumnName(dto.getColumnName());
             detail.setVisible(dto.getIsVisible());
             detail.setOrder(dto.getOrder());
-            detail.setColumnNameKor(dto.getColumnNameKor());
+            detail.setAlias(dto.getAlias());
             list.add(detail);
         }
         return list;

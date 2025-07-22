@@ -206,7 +206,7 @@ public class ProjectComponent {
                 ColumnDetail columnDetail = new ColumnDetail();
                 columnDetail.setColumnName(columnName);
                 columnDetail.setVisible(true);
-                columnDetail.setColumnNameKor("");
+                columnDetail.setAlias("");
                 columnDetail.setOrder(columnOrderIdx++);
                 columnDetailList.add(columnDetail);
             }
