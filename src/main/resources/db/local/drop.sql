@@ -4,6 +4,8 @@ DROP TABLE IF EXISTS `em_saas`.`license_partnership`;
 DROP TABLE IF EXISTS `em_saas`.`license_function`;
 DROP TABLE IF EXISTS `em_saas`.`license`;
 -- 프로젝트 관련 테이블
+DROP TABLE IF EXISTS `em_saas`.`project_table_auth`;
+DROP TABLE IF EXISTS `em_saas`.`project_table`;
 DROP TABLE IF EXISTS `em_saas`.`project_file`;
 DROP TABLE IF EXISTS `em_saas`.`project_member`;
 DROP TABLE IF EXISTS `em_saas`.`project`;

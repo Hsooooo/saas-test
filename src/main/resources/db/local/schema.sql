@@ -336,3 +336,36 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_file` (
 COMMENT='프로젝트 업로드 파일'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`project_table` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 테이블번호',
+    `project_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 번호',
+    `title` VARCHAR(512) NULL DEFAULT NULL COMMENT '테이블명' COLLATE 'utf8mb4_general_ci',
+    `data_count` INT(11) NULL DEFAULT NULL COMMENT '데이터개수',
+    `type_cd` VARCHAR(512) NULL DEFAULT NULL COMMENT '테이블 구분(code)' COLLATE 'utf8mb4_general_ci',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `fk_project_table_project_idx` (`project_idx`) USING BTREE,
+    CONSTRAINT `fk_project_table_project_idx` FOREIGN KEY (`project_idx`) REFERENCES `project` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='프로젝트 테이블 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`project_table_auth` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 테이블 사용자 권한 번호',
+    `project_table_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 테이블 번호',
+    `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원번호',
+    `auth_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '권한 구분(code)' COLLATE 'utf8mb4_general_ci',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `fk_project_table_auth_project_table_idx` (`project_table_idx`) USING BTREE,
+    INDEX `fk_project_table_auth_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
+    CONSTRAINT `fk_project_table_auth_project_table_idx` FOREIGN KEY (`project_table_idx`) REFERENCES `project_table` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+    CONSTRAINT `fk_project_table_auth_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='프로젝트 테이블 사용자 권한 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;

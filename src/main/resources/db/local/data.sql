@@ -27,3 +27,7 @@ INSERT INTO `project_member` (`idx`, `project_idx`, `partnership_member_idx`, `t
 
 INSERT INTO `member_term` (`idx`, `subject`, `content`, `active`, `required`, `update_date`, `create_date`) VALUES (1, '첫번째약관(필수)', '내용', true, true, now(), now());
 INSERT INTO `member_term` (`idx`, `subject`, `content`, `active`, `required`, `update_date`, `create_date`) VALUES (2, '두번째약관(선택)', '내용', true, false, now(), now());
+
+INSERT INTO em_saas.project_table (idx, project_idx, title, data_count, type_cd, update_date, create_date) VALUES (1, 1, 'Company', 5000, 'PTT0001', '2025-07-23 07:13:21', '2025-07-23 07:13:21');
+INSERT INTO em_saas.project_table (idx, project_idx, title, data_count, type_cd, update_date, create_date) VALUES (2, 1, 'Company-Company', 826, 'PTT0002', '2025-07-23 07:13:23', '2025-07-23 07:13:23');
+

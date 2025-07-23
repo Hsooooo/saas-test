@@ -201,4 +201,34 @@ public class EnumCode {
             private final String value;
         }
     }
+
+    public static class ProjectTable {
+        /**
+         * 프로젝트 테이블 구분
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum TypeCd implements BaseCodeEnum {
+            Node("PTT0001", "node"),
+            Edge("PTT0002", "edge");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    public static class ProjectTableAuth {
+        /**
+         * 프로젝트 테이블 권한
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum AuthCd implements BaseCodeEnum {
+            Read("PTA0001", "읽기"),
+            Write("PTA0002", "쓰기");
+
+            private final String code;
+            private final String value;
+        }
+    }
 }
