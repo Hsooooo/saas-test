@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.project.mapper.ProjectTableMapper">
+<!--    프로젝트 생성-->
+    <insert id="insertByProjectTableVO" parameterType="ProjectTableVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO project_table (
+            project_idx,
+            title,
+            data_count,
+            type_cd,
+            update_date,
+            create_date
+        ) VALUES (
+            #{projectIdx},
+            #{title},
+            #{dataCount},
+            #{typeCd},
+            now(),
+            now()
+        )
+    </insert>
+
+    <select id="selectAllByProjectIdx" parameterType="Integer" resultType="ProjectTableVO">
+        SELECT
+            *
+        FROM project_table
+        WHERE project_idx = #{projectIdx}
+    </select>
+
+    <select id="selectAllByProjectIdxAndTitle" resultType="ProjectTableVO">
+        SELECT
+            *
+        FROM project_table
+        WHERE project_idx = #{projectIdx}
+          AND title like CONCAT('%', #{searchString}, '%')
+    </select>
+</mapper>

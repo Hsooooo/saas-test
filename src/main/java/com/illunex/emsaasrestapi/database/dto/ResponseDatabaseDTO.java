@@ -1,5 +1,6 @@
 package com.illunex.emsaasrestapi.database.dto;
 
+import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -28,9 +29,28 @@ public class ResponseDatabaseDTO {
     @Getter
     @Setter
     public static class DatabaseList {
-        private List<NodeStat> nodeStatList = new ArrayList<>();
-        private List<EdgeStat> edgeStatList = new ArrayList<>();
+        private ResponseProjectDTO.Project project;
+        private String projectCategoryName;
+        private List<TableData> nodeTableList = new ArrayList<>();
+        private List<TableData> edgeTableList = new ArrayList<>();
     }
+
+    @Getter
+    @Setter
+    public static class TableData {
+        private String title;
+        private Long dataCount;
+        private String typeCd;
+        private String typeCdDesc;
+        private List<TableAuthMember> members = new ArrayList<>();
+    }
+
+    public record TableAuthMember (
+        Integer idx,
+        String name,
+        String email,
+        String profileImageUrl
+    ) {}
 
     @Getter
     @Setter

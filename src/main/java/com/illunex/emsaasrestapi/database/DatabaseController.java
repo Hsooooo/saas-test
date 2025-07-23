@@ -20,15 +20,16 @@ public class DatabaseController {
     private final DatabaseService databaseService;
 
     /**
-     * 프로젝트 데이터베이스 목록 조회
+     * 프로젝트 데이터베이스 테이블 목록 조회
      *
      * @param projectIdx 프로젝트 인덱스
      * @return 각 노드, 링크의 하위 타입 목록을 포함하는 데이터베이스 목록
      */
     @GetMapping("/list")
-    public CustomResponse<?> getDatabaseList(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+    public CustomResponse<?> getDatabaseList(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                             @RequestParam(name = "searchString", required = false) String searchString) throws CustomException {
         log.info("Received request to get database list for project index: {}", projectIdx);
-        return databaseService.getDatabaseList(projectIdx);
+        return databaseService.getDatabaseList(projectIdx, searchString);
     }
 
 //    @GetMapping("/summary")

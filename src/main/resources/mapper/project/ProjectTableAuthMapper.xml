@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.project.mapper.ProjectTableAuthMapper">
+<!--    프로젝트 생성-->
+    <insert id="insertByProjectTableVO" parameterType="ProjectTableAuthVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO project_table_auth (
+            project_table_idx,
+            partnership_member_idx,
+            auth_cd,
+            update_date,
+            create_date
+        ) VALUES (
+            #{projectTableIdx},
+            #{partnershipMemberIdx},
+            #{authCd},
+            now(),
+            now()
+        )
+    </insert>
+</mapper>

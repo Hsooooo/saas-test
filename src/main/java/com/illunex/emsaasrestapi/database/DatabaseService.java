@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.database;
 
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.database.dto.EdgeDataDTO;
 import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
 import com.illunex.emsaasrestapi.database.dto.ResponseDatabaseDTO;
@@ -13,8 +14,16 @@ import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.document.project.ProjectEdge;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNode;
+import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectTableMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectTableVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.DeleteResult;
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -30,6 +39,10 @@ import java.util.*;
 public class DatabaseService {
     private final MongoTemplate mongoTemplate;
     private final DatabaseComponent databaseComponent;
+    private final ProjectMapper projectMapper;
+    private final ProjectCategoryMapper projectCategoryMapper;
+    private final ProjectTableMapper projectTableMapper;
+    private final ModelMapper modelMapper;
 
     /**
      * 데이터베이스 검색 기능
@@ -48,6 +61,7 @@ public class DatabaseService {
         Query mongoQuery = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
                         .and("_id.type").is(docName));
 
+        // 정렬 조건 설정
         List<String> sortList = new ArrayList<>();
         if (query.getSorts() != null && !query.getSorts().isEmpty()) {
             for (RequestDatabaseDTO.SearchSort sort : query.getSorts()) {
@@ -167,43 +181,53 @@ public class DatabaseService {
      * @param projectIdx 프로젝트 인덱스
      * @return 데이터베이스 목록을 포함한 CustomResponse 객체
      */
-    public CustomResponse<?> getDatabaseList(Integer projectIdx) {
+    public CustomResponse<?> getDatabaseList(Integer projectIdx, String searchString) {
+        // 프로젝트 정보 조회
         Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
+                .orElseThrow(() -> new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx));
+        // 프로젝트 카테고리 정보 조회
+        Optional<ProjectCategoryVO> projectCategoryVOOpt = projectCategoryMapper.selectByIdx(projectVO.getProjectCategoryIdx());
         if (project == null) {
             throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
         }
         ResponseDatabaseDTO.DatabaseList response = new ResponseDatabaseDTO.DatabaseList();
-
-        // 노드와 엣지의 하위 타입 목록을 조회
-        for (ProjectNode projectNode : Optional.ofNullable(project.getProjectNodeList()).orElse(Collections.emptyList())) {
-            // Node 통계 정보 생성
-            ResponseDatabaseDTO.NodeStat nodeStat = new ResponseDatabaseDTO.NodeStat();
-            nodeStat.setType(projectNode.getNodeType());
-            nodeStat.setUniqueCellName(projectNode.getUniqueCellName());
-            nodeStat.setLabelCellName(projectNode.getLabelCellName());
-
-            long count = mongoTemplate.count(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                    .and("_id.type").is(projectNode.getNodeType())), Node.class);
-            nodeStat.setCount(count);
-
-            response.getNodeStatList().add(nodeStat);
+        // 프로젝트 정보 매핑
+        ResponseProjectDTO.Project projectResponse = modelMapper.map(projectVO, ResponseProjectDTO.Project.class);
+        response.setProject(projectResponse);
+        // 프로젝트 카테고리 이름 설정
+        response.setProjectCategoryName(projectCategoryVOOpt.map(ProjectCategoryVO::getName).orElse("미분류"));
+        List<ProjectTableVO> projectTableList = new ArrayList<>();
+        if (searchString != null && !searchString.isEmpty()) {
+            // 검색어가 있는 경우, 프로젝트 테이블 정보에서 검색
+            projectTableList = projectTableMapper.selectAllByProjectIdxAndTitle(projectIdx, searchString);
+        } else {
+            projectTableList = projectTableMapper.selectAllByProjectIdx(projectIdx);
         }
 
-        for (ProjectEdge projectEdge : Optional.ofNullable(project.getProjectEdgeList()).orElse(Collections.emptyList())) {
-            // 엣지 통계 정보 생성
-            ResponseDatabaseDTO.EdgeStat edgeStat = new ResponseDatabaseDTO.EdgeStat();
-            edgeStat.setType(projectEdge.getEdgeType());
-            edgeStat.setUnit(projectEdge.getUnit());
-            edgeStat.setColor(projectEdge.getColor());
-            edgeStat.setIsDirection(projectEdge.getUseDirection());
-            edgeStat.setIsWeight(projectEdge.getWeight());
-
-            long count = mongoTemplate.count(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                    .and("_id.type").is(projectEdge.getEdgeType())), Edge.class);
-            edgeStat.setCount(count);
-
-            response.getEdgeStatList().add(edgeStat);
+        List<ResponseDatabaseDTO.TableData> nodeTableList = new ArrayList<>();
+        List<ResponseDatabaseDTO.TableData> edgeTableList = new ArrayList<>();
+        // 프로젝트 테이블 정보에 따라 노드와 엣지 테이블 데이터 생성
+        for (ProjectTableVO projectTable : projectTableList) {
+            ResponseDatabaseDTO.TableData tableData = new ResponseDatabaseDTO.TableData();
+            // 테이블 데이터 설정
+            tableData.setTitle(projectTable.getTitle());
+            tableData.setTypeCd(projectTable.getTypeCd());
+            if (projectTable.getTypeCd().equals(EnumCode.ProjectTable.TypeCd.Node.getCode())) {
+                // 데이터 개수 조회
+                tableData.setDataCount(mongoTemplate.count(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
+                        .and("_id.type").is(projectTable.getTitle())), Node.class));
+                tableData.setTypeCdDesc(EnumCode.ProjectTable.TypeCd.Node.getValue());
+                nodeTableList.add(tableData);
+            } else {
+                tableData.setDataCount(mongoTemplate.count(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
+                        .and("_id.type").is(projectTable.getTitle())), Edge.class));
+                tableData.setTypeCdDesc(EnumCode.ProjectTable.TypeCd.Edge.getValue());
+                edgeTableList.add(tableData);
+            }
         }
+        response.setNodeTableList(nodeTableList);
+        response.setEdgeTableList(edgeTableList);
 
         return CustomResponse.builder()
                 .data(response)

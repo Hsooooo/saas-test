@@ -16,6 +16,8 @@ import com.illunex.emsaasrestapi.project.document.project.ProjectEdge;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNode;
 import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectTableMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectTableVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,7 @@ public class ProjectProcessingService {
     private final MongoTemplate mongoTemplate;
     private final ProjectMapper projectMapper;
     private final ProjectFileMapper projectFileMapper;
+    private final ProjectTableMapper projectTableMapper;
     private final TaskExecutor projectExecutor;
     private final ProjectComponent projectComponent;
     private final AwsS3Component awsS3Component;
@@ -104,6 +107,15 @@ public class ProjectProcessingService {
 
                 List<String> columns = sheet.getExcelCellList();
                 int colCnt = columns.size();
+
+                ProjectTableVO projectTableVO = new ProjectTableVO();
+                projectTableVO.setProjectIdx(projectIdx);
+                projectTableVO.setTitle(sheetName);
+                projectTableVO.setDataCount(sheet.getTotalRowCnt());
+                EnumCode.ProjectTable.TypeCd typeCd = nodeDef != null ? EnumCode.ProjectTable.TypeCd.Node : EnumCode.ProjectTable.TypeCd.Edge;
+                projectTableVO.setTypeCd(typeCd.getCode());
+
+                projectTableMapper.insertByProjectTableVO(projectTableVO);
 
                 for (int r = 1; r <= sheet.getTotalRowCnt(); r++) {
                     Row row = ws.getRow(r);
