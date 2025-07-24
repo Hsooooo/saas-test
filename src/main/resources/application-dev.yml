@@ -1,6 +1,6 @@
 jwt:
   secret: emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308emsaasrestapi0308
-  access-token-expiration: 1800                  # accessToken 유효시간(초) - 30분
+  access-token-expiration: 18000                  # accessToken 유효시간(초) - 30분
   refresh-token-expiration: 86400                # refreshToken 유효시간(초) - 24시간
 
 server:
