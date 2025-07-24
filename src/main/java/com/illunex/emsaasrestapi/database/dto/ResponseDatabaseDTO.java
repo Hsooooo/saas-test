@@ -4,6 +4,7 @@ import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,7 +30,7 @@ public class ResponseDatabaseDTO {
     @Getter
     @Setter
     public static class DatabaseList {
-        private ResponseProjectDTO.Project project;
+        private DatabaseProjectSummary project;
         private String projectCategoryName;
         private List<TableData> nodeTableList = new ArrayList<>();
         private List<TableData> edgeTableList = new ArrayList<>();
@@ -50,6 +51,15 @@ public class ResponseDatabaseDTO {
         String name,
         String email,
         String profileImageUrl
+    ) {}
+
+    public record DatabaseProjectSummary(
+        Integer projectIdx,
+        Integer partnershipIdx,
+        String title,
+        String description,
+        ZonedDateTime createDate,
+        ZonedDateTime updateDate
     ) {}
 
     @Getter

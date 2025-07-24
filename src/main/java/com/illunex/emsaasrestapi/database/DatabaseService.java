@@ -193,8 +193,14 @@ public class DatabaseService {
         }
         ResponseDatabaseDTO.DatabaseList response = new ResponseDatabaseDTO.DatabaseList();
         // 프로젝트 정보 매핑
-        ResponseProjectDTO.Project projectResponse = modelMapper.map(projectVO, ResponseProjectDTO.Project.class);
-        response.setProject(projectResponse);
+        response.setProject(new ResponseDatabaseDTO.DatabaseProjectSummary(
+                projectVO.getIdx(),
+                projectVO.getPartnershipIdx(),
+                projectVO.getTitle(),
+                projectVO.getDescription(),
+                projectVO.getCreateDate(),
+                projectVO.getUpdateDate()
+        ));
         // 프로젝트 카테고리 이름 설정
         response.setProjectCategoryName(projectCategoryVOOpt.map(ProjectCategoryVO::getName).orElse("미분류"));
         List<ProjectTableVO> projectTableList = new ArrayList<>();
