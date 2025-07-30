@@ -56,10 +56,31 @@ public class DatabaseService {
         Class<?> docTypeClass = getDocTypeClass(query.getDocType());
         String docName = query.getDocName();
 
+        // 공통 Criteria 구성
+        Criteria criteria = Criteria.where("_id.projectIdx").is(projectIdx)
+                .and("_id.type").is(docName);
 
-        // MongoDB 쿼리 생성
-        Query mongoQuery = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                        .and("_id.type").is(docName));
+        // 필터 조건 추가
+        if (query.getFilters() != null && !query.getFilters().isEmpty()) {
+            List<Criteria> filterCriteriaList = new ArrayList<>();
+            for (RequestDatabaseDTO.SearchFilter filter : query.getFilters()) {
+                Criteria filterCriteria = Criteria.where("properties." + filter.getColumnName());
+                switch (filter.getFilterCondition()) {
+                    case EQUALS, IS -> filterCriteria.is(filter.getSearchString());
+                    case NOT_EQUALS, IS_NOT -> filterCriteria.ne(filter.getSearchString());
+                    case LESS_THAN -> filterCriteria.lt(filter.getSearchString());
+                    case LESS_THAN_OR_EQUAL -> filterCriteria.lte(filter.getSearchString());
+                    case GREATER_THAN -> filterCriteria.gt(filter.getSearchString());
+                    case GREATER_THAN_OR_EQUAL -> filterCriteria.gte(filter.getSearchString());
+                    case EMPTY -> filterCriteria.exists(false);
+                    case NOT_EMPTY -> filterCriteria.exists(true);
+                    case CONTAINS -> filterCriteria.regex(filter.getSearchString(), "i");
+                    case NOT_CONTAINS -> filterCriteria.not().regex(filter.getSearchString(), "i");
+                }
+                filterCriteriaList.add(filterCriteria);
+            }
+            criteria = criteria.andOperator(filterCriteriaList.toArray(new Criteria[0]));
+        }
 
         // 정렬 조건 설정
         List<String> sortList = new ArrayList<>();
@@ -72,92 +93,56 @@ public class DatabaseService {
                 String sortDirection = sort.getIsAsc() ? "ASC" : "DESC";
                 sortList.add(sortColumn + "," + sortDirection);
             }
-            mongoQuery.with(pageRequest.of(sortList.toArray(new String[0])));
         } else {
-            mongoQuery.with(pageRequest.of("properties._id,DESC")); // 기본 정렬 기준
+            sortList.add("properties._id,DESC"); // 기본 정렬
         }
 
-        // 검색어와 검색 대상 컬럼 조건 추가
-        if (query.getFilters() != null && !query.getFilters().isEmpty()) {
-            List<Criteria> criteriaList = new ArrayList<>();
-            for (RequestDatabaseDTO.SearchFilter filter : query.getFilters()) {
-                Criteria criteria = Criteria.where("properties." + filter.getColumnName());
-                switch (filter.getFilterCondition()) {
-                    case EQUALS, IS:
-                        criteria.is(filter.getSearchString());
-                        break;
-                    case NOT_EQUALS, IS_NOT:
-                        criteria.ne(filter.getSearchString());
-                        break;
-                    case LESS_THAN:
-                        criteria.lt(filter.getSearchString());
-                        break;
-                    case LESS_THAN_OR_EQUAL:
-                        criteria.lte(filter.getSearchString());
-                        break;
-                    case GREATER_THAN:
-                        criteria.gt(filter.getSearchString());
-                        break;
-                    case GREATER_THAN_OR_EQUAL:
-                        criteria.gte(filter.getSearchString());
-                        break;
-                    case EMPTY:
-                        criteria.exists(false);
-                        break;
-                    case NOT_EMPTY:
-                        criteria.exists(true);
-                        break;
-                    case CONTAINS:
-                        criteria.regex(filter.getSearchString(), "i"); // 대소문자 구분 없이 like 검색
-                        break;
-                    case NOT_CONTAINS:
-                        criteria.not().regex(filter.getSearchString(), "i");
-                        break;
-                }
-                criteriaList.add(criteria);
-            }
-            mongoQuery.addCriteria(new Criteria().andOperator(criteriaList.toArray(new Criteria[0])));
-        }
+        // 조회용 쿼리 (limit, skip 포함)
+        Query findQuery = new Query(criteria).with(pageRequest.of(sortList.toArray(new String[0])));
+
+        // 카운트용 쿼리 (limit, skip 없음)
+        Query countQuery = new Query(criteria);
 
         // 데이터 조회
-        List<?> results = mongoTemplate.find(mongoQuery, docTypeClass);
+        List<?> results = mongoTemplate.find(findQuery, docTypeClass);
+
+        // 전체 개수 조회
+        long totalCount = mongoTemplate.count(countQuery, docTypeClass);
 
         // 컬럼 순서 조회
         Query columnOrderQuery = Query.query(Criteria.where("projectIdx").is(projectIdx).and("type").is(docName));
         Column column = mongoTemplate.findOne(columnOrderQuery, Column.class);
 
-        // 컬럼 순서에 따라 데이터 매핑
+        // 결과 매핑
         List<Object> mappedResults = new ArrayList<>();
         if (column != null && column.getColumnDetailList() != null) {
             for (Object result : results) {
-                if (result instanceof Node node) {
-                    LinkedHashMap<String, Object> mappedData = new LinkedHashMap<>();
-                    for (ColumnDetail columnDetail : column.getColumnDetailList()) {
-                        String columnName = columnDetail.getColumnName();
-                        mappedData.put(columnName, node.getProperties().get(columnName));
+                LinkedHashMap<String, Object> mappedData = new LinkedHashMap<>();
+                for (ColumnDetail columnDetail : column.getColumnDetailList()) {
+                    String columnName = columnDetail.getColumnName();
+                    Object value = null;
+                    if (result instanceof Node node) {
+                        value = node.getProperties().get(columnName);
+                    } else if (result instanceof Edge edge) {
+                        value = edge.getProperties().get(columnName);
                     }
-                    mappedResults.add(mappedData);
+                    mappedData.put(columnName, value);
                 }
-                if (result instanceof Edge edge) {
-                    EdgeDataDTO edgeResult = new EdgeDataDTO();
-                    LinkedHashMap<String, Object> mappedData = new LinkedHashMap<>();
-                    for (ColumnDetail columnDetail : column.getColumnDetailList()) {
-                        String columnName = columnDetail.getColumnName();
-                        mappedData.put(columnName, edge.getProperties().get(columnName));
-                    }
-                    edgeResult.setId(edge.getId());
-                    edgeResult.setProperties(mappedData);
-                    mappedResults.add(edgeResult);
+
+                if (result instanceof Node) {
+                    mappedResults.add(mappedData);
+                } else if (result instanceof Edge edge) {
+                    EdgeDataDTO dto = new EdgeDataDTO();
+                    dto.setId(edge.getId());
+                    dto.setProperties(mappedData);
+                    mappedResults.add(dto);
                 }
             }
         }
 
-        // 전체 데이터 개수 조회 (필터 포함한 조건으로 count)
-        long totalCount = mongoTemplate.count(mongoQuery, docTypeClass);
-
         // 결과 반환
         return CustomResponse.builder()
-                .data(new PageImpl<>(mappedResults, pageRequest.of(), totalCount))
+                .data(new PageImpl<>(mappedResults, pageRequest.of(sortList.toArray(new String[0])), totalCount))
                 .build();
     }
 
