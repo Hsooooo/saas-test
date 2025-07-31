@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/project/**").hasAnyAuthority(MEMBER)
                         .requestMatchers("/project/category/**").hasAnyAuthority(MEMBER)
                         .requestMatchers("/network/**").hasAnyAuthority(MEMBER)
+                        .requestMatchers("/query/**").hasAnyAuthority(MEMBER)
                         .anyRequest()
                         .authenticated()
                 )
