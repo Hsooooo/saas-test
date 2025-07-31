@@ -51,4 +51,8 @@ INSERT INTO em_saas.code (code, first_code, second_code, third_code, code_value,
 
 ('PTA0000', 'PTA', '00', '00', '- 프로젝트 테이블 사용자 권한', 0),
 ('PTA0001', 'PTA', '00', '01', '읽기', 1),
-('PTA0002', 'PTA', '00', '02', '수정', 2);
+('PTA0002', 'PTA', '00', '02', '수정', 2),
+
+('PQT0000', 'PQT', '00', '00', '- 프로젝트 쿼리 타입', 0),
+('PQT0001', 'PQT', '00', '01', 'Mongo-Shell', 1),
+('PQT0002', 'PQT', '00', '02', 'Mongo-JSON', 2);

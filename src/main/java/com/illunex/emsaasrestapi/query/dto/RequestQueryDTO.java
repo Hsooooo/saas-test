@@ -20,6 +20,7 @@ public class RequestQueryDTO {
     @Getter
     public static class SaveQuery {
         private Integer projectIdx;
+        private Integer partnershipIdx;
         private QueryCategory queryCategory;
         private String queryTitle;
         private String rawQuery;

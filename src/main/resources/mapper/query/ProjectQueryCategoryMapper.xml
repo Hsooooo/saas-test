@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.query.mapper.ProjectQueryCategoryMapper">
+    <insert id="insertByProjectQueryCategoryVO" parameterType="ProjectQueryCategoryVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO project_query_category (
+            partnership_member_idx,
+            project_idx,
+            name,
+            sort,
+            update_date,
+            create_date
+        ) VALUES (
+            #{partnershipMemberIdx},
+            #{projectIdx},
+            #{name},
+            #{sort},
+            now(),
+            now()
+        )
+    </insert>
+
+    <select id="selectByIdx" parameterType="Integer" resultType="ProjectQueryCategoryVO">
+        SELECT
+            *
+        FROM
+            project_query_category
+        WHERE
+            idx = #{idx}
+    </select>
+
+    <update id="updateByProjectQueryCategoryVO" parameterType="ProjectQueryCategoryVO">
+        UPDATE project_query_category
+        SET
+            partnership_member_idx = #{partnershipMemberIdx},
+            project_idx = #{projectIdx},
+            name = #{name},
+            sort = #{sort},
+            update_date = now()
+        WHERE
+            idx = #{idx}
+    </update>
+</mapper>

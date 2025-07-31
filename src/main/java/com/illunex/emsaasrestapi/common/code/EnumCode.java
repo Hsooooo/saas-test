@@ -231,4 +231,19 @@ public class EnumCode {
             private final String value;
         }
     }
+
+    public static class ProjectQuery {
+        /**
+         * 프로젝트 쿼리 구분
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum TypeCd implements BaseCodeEnum {
+            Mongo_Shell("PQT0001", "mongo-shell"),
+            Mongo_JSON("PQT0002", "mongo-JSON");
+
+            private final String code;
+            private final String value;
+        }
+    }
 }

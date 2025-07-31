@@ -25,12 +25,12 @@ public class QueryController {
                 .build();
     }
 
-//    @PostMapping("/save")
-//    public CustomResponse<?> querySave(@CurrentMember MemberVO memberVO,
-//                                       @RequestBody RequestQueryDTO.SaveQuery saveQuery) {
-//        return CustomResponse.builder()
-//                .data(queryService.saveQuery(memberVO, saveQuery))
-//                .message("Query saved successfully")
-//                .build();
-//    }
+    @PostMapping("/save")
+    public CustomResponse<?> querySave(@CurrentMember MemberVO memberVO,
+                                       @RequestBody RequestQueryDTO.SaveQuery saveQuery) {
+        queryService.saveQuery(memberVO, saveQuery);
+        return CustomResponse.builder()
+                .message("Query saved successfully")
+                .build();
+    }
 }

@@ -3,6 +3,9 @@ DROP TABLE IF EXISTS `em_saas`.`license_payment_history`;
 DROP TABLE IF EXISTS `em_saas`.`license_partnership`;
 DROP TABLE IF EXISTS `em_saas`.`license_function`;
 DROP TABLE IF EXISTS `em_saas`.`license`;
+-- 쿼리 관련 테이블
+DROP TABLE IF EXISTS `em_saas`.`project_query`;
+DROP TABLE IF EXISTS `em_saas`.`project_query_category`;
 -- 프로젝트 관련 테이블
 DROP TABLE IF EXISTS `em_saas`.`project_table_auth`;
 DROP TABLE IF EXISTS `em_saas`.`project_table`;

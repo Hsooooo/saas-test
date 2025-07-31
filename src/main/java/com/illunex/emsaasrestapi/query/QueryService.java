@@ -1,7 +1,14 @@
 package com.illunex.emsaasrestapi.query;
 
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
+import com.illunex.emsaasrestapi.query.mapper.ProjectQueryCategoryMapper;
+import com.illunex.emsaasrestapi.query.mapper.ProjectQueryMapper;
+import com.illunex.emsaasrestapi.query.vo.ProjectQueryCategoryVO;
+import com.illunex.emsaasrestapi.query.vo.ProjectQueryVO;
 import com.mongodb.MongoException;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
@@ -22,6 +29,9 @@ import java.util.Optional;
 public class QueryService {
     private final QueryComponent queryComponent;
     private final MongoTemplate mongoTemplate;
+    private final ProjectQueryMapper projectQueryMapper;
+    private final ProjectQueryCategoryMapper projectQueryCategoryMapper;
+    private final PartnershipMemberMapper partnershipMemberMapper;
 
     public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteQuery executeQuery) {
         QueryResult queryResult = resolveQuery(executeQuery);
@@ -118,5 +128,46 @@ public class QueryService {
     }
 
     public record QueryResult(Query query, String collection) {}
+
+    public void saveQuery(MemberVO memberVO, RequestQueryDTO.SaveQuery saveQuery) {
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(saveQuery.getPartnershipIdx(), memberVO.getIdx())
+                .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
+        if (saveQuery.getProjectIdx() == null) {
+            throw new IllegalArgumentException("projectIdx는 필수입니다.");
+        }
+        if (saveQuery.getRawQuery() == null || saveQuery.getRawQuery().isBlank()) {
+            throw new IllegalArgumentException("rawQuery는 필수입니다.");
+        }
+        // 쿼리 카테고리 정보 전달 시
+        ProjectQueryCategoryVO categoryVO = null;
+        if (saveQuery.getQueryCategory() != null && saveQuery.getQueryCategory().getCategoryName() != null && saveQuery.getQueryCategory().getQueryCategoryIdx() != null) {
+            // 카테고리 인덱스가 존재하지 않으면 새로 생성
+            categoryVO = projectQueryCategoryMapper.selectByIdx(saveQuery.getQueryCategory().getQueryCategoryIdx())
+                    .map(vo -> {
+                        vo.setName(saveQuery.getQueryCategory().getCategoryName());
+                        projectQueryCategoryMapper.updateByProjectQueryCategoryVO(vo);
+                        return vo;
+                    })
+                    .orElseGet(() -> {
+                        ProjectQueryCategoryVO vo = new ProjectQueryCategoryVO();
+                        vo.setProjectIdx(saveQuery.getProjectIdx());
+                        vo.setName(saveQuery.getQueryCategory().getCategoryName());
+                        vo.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+                        projectQueryCategoryMapper.insertByProjectQueryCategoryVO(vo);
+                        return vo;
+                    });
+        }
+
+        ProjectQueryVO projectQueryVO = new ProjectQueryVO();
+        projectQueryVO.setProjectIdx(saveQuery.getProjectIdx());
+        projectQueryVO.setTitle(saveQuery.getQueryTitle());
+        projectQueryVO.setRawQuery(saveQuery.getRawQuery());
+        projectQueryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+        projectQueryVO.setProjectQueryCategoryIdx(categoryVO != null ? categoryVO.getIdx() : null);
+        projectQueryVO.setTypeCd(EnumCode.ProjectQuery.TypeCd.Mongo_Shell.getCode());
+
+        // 쿼리 저장
+        projectQueryMapper.insertByProjectQueryVO(projectQueryVO);
+    }
 
 }
