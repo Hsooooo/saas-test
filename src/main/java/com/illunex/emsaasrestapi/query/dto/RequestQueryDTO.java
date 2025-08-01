@@ -6,15 +6,11 @@ public class RequestQueryDTO {
     @Getter
     public static class ExecuteQuery {
         private Integer projectIdx;
-        private String collection;
-        private String operationCd;
         private String filter;
         private String projection;
         private String sort;
-        private Integer page;
-        private Integer size;
-        private Integer skip;
-        private Integer limit;
+        private Integer skip = 0;
+        private Integer limit = 100;
     }
 
     @Getter

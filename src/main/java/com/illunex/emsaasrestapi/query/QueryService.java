@@ -37,10 +37,12 @@ public class QueryService {
         QueryResult queryResult = resolveQuery(executeQuery);
         List<Map> results = mongoTemplate.find(queryResult.query(), Map.class, queryResult.collection());
         long total = mongoTemplate.count(Query.of(queryResult.query()).limit(0).skip(0), queryResult.collection());
+        int page = (executeQuery.getSkip() / executeQuery.getLimit()) + 1;
+        int size = executeQuery.getLimit();
         return ResponseEntity.ok(Map.of(
                 "total", total,
-                "page", executeQuery.getPage(),
-                "size", executeQuery.getSize(),
+                "page", page,
+                "size", size,
                 "result", results
         ));
     }
@@ -116,10 +118,10 @@ public class QueryService {
             }
 
             // 9. paging
-            int page = Optional.ofNullable(req.getPage()).orElse(0);
-            int size = Optional.ofNullable(req.getSize()).orElse(50);
-            query.skip((long) page * size);
-            query.limit(size);
+            int skip = Optional.ofNullable(req.getSkip()).orElse(0);
+            int limit = Optional.ofNullable(req.getLimit()).orElse(10);
+            query.skip(skip);
+            query.limit(limit);
 
             return new QueryResult(query, collection);
         } catch (JsonParseException | MongoException e) {
