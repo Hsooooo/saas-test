@@ -42,4 +42,15 @@
         WHERE
             idx = #{idx}
     </update>
+
+    <select id="selectByProjectIdxAndPartnershipMemberIdx" parameterType="ProjectQueryCategoryVO" resultType="ProjectQueryCategoryVO">
+        SELECT
+            *
+        FROM
+            project_query_category
+        WHERE
+            project_idx = #{projectIdx}
+            AND partnership_member_idx = #{partnershipMemberIdx}
+        ORDER BY sort is null, sort ASC
+    </select>
 </mapper>

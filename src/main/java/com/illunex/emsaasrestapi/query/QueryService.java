@@ -5,14 +5,17 @@ import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
+import com.illunex.emsaasrestapi.query.dto.ResponseQueryDTO;
 import com.illunex.emsaasrestapi.query.mapper.ProjectQueryCategoryMapper;
 import com.illunex.emsaasrestapi.query.mapper.ProjectQueryMapper;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryCategoryVO;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryVO;
 import com.mongodb.MongoException;
+import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.bson.json.JsonParseException;
+import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -20,6 +23,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,103 +37,94 @@ public class QueryService {
     private final ProjectQueryCategoryMapper projectQueryCategoryMapper;
     private final PartnershipMemberMapper partnershipMemberMapper;
 
+    private final ModelMapper modelMapper;
+
+    /**
+     * 쿼리 실행
+     * @param memberVO
+     * @param executeQuery
+     * @return
+     */
     public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteQuery executeQuery) {
-        QueryResult queryResult = resolveQuery(executeQuery);
+        QueryComponent.QueryResult queryResult = queryComponent.resolveQuery(executeQuery);
         List<Map> results = mongoTemplate.find(queryResult.query(), Map.class, queryResult.collection());
         long total = mongoTemplate.count(Query.of(queryResult.query()).limit(0).skip(0), queryResult.collection());
         int page = (executeQuery.getSkip() / executeQuery.getLimit()) + 1;
         int size = executeQuery.getLimit();
-        return ResponseEntity.ok(Map.of(
-                "total", total,
-                "page", page,
-                "size", size,
-                "result", results
-        ));
+        return ResponseEntity.ok(ResponseQueryDTO.ExecuteFind.builder()
+                .total(total)
+                .page(page)
+                .size(size)
+                .skip(executeQuery.getSkip())
+                .limit(size)
+                .result(results)
+                .build());
     }
 
-    public QueryResult resolveQuery(RequestQueryDTO.ExecuteQuery req) {
-        try {
-            // 1. 필수 필드: projectIdx
-            Integer projectIdx = req.getProjectIdx();
-            if (projectIdx == null) throw new IllegalArgumentException("projectIdx는 필수입니다.");
 
-            // 2. 필수 필드: filter
-            if (req.getFilter() == null || req.getFilter().isBlank())
-                throw new IllegalArgumentException("filter는 JSON 문자열 형식으로 필수입니다.");
 
-            Document filter = Document.parse(req.getFilter());
-
-            // 3. table 추출
-            String table = filter.getString("table");
-            if (table == null || table.isBlank())
-                throw new IllegalArgumentException("filter 내에 table 필드가 필요합니다.");
-            filter.remove("table");
-
-            // 4. 실제 컬렉션 판별
-            boolean isNode = mongoTemplate.exists(
-                    Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("label").is(table)),
-                    "node"
-            );
-
-            String collection;
-            String tableField;
-            if (isNode) {
-                collection = "node";
-                tableField = "label";
-            } else {
-                boolean isEdge = mongoTemplate.exists(
-                        Query.query(Criteria.where("_id.projectIdx").is(projectIdx).and("type").is(table)),
-                        "edge"
-                );
-                if (!isEdge) {
-                    throw new IllegalArgumentException("해당 테이블은 존재하지 않습니다: " + table);
-                }
-                collection = "edge";
-                tableField = "type";
-            }
-
-            // 5. MongoDB 쿼리 생성
-            Query query = new Query();
-            query.addCriteria(Criteria.where("_id.projectIdx").is(projectIdx));
-            query.addCriteria(Criteria.where(tableField).is(table));
-
-            // 6. properties 필터 처리
-            for (Map.Entry<String, Object> entry : filter.entrySet()) {
-                query.addCriteria(Criteria.where("properties." + entry.getKey()).is(entry.getValue()));
-            }
-
-            // 7. projection
-            if (req.getProjection() != null && !req.getProjection().isBlank()) {
-                Document proj = Document.parse(req.getProjection());
-                for (String key : proj.keySet()) {
-                    query.fields().include("properties." + key);
-                }
-            }
-
-            // 8. sort
-            if (req.getSort() != null && !req.getSort().isBlank()) {
-                Document sortDoc = Document.parse(req.getSort());
-                List<Sort.Order> orders = sortDoc.entrySet().stream()
-                        .map(e -> new Sort.Order(
-                                ((Number) e.getValue()).intValue() == 1 ? Sort.Direction.ASC : Sort.Direction.DESC,
-                                "properties." + e.getKey()))
-                        .toList();
-                query.with(Sort.by(orders));
-            }
-
-            // 9. paging
-            int skip = Optional.ofNullable(req.getSkip()).orElse(0);
-            int limit = Optional.ofNullable(req.getLimit()).orElse(10);
-            query.skip(skip);
-            query.limit(limit);
-
-            return new QueryResult(query, collection);
-        } catch (JsonParseException | MongoException e) {
-            throw new RuntimeException("Mongo 쿼리 변환 오류: " + e.getMessage());
+    /**
+     * 프로젝트에 속한 쿼리 카테고리 목록 조회
+     * @param memberVO
+     * @param projectIdx
+     * @return
+     */
+    public Object getQueryCategories(MemberVO memberVO, Integer projectIdx) {
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(projectIdx, memberVO.getIdx())
+                .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
+        List<ProjectQueryCategoryVO> categories = projectQueryCategoryMapper.selectByProjectIdxAndPartnershipMemberIdx(projectIdx, partnershipMemberVO.getIdx());
+        List<ResponseQueryDTO.Categories> responseCategories = new ArrayList<>();
+        for (ProjectQueryCategoryVO category : categories) {
+            ResponseQueryDTO.Categories responseCategory = new ResponseQueryDTO.Categories();
+            responseCategory.setCategoryName(category.getName());
+            responseCategory.setQueryCategoryIdx(category.getIdx());
+            List<ResponseQueryDTO.Query> queries = projectQueryMapper.selectByProjectQueryCategoryIdx(category.getIdx())
+                    .stream()
+                    .map(query -> {
+                        ResponseQueryDTO.Query responseQuery = new ResponseQueryDTO.Query();
+                        responseQuery.setIdx(query.getIdx());
+                        responseQuery.setTitle(query.getTitle());
+                        responseQuery.setRawQuery(query.getRawQuery());
+                        responseQuery.setTypeCd(query.getTypeCd());
+                        responseQuery.setUpdateDate(query.getUpdateDate());
+                        responseQuery.setCreateDate(query.getCreateDate());
+                        return responseQuery;
+                    }).toList();
+            responseCategory.setQueries(queries);
         }
+        return responseCategories;
     }
 
-    public record QueryResult(Query query, String collection) {}
+    /**
+     * 특정 카테고리에 속한 쿼리 목록을 조회
+     * @param memberVO
+     * @param projectIdx
+     * @param queryCategoryIdx
+     * @return
+     */
+    public Object getQueriesByCategory(MemberVO memberVO, Integer projectIdx, Integer queryCategoryIdx) {
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(projectIdx, memberVO.getIdx())
+                .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
+        ProjectQueryCategoryVO queryCategoryVO = projectQueryCategoryMapper.selectByIdx(queryCategoryIdx)
+                .orElseThrow(() -> new IllegalArgumentException("해당 카테고리가 존재하지 않습니다."));
+        List<ProjectQueryVO> queries = projectQueryMapper.selectByProjectQueryCategoryIdxAndPartnershipMemberIdx(queryCategoryIdx, partnershipMemberVO.getIdx());
+        return new ResponseQueryDTO.QueriesByCategory(
+                queryCategoryVO.getIdx(),
+                queryCategoryVO.getName(),
+                queries.stream().map(query -> {
+                    ResponseQueryDTO.Query responseQuery = new ResponseQueryDTO.Query();
+                    responseQuery.setIdx(query.getIdx());
+                    responseQuery.setTitle(query.getTitle());
+                    responseQuery.setRawQuery(query.getRawQuery());
+                    responseQuery.setTypeCd(query.getTypeCd());
+                    responseQuery.setUpdateDate(query.getUpdateDate());
+                    responseQuery.setCreateDate(query.getCreateDate());
+                    return responseQuery;
+                }).toList()
+        );
+    }
+
+
 
     public void saveQuery(MemberVO memberVO, RequestQueryDTO.SaveQuery saveQuery) {
         PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(saveQuery.getPartnershipIdx(), memberVO.getIdx())
@@ -142,22 +137,22 @@ public class QueryService {
         }
         // 쿼리 카테고리 정보 전달 시
         ProjectQueryCategoryVO categoryVO = null;
-        if (saveQuery.getQueryCategory() != null && saveQuery.getQueryCategory().getCategoryName() != null && saveQuery.getQueryCategory().getQueryCategoryIdx() != null) {
-            // 카테고리 인덱스가 존재하지 않으면 새로 생성
-            categoryVO = projectQueryCategoryMapper.selectByIdx(saveQuery.getQueryCategory().getQueryCategoryIdx())
+        if (saveQuery.getQueryCategory() != null && StringUtils.isNotBlank(saveQuery.getQueryCategory().getCategoryName())) {
+            if (saveQuery.getQueryCategory().getQueryCategoryIdx() != null) {
+                categoryVO = projectQueryCategoryMapper.selectByIdx(saveQuery.getQueryCategory().getQueryCategoryIdx())
                     .map(vo -> {
                         vo.setName(saveQuery.getQueryCategory().getCategoryName());
                         projectQueryCategoryMapper.updateByProjectQueryCategoryVO(vo);
                         return vo;
-                    })
-                    .orElseGet(() -> {
-                        ProjectQueryCategoryVO vo = new ProjectQueryCategoryVO();
-                        vo.setProjectIdx(saveQuery.getProjectIdx());
-                        vo.setName(saveQuery.getQueryCategory().getCategoryName());
-                        vo.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-                        projectQueryCategoryMapper.insertByProjectQueryCategoryVO(vo);
-                        return vo;
-                    });
+                    }).orElseThrow(() -> new IllegalArgumentException("해당 카테고리가 존재하지 않습니다."));
+            } else {
+                // 카테고리 인덱스가 전달되지 않은 경우, 새로 생성
+                categoryVO = new ProjectQueryCategoryVO();
+                categoryVO.setProjectIdx(saveQuery.getProjectIdx());
+                categoryVO.setName(saveQuery.getQueryCategory().getCategoryName());
+                categoryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+                projectQueryCategoryMapper.insertByProjectQueryCategoryVO(categoryVO);
+            }
         }
 
         ProjectQueryVO projectQueryVO = new ProjectQueryVO();

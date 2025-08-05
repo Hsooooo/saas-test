@@ -5,10 +5,7 @@ import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -31,6 +28,25 @@ public class QueryController {
         queryService.saveQuery(memberVO, saveQuery);
         return CustomResponse.builder()
                 .message("Query saved successfully")
+                .build();
+    }
+
+    @GetMapping("/categories")
+    public CustomResponse<?> getQueryCategories(@CurrentMember MemberVO memberVO,
+                                                @RequestParam Integer projectIdx) {
+        return CustomResponse.builder()
+                .data(queryService.getQueryCategories(memberVO, projectIdx))
+                .message("Query categories retrieved successfully")
+                .build();
+    }
+
+    @GetMapping("/category/queries")
+    public CustomResponse<?> getQueriesByCategory(@CurrentMember MemberVO memberVO,
+                                                  @RequestParam Integer projectIdx,
+                                                  @RequestParam Integer queryCategoryIdx) {
+        return CustomResponse.builder()
+                .data(queryService.getQueriesByCategory(memberVO, projectIdx, queryCategoryIdx))
+                .message("Queries by category retrieved successfully")
                 .build();
     }
 }
