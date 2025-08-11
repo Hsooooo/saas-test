@@ -117,14 +117,16 @@ public class DatabaseService {
             for (Object result : results) {
                 LinkedHashMap<String, Object> mappedData = new LinkedHashMap<>();
                 for (ColumnDetail columnDetail : column.getColumnDetailList()) {
-                    String columnName = columnDetail.getColumnName();
-                    Object value = null;
-                    if (result instanceof Node node) {
-                        value = node.getProperties().get(columnName);
-                    } else if (result instanceof Edge edge) {
-                        value = edge.getProperties().get(columnName);
+                    if (columnDetail.isVisible()) {
+                        String columnName = columnDetail.getColumnName();
+                        Object value = null;
+                        if (result instanceof Node node) {
+                            value = node.getProperties().get(columnName);
+                        } else if (result instanceof Edge edge) {
+                            value = edge.getProperties().get(columnName);
+                        }
+                        mappedData.put(columnName, value);
                     }
-                    mappedData.put(columnName, value);
                 }
 
                 if (result instanceof Node) {
