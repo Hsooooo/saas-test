@@ -1,6 +1,7 @@
 package com.illunex.emsaasrestapi.database.dto;
 
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -68,10 +69,11 @@ public class RequestDatabaseDTO {
     }
 
     @Getter
+    @Setter
     public static class ColumnDetailDTO {
         private String columnName; // 컬럼 이름
         private String alias; // 컬럼 이름(한글)
-        private Boolean isVisible; // 컬럼 표시 여부
+        private Boolean visible; // 컬럼 표시 여부
         private Integer order; // 컬럼 순서
     }
 

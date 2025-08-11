@@ -12,9 +12,6 @@ import com.illunex.emsaasrestapi.project.document.database.Column;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
-import com.illunex.emsaasrestapi.project.document.project.ProjectEdge;
-import com.illunex.emsaasrestapi.project.document.project.ProjectNode;
-import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectTableMapper;
@@ -33,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -255,7 +253,7 @@ public class DatabaseService {
         for (RequestDatabaseDTO.ColumnDetailDTO dto : dtos) {
             ColumnDetail detail = new ColumnDetail();
             detail.setColumnName(dto.getColumnName());
-            detail.setVisible(dto.getIsVisible());
+            detail.setVisible(dto.getVisible());
             detail.setOrder(dto.getOrder());
             detail.setAlias(dto.getAlias());
             list.add(detail);
@@ -275,12 +273,19 @@ public class DatabaseService {
         Query query = Query.query(Criteria.where("projectIdx").is(projectIdx).and("type").is(type));
         Column column = mongoTemplate.findOne(query, Column.class);
 
-        List<ColumnDetail> columnDetails = (column != null && column.getColumnDetailList() != null)
-                ? column.getColumnDetailList()
-                : new ArrayList<>();
+        List<RequestDatabaseDTO.ColumnDetailDTO> result = column.getColumnDetailList().stream()
+                .map(detail -> {
+                    RequestDatabaseDTO.ColumnDetailDTO dto = new RequestDatabaseDTO.ColumnDetailDTO();
+                    dto.setColumnName(detail.getColumnName());
+                    dto.setAlias(detail.getAlias());
+                    dto.setVisible(detail.isVisible()); // 동일 필드명
+                    dto.setOrder(detail.getOrder());
+                    return dto;
+                })
+                .collect(Collectors.toList());
 
         return CustomResponse.builder()
-                .data(columnDetails)
+                .data(result)
                 .build();
     }
 
