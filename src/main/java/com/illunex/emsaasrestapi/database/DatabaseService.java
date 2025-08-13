@@ -62,20 +62,74 @@ public class DatabaseService {
         if (query.getFilters() != null && !query.getFilters().isEmpty()) {
             List<Criteria> filterCriteriaList = new ArrayList<>();
             for (RequestDatabaseDTO.SearchFilter filter : query.getFilters()) {
-                Criteria filterCriteria = Criteria.where("properties." + filter.getColumnName());
+                String field = "properties." + filter.getColumnName();
+                String raw = filter.getSearchString() == null ? "" : filter.getSearchString();
+                ParsedCandidates c = parseCandidates(raw);
+
+                List<Criteria> orParts = new ArrayList<>();
                 switch (filter.getFilterCondition()) {
-                    case EQUALS, IS -> filterCriteria.is(filter.getSearchString());
-                    case NOT_EQUALS, IS_NOT -> filterCriteria.ne(filter.getSearchString());
-                    case LESS_THAN -> filterCriteria.lt(filter.getSearchString());
-                    case LESS_THAN_OR_EQUAL -> filterCriteria.lte(filter.getSearchString());
-                    case GREATER_THAN -> filterCriteria.gt(filter.getSearchString());
-                    case GREATER_THAN_OR_EQUAL -> filterCriteria.gte(filter.getSearchString());
-                    case EMPTY -> filterCriteria.exists(false);
-                    case NOT_EMPTY -> filterCriteria.exists(true);
-                    case CONTAINS -> filterCriteria.regex(filter.getSearchString(), "i");
-                    case NOT_CONTAINS -> filterCriteria.not().regex(filter.getSearchString(), "i");
+                    case EQUALS, IS -> {
+                        // 문자열
+                        orParts.add(Criteria.where(field).is(c.asString()));
+                        // 숫자
+                        if (c.asNumber() != null) orParts.add(Criteria.where(field).is(c.asNumber()));
+                        // 불리언
+                        if (c.asBoolean() != null) orParts.add(Criteria.where(field).is(c.asBoolean()));
+                        // 날짜
+                        if (c.asDate() != null) orParts.add(Criteria.where(field).is(c.asDate()));
+                        filterCriteriaList.add(orParts.size() == 1 ? orParts.get(0) : new Criteria().orOperator(orParts.toArray(new Criteria[0])));
+                    }
+                    case NOT_EQUALS, IS_NOT -> {
+                        // NOT은 AND
+                        List<Criteria> andParts = new ArrayList<>();
+                        andParts.add(Criteria.where(field).ne(c.asString()));
+                        if (c.asNumber() != null) andParts.add(Criteria.where(field).ne(c.asNumber()));
+                        if (c.asBoolean() != null) andParts.add(Criteria.where(field).ne(c.asBoolean()));
+                        if (c.asDate() != null) andParts.add(Criteria.where(field).ne(c.asDate()));
+                        filterCriteriaList.add(new Criteria().andOperator(andParts.toArray(new Criteria[0])));
+                    }
+                    case LESS_THAN, LESS_THAN_OR_EQUAL, GREATER_THAN, GREATER_THAN_OR_EQUAL -> {
+                        // 비교는 숫자/날짜만
+                        if (c.asNumber() == null && c.asDate() == null) {
+                            // 비교 불가: 아무 것도 매치시키지 않음 (전부 false)
+                            filterCriteriaList.add(Criteria.where("_id").is("__no_match__"));
+                            break;
+                        }
+                        if (c.asNumber() != null) {
+                            switch (filter.getFilterCondition()) {
+                                case LESS_THAN -> orParts.add(Criteria.where(field).lt(c.asNumber()));
+                                case LESS_THAN_OR_EQUAL -> orParts.add(Criteria.where(field).lte(c.asNumber()));
+                                case GREATER_THAN -> orParts.add(Criteria.where(field).gt(c.asNumber()));
+                                case GREATER_THAN_OR_EQUAL -> orParts.add(Criteria.where(field).gte(c.asNumber()));
+                            }
+                        }
+                        if (c.asDate() != null) {
+                            switch (filter.getFilterCondition()) {
+                                case LESS_THAN -> orParts.add(Criteria.where(field).lt(c.asDate()));
+                                case LESS_THAN_OR_EQUAL -> orParts.add(Criteria.where(field).lte(c.asDate()));
+                                case GREATER_THAN -> orParts.add(Criteria.where(field).gt(c.asDate()));
+                                case GREATER_THAN_OR_EQUAL -> orParts.add(Criteria.where(field).gte(c.asDate()));
+                            }
+                        }
+                        filterCriteriaList.add(orParts.size() == 1 ? orParts.get(0) : new Criteria().orOperator(orParts.toArray(new Criteria[0])));
+                    }
+                    case EMPTY -> filterCriteriaList.add(emptyCriteria(field));
+                    case NOT_EMPTY -> filterCriteriaList.add(notEmptyCriteria(field));
+                    case CONTAINS -> {
+                        // 문자열 전용
+                        filterCriteriaList.add(Criteria.where(field).regex(raw, "i"));
+                    }
+                    case NOT_CONTAINS -> {
+                        // 문자열 전용: field가 비어있거나(EMPTY) 또는 문자열이면서 not regex
+                        filterCriteriaList.add(new Criteria().orOperator(
+                                emptyCriteria(field),
+                                new Criteria().andOperator(
+                                        Criteria.where(field).type(org.bson.BsonType.STRING.getValue()),
+                                        Criteria.where(field).not().regex(raw, "i")
+                                )
+                        ));
+                    }
                 }
-                filterCriteriaList.add(filterCriteria);
             }
             criteria = criteria.andOperator(filterCriteriaList.toArray(new Criteria[0]));
         }
@@ -424,5 +478,54 @@ public class DatabaseService {
         return CustomResponse.builder().message("데이터베이스 커밋이 성공적으로 완료되었습니다.")
                 .data(responseCommit)
                 .build();
+    }
+
+    // 1) 유틸: 타입 후보 파싱
+    private record ParsedCandidates(Object asString, Long asNumber, Boolean asBoolean, Date asDate) {}
+    private ParsedCandidates parseCandidates(String s) {
+        Object asString = s;
+
+        Long asNumber = null;
+        try { asNumber = Long.parseLong(s); } catch (Exception ignored) {}
+
+        Boolean asBoolean = null;
+        if ("true".equalsIgnoreCase(s) || "false".equalsIgnoreCase(s)) {
+            asBoolean = Boolean.parseBoolean(s);
+        }
+
+        Date asDate = null;
+        // 자주 쓰는 포맷
+        String[] patterns = {
+                "yyyy-MM-dd'T'HH:mm:ss.SSSX", "yyyy-MM-dd'T'HH:mm:ssX",
+                "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd"
+        };
+        for (String p : patterns) {
+            try {
+                java.time.format.DateTimeFormatter f = java.time.format.DateTimeFormatter.ofPattern(p)
+                        .withZone(java.time.ZoneId.systemDefault());
+                java.time.temporal.TemporalAccessor ta = f.parse(s);
+                java.time.Instant inst = java.time.Instant.from(ta);
+                asDate = Date.from(inst);
+                break;
+            } catch (Exception ignored) {}
+        }
+
+        return new ParsedCandidates(asString, asNumber, asBoolean, asDate);
+    }
+
+    // 2) 유틸: EMPTY/NOT_EMPTY 공통
+    private Criteria emptyCriteria(String field) {
+        return new Criteria().orOperator(
+                Criteria.where(field).exists(false),
+                Criteria.where(field).is(null),
+                Criteria.where(field).is("")
+        );
+    }
+    private Criteria notEmptyCriteria(String field) {
+        return new Criteria().norOperator(
+                Criteria.where(field).exists(false),
+                Criteria.where(field).is(null),
+                Criteria.where(field).is("")
+        );
     }
 }
