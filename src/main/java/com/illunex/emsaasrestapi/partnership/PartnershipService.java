@@ -124,7 +124,6 @@ public class PartnershipService {
 
                 // 2. 이미 가입된 사용자 여부
                 MemberVO member = memberMapper.selectByEmail(email)
-                        .filter(e -> e.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Normal.getCode()))
                         .orElseGet(() -> {
                             MemberVO memberVO = new MemberVO();
                             memberVO.setEmail(email);
@@ -132,6 +131,14 @@ public class PartnershipService {
                             memberJoinMapper.insertByMemberJoin(memberVO);
                             return memberVO;
                         });
+
+                if (member.getStateCd().equals(EnumCode.Member.StateCd.Suspend.getCode())) {
+                    throw new CustomException(ErrorCode.MEMBER_STATE_SUSPEND);
+                }
+
+                if (member.getStateCd().equals(EnumCode.Member.StateCd.Withdrawal.getCode())) {
+                    throw new CustomException(ErrorCode.MEMBER_STATE_WITHDRAWAL);
+                }
 
                 // 3. 초대 정보 저장
                 PartnershipInvitedMemberVO invitedMemberVO = new PartnershipInvitedMemberVO();
