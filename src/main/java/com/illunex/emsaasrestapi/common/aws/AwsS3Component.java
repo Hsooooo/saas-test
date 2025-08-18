@@ -27,7 +27,8 @@ public class AwsS3Component {
 
     public enum FolderType {
         PartnershipMember,
-        ProjectFile
+        ProjectFile,
+        ProjectImage,
     }
 
     /**

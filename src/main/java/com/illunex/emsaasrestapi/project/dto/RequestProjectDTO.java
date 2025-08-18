@@ -30,6 +30,8 @@ public class RequestProjectDTO {
         private Integer projectCategoryIdx;                         // 프로젝트 카테고리번호
         private String title;                                       // 프로젝트 제목
         private String description;                                 // 프로젝트 내용
+        private String imageUrl;                                    // 프로젝트 이미지 URL
+        private String imagePath;                                   // 프로젝트 이미지 경로
         private List<ProjectNode> projectNodeList;                  // 노드정보
         private List<ProjectEdge> projectEdgeList;                  // 엣지정보
         private List<ProjectNodeSize> projectNodeSizeList;          // 노드사이즈정보

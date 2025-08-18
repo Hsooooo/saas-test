@@ -35,6 +35,17 @@ public class ProjectController {
     }
 
     /**
+     * 프로젝트 이미지 업로드
+     * @param file
+     * @return
+     */
+    @PostMapping ("/image")
+    public CustomResponse<?> updateProjectImage(@RequestPart(name = "image") MultipartFile file,
+                                                @CurrentMember MemberVO memberVO) throws CustomException, IOException {
+        return projectService.uploadProjectImage(memberVO, file);
+    }
+
+    /**
      * 프로젝트 데이터 엑셀 파일 업로드
      * @param memberVO
      * @param projectIdx

@@ -14,6 +14,8 @@
             status_cd,
             node_cnt,
             edge_cnt,
+            image_url,
+            image_path,
             update_date,
             create_date
         ) VALUES (
@@ -24,6 +26,8 @@
             #{statusCd},
             #{nodeCnt},
             #{edgeCnt},
+            #{imageUrl},
+            #{imagePath},
             now(),
             now()
         )
@@ -39,6 +43,8 @@
                 status_cd = #{statusCd},
                 node_cnt = #{nodeCnt},
                 edge_cnt = #{edgeCnt},
+                image_url = #{imageUrl},
+                image_path = #{imagePath},
                 update_date = now()
         WHERE idx = #{idx}
     </update>

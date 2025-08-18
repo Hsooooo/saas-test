@@ -81,6 +81,8 @@ public class ProjectService {
                 .title(project.getTitle())
                 .description(project.getDescription())
                 .statusCd(EnumCode.Project.StatusCd.Created.getCode())
+                .imagePath(project.getImagePath())
+                .imageUrl(project.getImageUrl())
                 .build();
         // 프로젝트 저장
         int insertCnt = projectMapper.insertByProjectVO(projectVO);
@@ -238,6 +240,12 @@ public class ProjectService {
             projectVO.setDescription(project.getDescription());
             projectVO.setNodeCnt(nodeCount);
             projectVO.setEdgeCnt(edgeCount);
+            // 기존 이미지 있는 경우 상제
+            if (projectVO.getImagePath() != null && !projectVO.getImagePath().isEmpty()) {
+                awsS3Component.delete(projectVO.getImagePath());
+            }
+            projectVO.setImagePath(project.getImagePath());
+            projectVO.setImageUrl(project.getImageUrl());
             // 프로젝트 상태 변경
             projectVO.setStatusCd(projectComponent.getProjectStatusCd(project, projectVO));
             projectVO.setUpdateDate(ZonedDateTime.now());
@@ -678,6 +686,18 @@ public class ProjectService {
             }
         }
         throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public CustomResponse<?> uploadProjectImage(MemberVO memberVO, MultipartFile file) throws CustomException, IOException {
+        AwsS3ResourceDTO response = AwsS3ResourceDTO.builder()
+                .fileName(file.getOriginalFilename())
+                .s3Resource(awsS3Component.upload(file, AwsS3Component.FolderType.ProjectImage, memberVO.getIdx().toString()))
+                .build();
+
+        return CustomResponse.builder()
+                .data(response)
+                .build();
     }
 
 }
