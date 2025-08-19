@@ -8,6 +8,7 @@ import java.util.List;
 @Mapper
 public interface ProjectTableMapper {
     void insertByProjectTableVO(ProjectTableVO projectTableVO);
+    void deleteAllByProjectIdx(Integer projectIdx);
 
     List<ProjectTableVO> selectAllByProjectIdx(Integer projectIdx);
 

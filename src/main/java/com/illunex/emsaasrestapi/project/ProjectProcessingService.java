@@ -115,6 +115,7 @@ public class ProjectProcessingService {
                 EnumCode.ProjectTable.TypeCd typeCd = nodeDef != null ? EnumCode.ProjectTable.TypeCd.Node : EnumCode.ProjectTable.TypeCd.Edge;
                 projectTableVO.setTypeCd(typeCd.getCode());
 
+                projectTableMapper.deleteAllByProjectIdx(projectIdx);
                 projectTableMapper.insertByProjectTableVO(projectTableVO);
 
                 for (int r = 1; r <= sheet.getTotalRowCnt(); r++) {

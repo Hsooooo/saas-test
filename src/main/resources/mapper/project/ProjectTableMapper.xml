@@ -23,6 +23,11 @@
         )
     </insert>
 
+    <delete id="deleteAllByProjectIdx" parameterType="Integer">
+        DELETE FROM project_table
+        WHERE project_idx = #{projectIdx}
+    </delete>
+
     <select id="selectAllByProjectIdx" parameterType="Integer" resultType="ProjectTableVO">
         SELECT
             *
