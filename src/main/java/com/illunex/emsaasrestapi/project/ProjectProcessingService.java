@@ -83,6 +83,7 @@ public class ProjectProcessingService {
             Query byProject = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
             mongoTemplate.remove(byProject, Node.class);
             mongoTemplate.remove(byProject, Edge.class);
+            projectTableMapper.deleteAllByProjectIdx(projectIdx);
 
             /* 4. 시트 단위로 Node 또는 Edge 생성 */
             for (ExcelSheet sheet : excel.getExcelSheetList()) {
@@ -115,7 +116,7 @@ public class ProjectProcessingService {
                 EnumCode.ProjectTable.TypeCd typeCd = nodeDef != null ? EnumCode.ProjectTable.TypeCd.Node : EnumCode.ProjectTable.TypeCd.Edge;
                 projectTableVO.setTypeCd(typeCd.getCode());
 
-                projectTableMapper.deleteAllByProjectIdx(projectIdx);
+
                 projectTableMapper.insertByProjectTableVO(projectTableVO);
 
                 for (int r = 1; r <= sheet.getTotalRowCnt(); r++) {
