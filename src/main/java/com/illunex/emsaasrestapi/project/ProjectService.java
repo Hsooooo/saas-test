@@ -240,9 +240,12 @@ public class ProjectService {
             projectVO.setDescription(project.getDescription());
             projectVO.setNodeCnt(nodeCount);
             projectVO.setEdgeCnt(edgeCount);
-            // 기존 이미지 있는 경우 상제
+            // 기존 이미지 있는 경우 삭제
             if (projectVO.getImagePath() != null && !projectVO.getImagePath().isEmpty()) {
-                awsS3Component.delete(projectVO.getImagePath());
+                if (!projectVO.getImagePath().equals(project.getImagePath()) && !projectVO.getImageUrl().equals(project.getImageUrl())) {
+                    // 기존 이미지 삭제
+                    awsS3Component.delete(projectVO.getImagePath());
+                }
             }
             projectVO.setImagePath(project.getImagePath());
             projectVO.setImageUrl(project.getImageUrl());
