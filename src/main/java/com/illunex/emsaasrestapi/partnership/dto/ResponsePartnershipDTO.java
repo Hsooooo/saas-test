@@ -43,6 +43,7 @@ public class ResponsePartnershipDTO {
     @Getter
     public static class MyInfoMember {
         private Integer idx;
+        private String email;
         private String name;
     }
 

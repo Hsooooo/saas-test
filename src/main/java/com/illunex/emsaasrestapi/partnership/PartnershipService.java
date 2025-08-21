@@ -234,6 +234,7 @@ public class PartnershipService {
                         .build())
                 .member(ResponsePartnershipDTO.MyInfoMember.builder()
                         .idx(memberVO.getIdx())
+                        .email(memberVO.getEmail())
                         .name(memberVO.getName())
                         .build())
                 .build();
