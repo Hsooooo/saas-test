@@ -23,7 +23,7 @@ public class NetworkController {
      * @throws CustomException
      */
     @GetMapping("/all")
-    @PreAuthorize("isAuthenticated()")
+    
     public CustomResponse<?> getNetworkAll(@CurrentMember MemberVO memberVO,
                                            @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
         return networkService.getNetworkAll(memberVO, projectIdx);
@@ -37,7 +37,7 @@ public class NetworkController {
      * @throws CustomException
      */
     @PostMapping("/extend")
-    @PreAuthorize("isAuthenticated()")
+    
     public CustomResponse<?> getNetworkSingleExtend(@CurrentMember MemberVO memberVO,
                                                     @RequestBody RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         return networkService.getNetworkSingleExtend(memberVO, selectNode);
@@ -51,7 +51,7 @@ public class NetworkController {
      * @throws CustomException
      */
     @PostMapping("/info")
-    @PreAuthorize("isAuthenticated()")
+    
     public CustomResponse<?> getNetworkInfo(@CurrentMember MemberVO memberVO,
                                             @RequestBody RequestNetworkDTO.SelectNode selectNode) throws CustomException {
         return networkService.getNetworkInfo(memberVO, selectNode);
@@ -65,7 +65,7 @@ public class NetworkController {
      * @throws CustomException
      */
     @PostMapping("/search")
-    @PreAuthorize("isAuthenticated()")
+    
     public CustomResponse<?> getNetworkSearch(@CurrentMember MemberVO memberVO,
                     @RequestBody RequestNetworkDTO.Search search) throws CustomException {
         return networkService.getNetworkSearch(memberVO, search);
@@ -78,7 +78,7 @@ public class NetworkController {
      * @throws CustomException
      */
     @PostMapping("/search/extend")
-    @PreAuthorize("isAuthenticated()")
+    
     public CustomResponse<?> getExtendNetworkSearch(@CurrentMember MemberVO memberVO,
                                               @RequestBody RequestNetworkDTO.ExtendSearch search) throws CustomException {
         return networkService.getExtendNetworkSearch(memberVO, search);
