@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.chat.mapper.ChatRoomMapper">
+
+    <select id="selectByIdx" parameterType="Integer" resultType="ChatRoomVO">
+        SELECT *
+          FROM chat_room
+         WHERE idx = #{idx}
+    </select>
+
+    <insert id="insertByChatRoomVO" parameterType="ChatRoomVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO chat_room (partnership_member_idx, title, create_date, update_date)
+        VALUES (#{partnershipMemberIdx}, #{title}, NOW(), NOW())
+    </insert>
+
+    <select id="selectByPartnershipMemberIdx" parameterType="Integer" resultType="ChatRoomVO">
+        SELECT *
+          FROM chat_room
+         WHERE partnership_member_idx = #{partnershipMemberIdx}
+    </select>
+
+    <select id="selectByPartnershipMemberIdxAndChatRoomIdx" resultType="ChatRoomVO">
+        SELECT *
+          FROM chat_room
+         WHERE partnership_member_idx = #{partnershipMemberIdx}
+           AND idx = #{chatRoomIdx}
+    </select>
+</mapper>

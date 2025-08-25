@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.chat.mapper.ChatHistoryMapper">
+
+    <select id="selectByIdx" parameterType="Integer" resultType="ChatHistoryVO">
+        SELECT *
+          FROM chat_history
+         WHERE idx = #{idx}
+    </select>
+
+    <insert id="insertByChatHistoryVO" parameterType="ChatHistoryVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO chat_history (chat_room_idx, message, sender_type, create_date, update_date)
+        VALUES (#{chatRoomIdx}, #{message}, #{senderType}, NOW(), NOW())
+    </insert>
+
+    <select id="selectByChatRoomIdxAndPageable" resultType="ChatHistoryVO">
+        SELECT *
+          FROM chat_history
+         WHERE chat_room_idx = #{chatRoomIdx}
+        <if test="pageable.sort != null and !pageable.sort.empty">
+            ORDER BY
+            <foreach item="order" collection="pageable.sort" separator=",">
+                ${order.property} ${order.direction}
+            </foreach>
+        </if>
+        <if test="pageable.sort == null or pageable.sort.empty">
+            ORDER BY create_date ASC
+        </if>
+        LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
+    </select>
+
+    <select id="countAllByChatRoomIdx" resultType="Integer">
+        SELECT count(*)
+        FROM chat_history
+        WHERE chat_room_idx = #{chatRoomIdx}
+        ORDER BY create_date DESC
+    </select>
+</mapper>
