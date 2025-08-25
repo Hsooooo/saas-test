@@ -28,6 +28,7 @@ public class ProjectController {
      * @return
      */
     @PostMapping()
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> createProject(@CurrentMember MemberVO memberVO,
                                            @RequestBody RequestProjectDTO.Project project) throws CustomException {
         return projectService.createProject(memberVO, project);
@@ -52,6 +53,7 @@ public class ProjectController {
      * @return
      */
     @PostMapping("upload/single")
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> uploadSingleExcelFile(@CurrentMember MemberVO memberVO,
                                                    @RequestParam(name = "projectIdx") Integer projectIdx,
                                                    @RequestPart(name = "excel") MultipartFile excelFile) throws CustomException, IOException {
@@ -66,6 +68,7 @@ public class ProjectController {
      * @throws CustomException
      */
     @PutMapping()
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> replaceProject(@CurrentMember MemberVO memberVO,
                                             @RequestBody RequestProjectDTO.Project project) throws CustomException {
         return projectService.replaceProject(memberVO, project);
@@ -78,6 +81,7 @@ public class ProjectController {
      * @return
      */
     @PostMapping("complete")
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> completeProject(@CurrentMember MemberVO memberVO,
                                              @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
         return projectService.completeProject(memberVO, projectIdx);
@@ -91,6 +95,7 @@ public class ProjectController {
      * @throws CustomException
      */
     @GetMapping()
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> getProjectDetail(@CurrentMember MemberVO memberVO,
                                               @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
         return projectService.getProjectDetail(memberVO, projectIdx);
@@ -106,6 +111,7 @@ public class ProjectController {
      * @throws CustomException
      */
     @PatchMapping("/list")
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> getProjectList(@CurrentMember MemberVO memberVO,
                                             @RequestBody RequestProjectDTO.SearchProject searchProject,
                                             CustomPageRequest pageRequest, String[] sort) throws CustomException {
@@ -121,6 +127,7 @@ public class ProjectController {
      * @throws CustomException
      */
     @PatchMapping("/dropdown")
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> getProjectListDropdown(@CurrentMember MemberVO memberVO,
                                                     @RequestBody RequestProjectDTO.SearchProject searchProject) throws CustomException {
         return projectService.getProjectListDropdown(memberVO, searchProject);
@@ -134,6 +141,7 @@ public class ProjectController {
      * @throws CustomException
      */
     @DeleteMapping()
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> deleteProject(@CurrentMember MemberVO memberVO,
                                            @RequestBody List<Integer> proejectIdxList) throws CustomException {
         return projectService.deleteProject(memberVO, proejectIdxList);
@@ -147,6 +155,7 @@ public class ProjectController {
      * @throws CustomException
      */
     @PostMapping("/copy")
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> copyProject(@CurrentMember MemberVO memberVO,
                                          @RequestBody List<Integer> proejectIdxList) throws CustomException, JsonProcessingException {
         return projectService.copyProject(memberVO, proejectIdxList);
@@ -160,6 +169,7 @@ public class ProjectController {
      * @throws CustomException
      */
     @PatchMapping("/move")
+    @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> moveProject(@CurrentMember MemberVO memberVO,
                                          @RequestBody List<RequestProjectDTO.ProjectId> projectIdList) throws CustomException {
         return projectService.moveProject(memberVO, projectIdList);
