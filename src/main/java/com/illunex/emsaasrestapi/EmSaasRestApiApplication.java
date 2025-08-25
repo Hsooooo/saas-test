@@ -7,10 +7,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 
 @SpringBootApplication
 @EnableScheduling
-@EnableWebSecurity
+@EnableWebFluxSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class EmSaasRestApiApplication {
     public static void main(String[] args) {

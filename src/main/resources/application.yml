@@ -76,6 +76,9 @@ mybatis:
   # alias annotation 사용하여 입력한 패키지경로 빼고 인식하는 옵션
   type-aliases-package: com.illunex.emsaasrestapi
 
+ai:
+  url: http://220.118.147.58:52201
+
 #hts:
 #  scrap-host: ${hts-scrap-domain}
 #  search-host: ${hts-search-domain}
