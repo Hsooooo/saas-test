@@ -13,9 +13,6 @@ DROP TABLE IF EXISTS `em_saas`.`project_file`;
 DROP TABLE IF EXISTS `em_saas`.`project_member`;
 DROP TABLE IF EXISTS `em_saas`.`project`;
 DROP TABLE IF EXISTS `em_saas`.`project_category`;
--- LLM 채팅 관련 테이블
-DROP TABLE IF EXISTS `em_saas`.`chat_history`;
-DROP TABLE IF EXISTS `em_saas`.`chat_room`;
 -- 파트너쉽 관련 테이블
 DROP TABLE IF EXISTS `em_saas`.`partnership_invited_member`;
 DROP TABLE IF EXISTS `em_saas`.`partnership_member`;

@@ -1,35 +1,32 @@
 package com.illunex.emsaasrestapi.config;
 
-import com.illunex.emsaasrestapi.common.jwt.*;
+import com.illunex.emsaasrestapi.common.jwt.JwtAccessDeniedHandler;
+import com.illunex.emsaasrestapi.common.jwt.JwtAuthenticationEntryPoint;
+import com.illunex.emsaasrestapi.common.jwt.JwtFilter;
+import com.illunex.emsaasrestapi.common.jwt.TokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsUtils;
 
-@EnableWebFluxSecurity
 @Configuration
+@EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     public static final String MEMBER = "MEMBER";
     private final TokenProvider tokenProvider;
-    private final JwtWebFilter jwtWebFilter;
-    private final JwtAuthEntryPoint entryPoint;
-    private final JwtAccessDenied accessDenied;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -37,20 +34,31 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
-                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
-                .exceptionHandling(e -> e
-                        .authenticationEntryPoint(entryPoint)
-                        .accessDeniedHandler(accessDenied))
-                .authorizeExchange(ex -> ex
-                        .pathMatchers("/member/**", "/cert/**", "/").permitAll()
-                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .pathMatchers("/ai/gpt/**").authenticated()
-                        .anyExchange().authenticated())
-                .addFilterAt(jwtWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests((authorize) -> authorize
+                        .requestMatchers(CorsUtils::isPreFlightRequest).permitAll()
+                        .requestMatchers("/").permitAll()
+                        .requestMatchers("/member/mypage/**").hasAnyAuthority(MEMBER)
+                        .requestMatchers("/member/**").permitAll()
+                        .requestMatchers("/cert/**").permitAll()
+                        .requestMatchers("/project/**").hasAnyAuthority(MEMBER)
+                        .requestMatchers("/project/category/**").hasAnyAuthority(MEMBER)
+                        .requestMatchers("/network/**").hasAnyAuthority(MEMBER)
+                        .requestMatchers("/query/**").hasAnyAuthority(MEMBER)
+                        .anyRequest()
+                        .authenticated()
+                )
+                .sessionManagement(configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler)
+                )
+                .addFilterBefore(new JwtFilter(tokenProvider), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

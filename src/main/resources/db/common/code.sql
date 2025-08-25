@@ -55,8 +55,4 @@ INSERT INTO em_saas.code (code, first_code, second_code, third_code, code_value,
 
 ('PQT0000', 'PQT', '00', '00', '- 프로젝트 쿼리 타입', 0),
 ('PQT0001', 'PQT', '00', '01', 'Mongo-Shell', 1),
-('PQT0002', 'PQT', '00', '02', 'Mongo-JSON', 2),
-
-('RST0000', 'RST', '00', '00', '- LLM sender Type', 0),
-('RST0001', 'RST', '00', '01', 'USER', 1),
-('RST0002', 'RST', '00', '02', 'ASSISTANT', 2);
+('PQT0002', 'PQT', '00', '02', 'Mongo-JSON', 2);

@@ -246,19 +246,4 @@ public class EnumCode {
             private final String value;
         }
     }
-
-    public static class ChatRoom {
-        /**
-         * 프로젝트 쿼리 구분
-         */
-        @Getter
-        @AllArgsConstructor
-        public enum SenderType implements BaseCodeEnum {
-            USER("RST0001", "USER"),
-            ASSISTANT("RST0002", "ASSISTANT");
-
-            private final String code;
-            private final String value;
-        }
-    }
 }
