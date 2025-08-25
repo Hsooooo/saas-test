@@ -409,32 +409,3 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_query` (
 COMMENT='프로젝트 쿼리 정보'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS `em_saas`.`chat_room` (
-    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅방 번호',
-    `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원번호',
-    `title` VARCHAR(255) NULL DEFAULT NULL COMMENT '채팅방 제목' COLLATE 'utf8mb4_general_ci',
-    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
-    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
-    PRIMARY KEY (`idx`) USING BTREE,
-    INDEX `fk_chat_room_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
-    CONSTRAINT `fk_chat_room_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-)
-COMMENT='LLM 채팅방 정보'
-COLLATE='utf8mb4_general_ci'
-ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS `em_saas`.`chat_history` (
-    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 이력 번호',
-    `chat_room_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅방 번호',
-    `message` LONGTEXT NULL DEFAULT NULL COMMENT '채팅 메세지' COLLATE 'utf8mb4_general_ci',
-    `sender_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '보낸이 타입' COLLATE 'utf8mb4_general_ci',
-    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
-    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
-    PRIMARY KEY (`idx`) USING BTREE,
-    INDEX `fk_chat_history_chat_room_idx` (`chat_room_idx`) USING BTREE,
-    CONSTRAINT `fk_chat_history_chat_room_idx` FOREIGN KEY (`chat_room_idx`) REFERENCES `chat_room` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-)
-COMMENT='LLM 채팅 이력'
-COLLATE='utf8mb4_general_ci'
-ENGINE=InnoDB;
