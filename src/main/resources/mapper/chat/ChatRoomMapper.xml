@@ -20,6 +20,7 @@
         SELECT *
           FROM chat_room
          WHERE partnership_member_idx = #{partnershipMemberIdx}
+        ORDER BY CREATE_DATE DESC
     </select>
 
     <select id="selectByPartnershipMemberIdxAndChatRoomIdx" resultType="ChatRoomVO">
