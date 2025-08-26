@@ -349,7 +349,7 @@ public class NetworkService {
         response.setNodes(nodeInfoList);
 
         //관계망 검색
-        networkComponent.networkSearch(response, nodes, search.getDepth());
+        networkComponent.networkSearch(response, nodes, search.getProjectIdx(), search.getDepth());
 
         if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
         if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
