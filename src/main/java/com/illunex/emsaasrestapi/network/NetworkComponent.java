@@ -32,7 +32,8 @@ public class NetworkComponent {
      */
     public void networkSearch(ResponseNetworkDTO.SearchNetwork response,
                               List<Node> nodes,
-                              Integer projectIdx) {
+                              Integer projectIdx,
+                              Integer depth) {
         if (nodes.isEmpty()) return;
         StopWatch stopWatch = new StopWatch();
 
