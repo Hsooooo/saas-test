@@ -30,75 +30,96 @@ public class NetworkComponent {
      * @param response
      * @param nodes
      */
-    public void networkSearch(ResponseNetworkDTO.SearchNetwork response, List<Node> nodes){
-        if(nodes.isEmpty()) return;
+    public void networkSearch(ResponseNetworkDTO.SearchNetwork response,
+                              List<Node> nodes,
+                              Integer projectIdx) {
+        if (nodes.isEmpty()) return;
         StopWatch stopWatch = new StopWatch();
 
-        //1. 해당 노드들의 엣지 검색
+        // 1) 노드들의 엣지 조회 (projectIdx 필수)
         stopWatch.start("노드들의 엣지조회");
-        Map<String, List<Node>> typeNodeList = nodes.stream().collect(Collectors.groupingBy(node -> (String) node.getLabel()));
-        List<Criteria> criteriaList = typeNodeList.entrySet().stream()
-                .flatMap(entry -> Stream.of(
-                        Criteria.where("startType").is(entry.getKey()).and("start").in(entry.getValue().stream().map(Node::getId).toList()),
-                        Criteria.where("endType").is(entry.getKey()).and("end").in(entry.getValue().stream().map(Node::getId).toList())
+
+        Map<String, List<Object>> typeToIds = nodes.stream()
+                .collect(Collectors.groupingBy(
+                        n -> (String) n.getLabel(),
+                        Collectors.mapping(Node::getId, Collectors.toList())
+                ));
+
+        // (startType=label AND start in ids) OR (endType=label AND end in ids)
+        List<Criteria> orEdge = typeToIds.entrySet().stream()
+                .flatMap(e -> Stream.of(
+                        Criteria.where("startType").is(e.getKey()).and("start").in(e.getValue()),
+                        Criteria.where("endType").is(e.getKey()).and("end").in(e.getValue())
                 ))
                 .toList();
-        Criteria combinedCriteria = new Criteria().orOperator(criteriaList.toArray(new Criteria[0]));
-        Query combinedQuery = Query.query(combinedCriteria);
-        List<Edge> edgeList = mongoTemplate.find(combinedQuery, Edge.class);
-        stopWatch.stop();
 
-        //2. 조회된 엣지 response 용으로 변경
-        List<ResponseNetworkDTO.EdgeInfo> edgeInfoList = edgeList.stream().map(target ->
-                ResponseNetworkDTO.EdgeInfo.builder()
-                        .edgeId(target.getEdgeId())
-                        .startType(target.getStartType())
-                        .start(target.getStart())
-                        .endType(target.getEndType())
-                        .end(target.getEnd())
-                        .properties(target.getProperties())
-                        .build()
-        ).toList();
-
-        //3. 중복제거(override 해놓음) 및 response에 담기(현재 1뎁스만 하기때문에 기존 엣지 가져와서 비교 안해도 됨)
-        List<ResponseNetworkDTO.EdgeInfo> mutableLinkList = new ArrayList<>(response.getLinks());
-        mutableLinkList.addAll(edgeInfoList);
-        mutableLinkList = mutableLinkList.stream().distinct().toList();
-        response.setLinks(mutableLinkList);
-
-
-        //4. 해당 엣지들로 노드 검색
-        stopWatch.start("엣지들의 노드조회");
-        if(edgeInfoList.isEmpty()) return;
-
-        Map<String, List<Object>> typeEdgeInfoList = new HashMap<>();
-        for(ResponseNetworkDTO.EdgeInfo target : edgeInfoList){
-            typeEdgeInfoList.computeIfAbsent((String) target.getStartType(), k -> new ArrayList<>()).add(target.getStart());
-            typeEdgeInfoList.computeIfAbsent((String) target.getEndType(), k -> new ArrayList<>()).add(target.getEnd());
+        if (orEdge.isEmpty()) {
+            stopWatch.stop();
+            log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());
+            return;
         }
-        List<Criteria> criteriaList2 = typeEdgeInfoList.entrySet().stream()
-                .map(entry -> Criteria.where("label").is(entry.getKey()).and("id").in(entry.getValue()))
-                .toList();
-        Criteria combinedCriteria2 = new Criteria().orOperator(criteriaList2.toArray(new Criteria[0]));
-        Query query = Query.query(combinedCriteria2);
-        List<Node> nodeList = mongoTemplate.find(query, Node.class);
+
+        // AND projectIdx
+        Criteria project = Criteria.where("_id.projectIdx").is(projectIdx);
+        Query edgeQuery = new Query(project).addCriteria(new Criteria().orOperator(orEdge.toArray(new Criteria[0])));
+
+        List<Edge> edgeList = mongoTemplate.find(edgeQuery, Edge.class);
         stopWatch.stop();
 
-        //5. 조회된 노드 response 용으로 변경
-        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodeList.stream().map(target ->
-                ResponseNetworkDTO.NodeInfo.builder()
-                        .nodeId(target.getNodeId())
-                        .label(target.getLabel())
-                        .properties(target.getProperties())
+        // 2) 엣지 -> response 변환
+        List<ResponseNetworkDTO.EdgeInfo> edgeInfoList = edgeList.stream().map(t ->
+                ResponseNetworkDTO.EdgeInfo.builder()
+                        .edgeId(t.getEdgeId())
+                        .startType(t.getStartType())
+                        .start(t.getStart())
+                        .endType(t.getEndType())
+                        .end(t.getEnd())
+                        .properties(t.getProperties())
                         .build()
         ).toList();
 
+        // 3) 링크 중복 제거
+        List<ResponseNetworkDTO.EdgeInfo> newLinks = new ArrayList<>(response.getLinks());
+        newLinks.addAll(edgeInfoList);
+        newLinks = newLinks.stream().distinct().toList();
+        response.setLinks(newLinks);
 
-        //6. 중복제거(override 해놓음) 및 response에 담기
-        List<ResponseNetworkDTO.NodeInfo> mutableNodeList = new ArrayList<>(response.getNodes());
-        mutableNodeList.addAll(nodeInfoList);
-        mutableNodeList = mutableNodeList.stream().distinct().toList();
-        response.setNodes(mutableNodeList);
+        // 4) 엣지들의 노드 조회 (projectIdx 필수)
+        stopWatch.start("엣지들의 노드조회");
+        if (edgeInfoList.isEmpty()) {
+            stopWatch.stop();
+            log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());
+            return;
+        }
+
+        Map<String, List<Object>> typeToNodeIds = new HashMap<>();
+        for (ResponseNetworkDTO.EdgeInfo e : edgeInfoList) {
+            typeToNodeIds.computeIfAbsent((String) e.getStartType(), k -> new ArrayList<>()).add(e.getStart());
+            typeToNodeIds.computeIfAbsent((String) e.getEndType(), k -> new ArrayList<>()).add(e.getEnd());
+        }
+
+        List<Criteria> orNode = typeToNodeIds.entrySet().stream()
+                .map(en -> Criteria.where("label").is(en.getKey()).and("id").in(en.getValue()))
+                .toList();
+
+        Query nodeQuery = new Query(project).addCriteria(new Criteria().orOperator(orNode.toArray(new Criteria[0])));
+        List<Node> nodeList = mongoTemplate.find(nodeQuery, Node.class);
+        stopWatch.stop();
+
+        // 5) 노드 -> response 변환
+        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodeList.stream().map(t ->
+                ResponseNetworkDTO.NodeInfo.builder()
+                        .nodeId(t.getNodeId())
+                        .label(t.getLabel())
+                        .properties(t.getProperties())
+                        .build()
+        ).toList();
+
+        // 6) 노드 중복 제거
+        List<ResponseNetworkDTO.NodeInfo> newNodes = new ArrayList<>(response.getNodes());
+        newNodes.addAll(nodeInfoList);
+        newNodes = newNodes.stream().distinct().toList();
+        response.setNodes(newNodes);
 
         log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());
     }

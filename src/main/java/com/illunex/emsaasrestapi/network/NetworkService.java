@@ -63,7 +63,7 @@ public class NetworkService {
 
 
         //관계망 검색
-        networkComponent.networkSearch(response, nodes);
+        networkComponent.networkSearch(response, nodes, projectIdx);
 
         if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
         if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
@@ -239,7 +239,7 @@ public class NetworkService {
         response.setNodes(nodeInfoList);
 
         // 4) 관계망 검색
-        networkComponent.networkSearch(response, nodes);
+        networkComponent.networkSearch(response, nodes, project.getProjectIdx());
 
         // 5) 사이즈 세팅 (null-safe)
         response.setNodeSize(response.getNodes() == null ? 0 : response.getNodes().size());
