@@ -315,6 +315,8 @@ public class DatabaseComponent {
     private Object convertIdType(Object referenceId, Object rawValue) {
         if (referenceId instanceof Integer) return Integer.parseInt(rawValue.toString());
         if (referenceId instanceof Double) return Double.parseDouble(rawValue.toString());
+        if (referenceId instanceof Long) return Long.parseLong(rawValue.toString());   // 추가 권장
+        if (referenceId instanceof String) return rawValue.toString();
         throw new IllegalArgumentException("Unsupported ID type: " + referenceId.getClass());
     }
 
