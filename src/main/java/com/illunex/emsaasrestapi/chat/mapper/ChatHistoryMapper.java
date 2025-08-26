@@ -15,4 +15,6 @@ public interface ChatHistoryMapper {
     List<ChatHistoryVO> selectByChatRoomIdxAndPageable(Integer chatRoomIdx, Pageable pageable);
 
     Integer countAllByChatRoomIdx(Integer chatRoomIdx);
+
+    List<ChatHistoryVO> selectRecentByChatRoomIdx(Integer chatRoomIdx, int count);
 }

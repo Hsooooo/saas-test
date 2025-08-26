@@ -73,4 +73,8 @@ public class ChatService {
                 .data(new PageImpl<>(historyList, pageable, totalCount))
                 .build();
     }
+
+    public List<ChatHistoryVO> getRecentHistories(Integer chatRoomIdx, int count) {
+        return chatHistoryMapper.selectRecentByChatRoomIdx(chatRoomIdx, count);
+    }
 }

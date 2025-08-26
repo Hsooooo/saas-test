@@ -1,6 +1,8 @@
 package com.illunex.emsaasrestapi.chat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.illunex.emsaasrestapi.chat.util.OpenAiSseParser;
+import com.illunex.emsaasrestapi.chat.vo.ChatHistoryVO;
 import com.illunex.emsaasrestapi.common.CurrentMember;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
@@ -9,34 +11,27 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.util.UriComponentsBuilder;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.SignalType;
-import reactor.core.scheduler.Schedulers;
-import org.springframework.core.io.buffer.DataBuffer;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
 @Slf4j
 public class AiProxyController {
 
-    @Value("${ai.url}") String aiGptBase; // 예: https://api.openai.com
-    private final WebClient webClient;        // WebClient.Builder 주입 권장
-    private final ChatService chatService;    // 너가 만든 DB 저장 서비스
+    @Value("${ai.url}") String aiGptBase;
+    private final WebClient webClient;
+    private final ChatService chatService;
+    private final ObjectMapper objectMapper;
 
     @RequestMapping(value = "ai/gpt/**", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter proxy(HttpServletRequest request,
@@ -45,29 +40,39 @@ public class AiProxyController {
                             @RequestParam("query") String query,
                             @RequestParam(value = "title", required = false) String title,
                             @RequestParam(value = "user_id", required = false, defaultValue = "hi") String userId,
-                            @RequestParam(value = "room_idx", required = false) Integer roomIdx) {
+                            @RequestParam(value = "chatRoomIdx", required = false) Integer roomIdx) {
 
-        final SseEmitter emitter = new SseEmitter(0L); // 타임아웃 무제한
-        final int chatRoomIdx = chatService.resolveChatRoom(partnershipMemberIdx, title);
-        chatService.saveHistoryAsync(chatRoomIdx, EnumCode.ChatRoom.SenderType.USER.getCode(), query);
+        final SseEmitter emitter = new SseEmitter(0L);
+        Integer chatRoomIdx = null;
+        List<ChatHistoryVO> histories = (roomIdx == null) ? List.of() : chatService.getRecentHistories(roomIdx, 6);
+        String historyString = toHistoryJsonString(histories);
+        if (roomIdx == null) {
+            chatRoomIdx = chatService.resolveChatRoom(partnershipMemberIdx, title);
+            chatService.saveHistoryAsync(chatRoomIdx, EnumCode.ChatRoom.SenderType.USER.getCode(), query);
+        } else {
+            chatRoomIdx = roomIdx;
+            // 기존 채팅방
+            chatService.saveHistoryAsync(chatRoomIdx, EnumCode.ChatRoom.SenderType.USER.getCode(), query);
+        }
 
-        String queryParam = request.getParameter("query");
         URI target = UriComponentsBuilder.fromHttpUrl(aiGptBase)
                 .path("/v2/api/report-generate")
                 .queryParam("user_id", userId)
-                .queryParam("query", queryParam)
-                .encode(StandardCharsets.UTF_8)
-                .build().toUri();
+                .queryParam("query", query)
+                .encode(StandardCharsets.UTF_8).build().toUri();
 
-        log.info("AI Proxy to {} from memberIdx: {}, partnershipMemberIdx: {}, chatRoomIdx: {}",
-                target, memberVO.getIdx(), partnershipMemberIdx, chatRoomIdx);
+        log.info("AI Proxy to {} from memberIdx: {}, partnershipMemberIdx: {}, chatRoomIdx: {}, body: {}",
+                target, memberVO.getIdx(), partnershipMemberIdx, chatRoomIdx, historyString);
         var tee = new java.io.ByteArrayOutputStream(16 * 1024);
+
+        final int chatRoomIdxFinal = chatRoomIdx;
 
         webClient.post()
                 .uri(target)
+                .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.TEXT_EVENT_STREAM)
                 .headers(h -> h.add("X-Accel-Buffering", "no"))
-                // ★ retrieve() 금지 — 4xx/5xx에서 바디를 버림
+                .bodyValue(Map.of("history", historyString))
                 .exchangeToFlux(clientRes -> {
                     HttpStatusCode sc = clientRes.statusCode();
 
@@ -102,14 +107,12 @@ public class AiProxyController {
                                     } catch (Exception e) {
                                         emitter.completeWithError(e);
                                     }
-                                    // 에러면 더 흘릴 건 없음
                                     emitter.complete();
                                     return reactor.core.publisher.Flux.empty();
                                 });
                     }
                 })
                 .doOnError(e -> {
-                    // 여기까지 오면 네트워크/코덱 레벨 에러. tee엔 아무것도 없을 수 있음.
                     try {
                         String payload = "event: error\ndata: " + e.getMessage() + "\n\n";
                         tee.write(payload.getBytes(StandardCharsets.UTF_8));
@@ -119,7 +122,7 @@ public class AiProxyController {
                 })
                 .doOnComplete(() -> {
                     // 정상 종료
-                    saveAssistant(chatRoomIdx, tee);
+                    saveAssistant(chatRoomIdxFinal, tee);
                     emitter.complete();
                 })
                 .subscribe();
@@ -135,5 +138,20 @@ public class AiProxyController {
                 EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
                 (last == null || last.isBlank()) ? all : last
         );
+    }
+
+    private String toHistoryJsonString(List<ChatHistoryVO> histories) {
+        if (histories == null || histories.isEmpty()) return "[]"; // 문자열이어야 하므로 빈 배열 문자열
+        var list = histories.stream()
+                .map(h -> java.util.Map.of(
+                        h.getSenderType().equals(EnumCode.ChatRoom.SenderType.USER.getCode()) ? "u" : "a",
+                        h.getMessage() == null ? "" : h.getMessage()
+                ))
+                .toList();
+        try {
+            return objectMapper.writeValueAsString(list); // 예: [{"u":"..."},{"a":"..."}]
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new RuntimeException("history serialize failed", e);
+        }
     }
 }

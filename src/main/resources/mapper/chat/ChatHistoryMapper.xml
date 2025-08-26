@@ -38,4 +38,12 @@
         WHERE chat_room_idx = #{chatRoomIdx}
         ORDER BY create_date DESC
     </select>
+
+    <select id="selectRecentByChatRoomIdx" resultType="ChatHistoryVO">
+        SELECT *
+          FROM chat_history
+         WHERE chat_room_idx = #{chatRoomIdx}
+         ORDER BY create_date DESC
+         LIMIT #{count}
+    </select>
 </mapper>
