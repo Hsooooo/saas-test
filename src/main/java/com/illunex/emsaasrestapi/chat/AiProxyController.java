@@ -34,7 +34,7 @@ public class AiProxyController {
     private final ObjectMapper objectMapper;
 
     @RequestMapping(value = "ai/gpt/**", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter proxy(HttpServletRequest request,
+    public ResponseEntity<SseEmitter> proxy(HttpServletRequest request,
                             @CurrentMember MemberVO memberVO,
                             @RequestParam("partnershipMemberIdx") Integer partnershipMemberIdx,
                             @RequestParam("query") String query,
@@ -43,29 +43,38 @@ public class AiProxyController {
                             @RequestParam(value = "chatRoomIdx", required = false) Integer roomIdx) {
 
         final SseEmitter emitter = new SseEmitter(0L);
-        Integer chatRoomIdx = null;
-        List<ChatHistoryVO> histories = (roomIdx == null) ? List.of() : chatService.getRecentHistories(roomIdx, 6);
-        String historyString = toHistoryJsonString(histories);
-        if (roomIdx == null) {
-            chatRoomIdx = chatService.resolveChatRoom(partnershipMemberIdx, title);
-            chatService.saveHistoryAsync(chatRoomIdx, EnumCode.ChatRoom.SenderType.USER.getCode(), query);
-        } else {
-            chatRoomIdx = roomIdx;
-            // 기존 채팅방
-            chatService.saveHistoryAsync(chatRoomIdx, EnumCode.ChatRoom.SenderType.USER.getCode(), query);
+
+        // 1) 신규/기존 방 결정 + USER 메시지 저장
+        final int chatRoomIdx = (roomIdx == null)
+                ? chatService.resolveChatRoom(partnershipMemberIdx, title)
+                : roomIdx;
+        final boolean created = (roomIdx == null);
+        chatService.saveHistoryAsync(chatRoomIdx, EnumCode.ChatRoom.SenderType.USER.getCode(), query);
+
+        // 2) 프론트가 바로 쓸 수 있도록 'meta' 이벤트로 roomIdx 전송
+        try {
+            emitter.send(SseEmitter.event()
+                    .name("meta")
+                    .data(Map.of("chatRoomIdx", chatRoomIdx, "created", created)));
+        } catch (Exception e) {
+            emitter.completeWithError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(emitter);
         }
+
+        // 3) 업스트림 호출 (히스토리는 바디의 문자열 필드로 보낸다는 최신 합의)
+        var histories = (roomIdx == null) ? List.<ChatHistoryVO>of()
+                : chatService.getRecentHistories(chatRoomIdx, 6);
+        String historyString = toHistoryJsonString(histories); // 예: [{"u":"..."},{"a":"..."}] 를 문자열로
 
         URI target = UriComponentsBuilder.fromHttpUrl(aiGptBase)
                 .path("/v2/api/report-generate")
                 .queryParam("user_id", userId)
                 .queryParam("query", query)
-                .encode(StandardCharsets.UTF_8).build().toUri();
+                .encode(StandardCharsets.UTF_8)
+                .build()
+                .toUri();
 
-        log.info("AI Proxy to {} from memberIdx: {}, partnershipMemberIdx: {}, chatRoomIdx: {}, body: {}",
-                target, memberVO.getIdx(), partnershipMemberIdx, chatRoomIdx, historyString);
         var tee = new java.io.ByteArrayOutputStream(16 * 1024);
-
-        final int chatRoomIdxFinal = chatRoomIdx;
 
         webClient.post()
                 .uri(target)
@@ -74,10 +83,8 @@ public class AiProxyController {
                 .headers(h -> h.add("X-Accel-Buffering", "no"))
                 .bodyValue(Map.of("history", historyString))
                 .exchangeToFlux(clientRes -> {
-                    HttpStatusCode sc = clientRes.statusCode();
-
+                    var sc = clientRes.statusCode();
                     if (sc.is2xxSuccessful()) {
-                        // 성공: 바이트로 받아 tee에 쓰고, 그대로 SSE로 중계
                         return clientRes.bodyToFlux(org.springframework.core.io.buffer.DataBuffer.class)
                                 .doOnNext(db -> {
                                     try {
@@ -85,28 +92,17 @@ public class AiProxyController {
                                         byte[] bytes = new byte[bb.remaining()];
                                         bb.get(bytes);
                                         tee.write(bytes);
-
-                                        // 문자열로 변환해서 emitter로 전송
-                                        String chunk = new String(bytes, StandardCharsets.UTF_8);
-                                        emitter.send(SseEmitter.event().data(chunk));
-                                    } catch (Exception e) {
-                                        emitter.completeWithError(e);
-                                    }
+                                        emitter.send(SseEmitter.event().data(new String(bytes, StandardCharsets.UTF_8)));
+                                    } catch (Exception e) { emitter.completeWithError(e); }
                                 });
                     } else {
-                        // 에러: 에러 바디까지 읽어서 tee에 쓰고, SSE error 이벤트로 전달
                         return clientRes.bodyToMono(String.class)
-                                .defaultIfEmpty("Upstream " + sc.value() + " " + sc)
-                                .flatMapMany(errBody -> {
+                                .defaultIfEmpty("Upstream " + sc.value())
+                                .flatMapMany(err -> {
                                     try {
-                                        byte[] bytes = errBody.getBytes(StandardCharsets.UTF_8);
-                                        tee.write(bytes);
-                                        String payload = "event: error\ndata: " +
-                                                errBody.replace("\n", " ") + "\n\n";
-                                        emitter.send(payload);
-                                    } catch (Exception e) {
-                                        emitter.completeWithError(e);
-                                    }
+                                        tee.write(err.getBytes(StandardCharsets.UTF_8));
+                                        emitter.send("event: error\ndata: " + err.replace("\n"," ") + "\n\n");
+                                    } catch (Exception ignore) {}
                                     emitter.complete();
                                     return reactor.core.publisher.Flux.empty();
                                 });
@@ -114,20 +110,27 @@ public class AiProxyController {
                 })
                 .doOnError(e -> {
                     try {
-                        String payload = "event: error\ndata: " + e.getMessage() + "\n\n";
+                        var payload = "event: error\ndata: " + e.getMessage() + "\n\n";
                         tee.write(payload.getBytes(StandardCharsets.UTF_8));
                         emitter.send(payload);
-                    } catch (Exception ignore) { }
+                    } catch (Exception ignore) {}
                     emitter.completeWithError(e);
                 })
                 .doOnComplete(() -> {
-                    // 정상 종료
-                    saveAssistant(chatRoomIdxFinal, tee);
+                    saveAssistant(chatRoomIdx, tee);
+                    try {
+                        emitter.send(SseEmitter.event().name("done").data("ok"));
+                    } catch (Exception ignore) {}
                     emitter.complete();
                 })
                 .subscribe();
 
-        return emitter;
+        // 4) 헤더로도 roomIdx 노출( fetch 로 헤더 읽을 때 유용 )
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Chat-Room-Idx", String.valueOf(chatRoomIdx));
+        headers.add("Access-Control-Expose-Headers", "X-Chat-Room-Idx");
+
+        return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
     }
 
     private void saveAssistant(int chatRoomIdx, java.io.ByteArrayOutputStream tee) {
