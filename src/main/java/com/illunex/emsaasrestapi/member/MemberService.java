@@ -17,6 +17,9 @@ import com.illunex.emsaasrestapi.partnership.PartnershipService;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -48,7 +51,7 @@ import java.util.regex.Pattern;
 public class MemberService {
     private final PartnershipService partnershipService;
 
-//    private final MemberRepository memberRepository;
+    //    private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
     private final MemberJoinMapper memberJoinMapper;
     private final PartnershipMapper partnershipMapper;
@@ -80,51 +83,65 @@ public class MemberService {
                 .build();
     }
 
-    public record LoginResult(String accessToken, String refreshToken,
-                              Long memberIdx, String browser, String platform, String ip) {}
-
-    public CustomResponse<?> loginCore(RequestMemberDTO.Login login, ClientMeta meta) throws CustomException {
-        // 1) 사용자 조회/검증
+    /**
+     * 로그인
+     * @param login
+     * @return
+     */
+    public CustomResponse<?> login(HttpServletRequest request, HttpServletResponse response, RequestMemberDTO.Login login) throws CustomException {
+        // 아이디 확인
         MemberVO member = memberMapper.selectByEmail(login.getEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMPTY_ACCOUNT));
+
+        // 회원 상태 체크
         memberComponent.checkMemberState(member.getStateCd());
-        if (!passwordEncoder.matches(login.getPassword(), member.getPassword())) {
+
+        if(passwordEncoder.matches(login.getPassword(), member.getPassword())) {
+            List<GrantedAuthority> authorities = new ArrayList<>();
+            authorities.add(new SimpleGrantedAuthority(SecurityConfig.MEMBER));
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(member.getEmail(), member.getPassword(), authorities);
+
+            // 토큰 생성 후 응답 값에 추가
+            ResponseMemberDTO.Login responseLoginDto = modelMapper.map(member, ResponseMemberDTO.Login.class);
+            responseLoginDto.setAccessToken(tokenProvider.generateAccessToken(auth));
+
+            // 로그인 이력 저장
+            MemberLoginHistoryVO loginHistoryVO = new MemberLoginHistoryVO();
+            loginHistoryVO.setMemberIdx(member.getIdx());
+            loginHistoryVO.setBrowser(MemberComponent.getClientPlatform(request));
+            loginHistoryVO.setPlatform(MemberComponent.getClientDevice(request));
+            loginHistoryVO.setIp(MemberComponent.getClientIpAddr(request));
+            loginHistoryMapper.insertLoginHistory(loginHistoryVO);
+
+            // 리프레시 토큰 쿠키 등록
+            response.addCookie(tokenProvider.createCookie("refreshToken", tokenProvider.generateRefreshToken(auth), MemberComponent.getClientIpAddr(request)));
+
+            return CustomResponse.builder()
+                    .data(responseLoginDto)
+                    .build();
+        } else {
             throw new CustomException(ErrorCode.MEMBER_NOT_MATCH_PASSWORD);
         }
-
-        // 2) 권한/토큰
-        var authorities = List.of(new SimpleGrantedAuthority(SecurityConfig.MEMBER));
-        var auth = new UsernamePasswordAuthenticationToken(member.getEmail(), member.getPassword(), authorities);
-
-        String accessToken  = tokenProvider.generateAccessToken(auth);
-        String refreshToken = tokenProvider.generateRefreshToken(auth);
-
-        // 3) 로그인 이력
-        MemberLoginHistoryVO hist = new MemberLoginHistoryVO();
-        hist.setMemberIdx(member.getIdx());
-        hist.setBrowser(meta.browser());
-        hist.setPlatform(meta.platform());
-        hist.setIp(meta.ip());
-        loginHistoryMapper.insertLoginHistory(hist);
-
-        // 4) 응답 DTO
-        ResponseMemberDTO.Login dto = new ResponseMemberDTO.Login();
-        dto.setEmail(member.getEmail());
-        dto.setAccessToken(accessToken);
-
-        return CustomResponse.builder().data(dto).build();
     }
-
-    public record ClientMeta(String ip, String browser, String platform) {}
-
 
     /**
      * 엑세스 토큰 갱신
-     * @param refreshToken
+     * @param request
      * @return
      * @throws CustomException
      */
-    public CustomResponse<?> reissue(String refreshToken) throws CustomException {
+    public CustomResponse<?> reissue(HttpServletRequest request) throws CustomException {
+        String refreshToken = null;
+        Cookie[] cookies = request.getCookies();
+        if(cookies == null) {
+            throw new AccessDeniedException("Cookie is not empty");
+        }
+        for (Cookie cookie : cookies) {
+            if(cookie.getName().equals("refreshToken")) {
+                refreshToken = cookie.getValue();
+            }
+        }
+
         // 토큰 유효성 체크
         if(refreshToken != null && !tokenProvider.validateToken(refreshToken)) {
             throw new CustomException(ErrorCode.COMMON_FAIL_AUTHENTICATION);
@@ -375,7 +392,7 @@ public class MemberService {
      */
     public CustomResponse<?> mypageChangePassword(MemberVO memberVO, String password, String newPassword) throws CustomException {
         memberVO = memberMapper.selectByIdx(memberVO.getIdx())
-                        .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMPTY_ACCOUNT));
+                .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_EMPTY_ACCOUNT));
         memberComponent.checkMemberState(memberVO.getStateCd());
 
         if(password == null || newPassword == null || password.isBlank() || newPassword.isBlank()) {

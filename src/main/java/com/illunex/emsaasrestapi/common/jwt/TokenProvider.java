@@ -6,11 +6,11 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
+import jakarta.servlet.http.Cookie;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -18,7 +18,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -82,39 +81,23 @@ public class TokenProvider {
                 .compact();
     }
 
-//    public Cookie createCookie(String key, String value, String ip){
-//        Cookie cookie = new Cookie(key, value);
-//        cookie.setMaxAge(refreshExpireSeconds);
-//        cookie.setHttpOnly(true);   //JS로 접근 불가, 탈취 위험 감소
-//        cookie.setPath("/");
-//        cookie.setSecure(false);
-//        Arrays.stream(corsList)
-//                .filter(cors -> ip.equals("127.0.0.1") ? cors.contains("localhost") : cors.contains(ip))
-//                .findFirst()
-//                .ifPresent(cors -> {
-//                    if (ip.equals("127.0.0.1")) {
-//                        cookie.setDomain("localhost");
-//                    } else {
-//                        cookie.setDomain(ip);
-//                    }
-//                });
-//        return cookie;
-//    }
-
-    public ResponseCookie createResponseCookie(String key, String value, String ip) {
-        ResponseCookie.ResponseCookieBuilder b = ResponseCookie.from(key, value)
-                .httpOnly(true)
-                .path("/")
-                .maxAge(Duration.ofSeconds(refreshExpireSeconds))
-                .secure(false); // 필요시 true
-
-        // 도메인 결정 로직 (server.cors-list 활용)
+    public Cookie createCookie(String key, String value, String ip){
+        Cookie cookie = new Cookie(key, value);
+        cookie.setMaxAge(refreshExpireSeconds);
+        cookie.setHttpOnly(true);   //JS로 접근 불가, 탈취 위험 감소
+        cookie.setPath("/");
+        cookie.setSecure(false);
         Arrays.stream(corsList)
                 .filter(cors -> ip.equals("127.0.0.1") ? cors.contains("localhost") : cors.contains(ip))
                 .findFirst()
-                .ifPresent(cors -> b.domain(ip.equals("127.0.0.1") ? "localhost" : ip));
-
-        return b.build();
+                .ifPresent(cors -> {
+                    if (ip.equals("127.0.0.1")) {
+                        cookie.setDomain("localhost");
+                    } else {
+                        cookie.setDomain(ip);
+                    }
+                });
+        return cookie;
     }
 
     public Authentication getAuthentication(String token) {
