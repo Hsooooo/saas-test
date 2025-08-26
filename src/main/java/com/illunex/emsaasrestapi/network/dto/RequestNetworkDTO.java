@@ -17,7 +17,7 @@ public class RequestNetworkDTO {
     public static class SelectNode {
         private Integer projectIdx;
         private String label;
-        private Integer nodeIdx;
+        private Object nodeIdx;
         private Integer depth;
     }
 
