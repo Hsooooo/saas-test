@@ -21,6 +21,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -188,53 +189,61 @@ public class NetworkService {
      * @return
      */
     public CustomResponse<?> getNetworkSearch(MemberVO memberVO, RequestNetworkDTO.Search search) throws CustomException {
-        // 파트너쉽 회원 여부 체크
+        // 1) 권한 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, search.getProjectIdx());
-        // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(search.getProjectIdx(), partnershipMemberVO.getIdx());
 
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
-        //검색할 컬럼명 조회
-        Query query = Query.query(Criteria.where("_id").is(search.getProjectIdx()));
-        Project project = mongoTemplate.findOne(query, Project.class);
-
-        // 프로젝트 정보가 없을 경우 예외처리
-        if(project == null) {
+        // 2) 프로젝트 메타 조회 (검색할 컬럼명 등)
+        Query projectQuery = Query.query(Criteria.where("_id").is(search.getProjectIdx()));
+        Project project = mongoTemplate.findOne(projectQuery, Project.class);
+        if (project == null) {
             throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
         }
 
-        //노드검색
+        // 3) 노드 검색 (프로젝트 한정 + 다중 컬럼 OR)
         List<ProjectNodeContent> projectNodeContentList = project.getProjectNodeContentList();
-        if(projectNodeContentList == null) {
+        if (projectNodeContentList == null || projectNodeContentList.isEmpty()) {
             throw new CustomException(ErrorCode.PROJECT_CONTENT_EMPTY_DATA);
         }
-        List<Criteria> criteriaList = projectNodeContentList.stream().map(
-                target -> new Criteria().andOperator(
-                        Criteria.where("properties." + target.getLabelTitleCellName()).regex(".*" + search.getKeyword() + ".*"),
-                        Criteria.where("label").is(target.getNodeType())
-                )
+
+        // 정규식 안전 처리 (특수문자 이스케이프) + 대소문자 무시 옵션
+        final String keyword = search.getKeyword() == null ? "" : search.getKeyword().trim();
+        final Pattern kwPattern = Pattern.compile(Pattern.quote(keyword), Pattern.CASE_INSENSITIVE);
+
+        // (properties.{labelTitleCellName} ~ /keyword/i) AND (label == nodeType) 조건을 후보로 모아 OR
+        List<Criteria> orCandidates = projectNodeContentList.stream()
+                .filter(t -> t.getLabelTitleCellName() != null && !t.getLabelTitleCellName().isBlank()
+                        && t.getNodeType() != null && !t.getNodeType().isBlank())
+                .map(t -> new Criteria().andOperator(
+                        Criteria.where("properties." + t.getLabelTitleCellName()).regex(kwPattern),
+                        Criteria.where("label").is(t.getNodeType())
+                ))
+                .toList();
+
+        // 프로젝트 범위 강제 + OR 후보 결합
+        Criteria projectScope = Criteria.where("_id.projectIdx").is(search.getProjectIdx());
+        Criteria orBlock = new Criteria().orOperator(orCandidates.toArray(new Criteria[0]));
+        Query nodeQuery = new Query().addCriteria(projectScope).addCriteria(orBlock);
+
+        List<Node> nodes = mongoTemplate.find(nodeQuery, Node.class);
+
+        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(n ->
+                ResponseNetworkDTO.NodeInfo.builder()
+                        .nodeId(n.getNodeId())
+                        .label(n.getLabel())
+                        .properties(n.getProperties())
+                        .build()
         ).toList();
-        Criteria combinedCriteria = new Criteria().orOperator(criteriaList.toArray(new Criteria[0]));
-        Query combinedQuery = Query.query(combinedCriteria);
-        List<Node> nodes = mongoTemplate.find(combinedQuery, Node.class);
-
-        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
-                        ResponseNetworkDTO.NodeInfo.builder()
-                                .nodeId(target.getNodeId())
-                                .label(target.getLabel())
-                                .properties(target.getProperties())
-                                .build()
-                        ).toList();
-
         response.setNodes(nodeInfoList);
 
-        //관계망 검색
+        // 4) 관계망 검색
         networkComponent.networkSearch(response, nodes);
 
-        //노드, 엣지 개수 세팅
-        response.setNodeSize(response.getNodes().size());
-        response.setLinkSize(response.getLinks().size());
+        // 5) 사이즈 세팅 (null-safe)
+        response.setNodeSize(response.getNodes() == null ? 0 : response.getNodes().size());
+        response.setLinkSize(response.getLinks() == null ? 0 : response.getLinks().size());
 
         return CustomResponse.builder()
                 .data(response)
