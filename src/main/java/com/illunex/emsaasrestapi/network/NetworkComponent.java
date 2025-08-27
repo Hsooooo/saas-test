@@ -118,7 +118,7 @@ public class NetworkComponent {
         // 6) 노드 중복 제거
         List<ResponseNetworkDTO.NodeInfo> newNodes = new ArrayList<>(response.getNodes());
         newNodes.addAll(nodeInfoList);
-        newNodes = newNodes.stream().distinct().toList();
+        newNodes = newNodes.stream().distinct().limit(10000).toList();
         response.setNodes(newNodes);
 
         log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());
