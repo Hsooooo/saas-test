@@ -46,7 +46,7 @@ spring:
   data:
     mongodb:
       host: localhost
-      port: 27017
+      port: 27018
       username: root
       password: Illunex123!
       database: em_saas_test
