@@ -127,7 +127,13 @@ public class NetworkComponent {
         newNodes = newNodes.stream()
                 .distinct()
                 .sorted(Comparator.comparing(
-                        n -> (String) (n.getProperties() == null ? null : n.getProperties().get(mainLabel)),
+                        n -> {
+                            if (n.getProperties() == null) return null;
+                            Object v = n.getProperties().get(mainLabel);
+                            if (v == null) return null;
+                            String s = v.toString().trim();
+                            return s.isEmpty() ? null : s; // 공백 문자열도 null 취급
+                        },
                         Comparator.nullsLast(Comparator.naturalOrder())
                 ))
                 .limit(10000).toList();
