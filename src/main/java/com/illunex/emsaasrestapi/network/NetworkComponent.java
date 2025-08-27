@@ -123,11 +123,14 @@ public class NetworkComponent {
         // 6) 노드 중복 제거
         List<ResponseNetworkDTO.NodeInfo> newNodes = new ArrayList<>(response.getNodes());
         newNodes.addAll(nodeInfoList);
+        // 메인 노드 컨텐츠 기준 정렬 + 1만개 제한
         newNodes = newNodes.stream()
-                .filter(n -> n.getProperties() != null
-                        && n.getProperties().get(mainLabel) != null
-                        && !n.getProperties().get(mainLabel).toString().isBlank())
-                .distinct().limit(10000).toList();
+                .distinct()
+                .sorted(Comparator.comparing(
+                        n -> (String) (n.getProperties() == null ? null : n.getProperties().get(mainLabel)),
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                ))
+                .limit(10000).toList();
         response.setNodes(newNodes);
 
         log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());

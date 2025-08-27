@@ -16,10 +16,10 @@ import com.illunex.emsaasrestapi.member.vo.*;
 import com.illunex.emsaasrestapi.partnership.PartnershipService;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
-import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -35,11 +35,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +46,6 @@ import java.util.regex.Pattern;
 public class MemberService {
     private final PartnershipService partnershipService;
 
-    //    private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
     private final MemberJoinMapper memberJoinMapper;
     private final PartnershipMapper partnershipMapper;
@@ -122,6 +116,42 @@ public class MemberService {
         } else {
             throw new CustomException(ErrorCode.MEMBER_NOT_MATCH_PASSWORD);
         }
+    }
+
+    public CustomResponse<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        String name = "refreshToken";
+
+        // 1) host-only 버전 삭제
+        Cookie cookie1 = new Cookie(name, "");
+        cookie1.setPath("/");
+        cookie1.setMaxAge(0);
+        cookie1.setHttpOnly(true);
+        cookie1.setSecure(false);
+        response.addCookie(cookie1);
+
+        // 2) domain 지정 버전 삭제 (ip 또는 localhost)
+        String ip = MemberComponent.getClientIpAddr(request);
+        Cookie cookie2 = new Cookie(name, "");
+        cookie2.setPath("/");
+        cookie2.setMaxAge(0);
+        cookie2.setHttpOnly(true);
+        cookie2.setSecure(false);
+        if ("127.0.0.1".equals(ip)) {
+            cookie2.setDomain("localhost");
+        } else {
+            cookie2.setDomain(ip);
+        }
+        response.addCookie(cookie2);
+
+        // 세션/시큐리티 컨텍스트 정리
+        HttpSession session = request.getSession(false);
+        if (session != null) session.invalidate();
+        SecurityContextHolder.clearContext();
+
+        return CustomResponse.builder()
+                .message(ErrorCode.OK.getMessage())
+                .status(ErrorCode.OK.getStatus())
+                .build();
     }
 
     /**

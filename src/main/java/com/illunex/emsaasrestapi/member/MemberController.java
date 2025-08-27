@@ -10,7 +10,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -55,6 +58,12 @@ public class MemberController {
                                    HttpServletResponse response,
                                    @RequestBody RequestMemberDTO.Login login) throws CustomException {
         return memberService.login(request, response, login);
+    }
+
+    @PostMapping("logout")
+    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        memberService.logout(request, response);
+        return ResponseEntity.ok(Map.of("ok", true));
     }
 
     /**
