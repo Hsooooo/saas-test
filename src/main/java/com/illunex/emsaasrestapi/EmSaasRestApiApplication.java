@@ -1,5 +1,6 @@
 package com.illunex.emsaasrestapi;
 
+import org.apache.poi.util.IOUtils;
 import org.modelmapper.ModelMapper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -14,6 +15,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 @EnableMethodSecurity(prePostEnabled = true)
 public class EmSaasRestApiApplication {
     public static void main(String[] args) {
+        IOUtils.setByteArrayMaxOverride(100 * 1024 * 1024); // 100MB
         SpringApplication.run(EmSaasRestApiApplication.class, args);
     }
 
