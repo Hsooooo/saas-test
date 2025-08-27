@@ -7,6 +7,8 @@ import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
+import com.illunex.emsaasrestapi.project.session.DraftContext;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -30,8 +32,9 @@ public class ProjectController {
     @PostMapping()
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> createProject(@CurrentMember MemberVO memberVO,
-                                           @RequestBody RequestProjectDTO.Project project) throws CustomException {
-        return projectService.createProject(memberVO, project);
+                                           @RequestBody RequestProjectDTO.Project project,
+                                           HttpServletRequest req) throws CustomException {
+        return projectService.createProject(memberVO, project, DraftContext.from(req));
     }
 
     /**
@@ -41,7 +44,8 @@ public class ProjectController {
      */
     @PostMapping ("/image")
     public CustomResponse<?> updateProjectImage(@RequestPart(name = "image") MultipartFile file,
-                                                @CurrentMember MemberVO memberVO) throws CustomException, IOException {
+                                                @CurrentMember MemberVO memberVO,
+                                                HttpServletRequest req) throws CustomException, IOException {
         return projectService.uploadProjectImage(memberVO, file);
     }
 
@@ -56,8 +60,9 @@ public class ProjectController {
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> uploadSingleExcelFile(@CurrentMember MemberVO memberVO,
                                                    @RequestParam(name = "projectIdx") Integer projectIdx,
-                                                   @RequestPart(name = "excel") MultipartFile excelFile) throws CustomException, IOException {
-        return projectService.uploadSingleExcelFile(memberVO, projectIdx, excelFile);
+                                                   @RequestPart(name = "excel") MultipartFile excelFile,
+                                                   HttpServletRequest req) throws CustomException, IOException {
+        return projectService.uploadSingleExcelFile(memberVO, projectIdx, excelFile, DraftContext.from(req));
     }
 
     /**
@@ -70,8 +75,9 @@ public class ProjectController {
     @PutMapping()
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> replaceProject(@CurrentMember MemberVO memberVO,
-                                            @RequestBody RequestProjectDTO.Project project) throws CustomException {
-        return projectService.replaceProject(memberVO, project);
+                                            @RequestBody RequestProjectDTO.Project project,
+                                            HttpServletRequest req) throws CustomException {
+        return projectService.replaceProject(memberVO, project, DraftContext.from(req));
     }
 
     /**
@@ -83,8 +89,9 @@ public class ProjectController {
     @PostMapping("complete")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> completeProject(@CurrentMember MemberVO memberVO,
-                                             @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
-        return projectService.completeProject(memberVO, projectIdx);
+                                             @RequestParam(name = "projectIdx") Integer projectIdx,
+                                             HttpServletRequest req) throws CustomException {
+        return projectService.completeProject(memberVO, projectIdx, DraftContext.from(req));
     }
 
     /**
@@ -185,11 +192,12 @@ public class ProjectController {
      */
     @PostMapping("/excel/summary")
     public CustomResponse<?> projectExcelSummary(@CurrentMember MemberVO memberVO,
-                                                @RequestBody RequestProjectDTO.ProjectExcelSummary search) throws CustomException, Exception {
+                                                @RequestBody RequestProjectDTO.ProjectExcelSummary search,
+                                                 HttpServletRequest req) throws CustomException, Exception {
         if ("range".equals(search.getType())) {
-            return projectService.getExcelValueRange(memberVO, search);
+            return projectService.getExcelValueRange(memberVO, search, req);
         } else if ("distinct".equals(search.getType())) {
-            return projectService.getExcelValueDistinct(memberVO, search);
+            return projectService.getExcelValueDistinct(memberVO, search, req);
         }
         return CustomResponse.builder().build();
     }

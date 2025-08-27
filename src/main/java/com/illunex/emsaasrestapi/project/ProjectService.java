@@ -24,10 +24,14 @@ import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.session.DraftContext;
+import com.illunex.emsaasrestapi.project.session.ExcelMetaUtil;
+import com.illunex.emsaasrestapi.project.session.ProjectDraftRepository;
 import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -40,6 +44,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
@@ -50,6 +55,9 @@ import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
+
+import static com.illunex.emsaasrestapi.common.ErrorCode.PROJECT_EMPTY_DATA;
+import static com.illunex.emsaasrestapi.common.ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -66,6 +74,9 @@ public class ProjectService {
     private final ProjectProcessingService projectProcessingService;
     private final ProjectComponent projectComponent;
     private final AwsS3Component awsS3Component;
+
+    private final ProjectDraftRepository draftRepo;
+    private final ExcelMetaUtil excelMetaUtil;
 
     /**
      * 프로젝트 생성
@@ -125,6 +136,33 @@ public class ProjectService {
     }
 
     /**
+     * [Draft] 프로젝트 생성
+     * @param me
+     * @param project
+     * @param dc
+     * @return
+     * @throws CustomException
+     */
+    @Transactional
+    public CustomResponse<?> createProject(MemberVO me, RequestProjectDTO.Project project,
+                                           DraftContext dc) throws CustomException {
+        if (!dc.isDraft()) return createProject(me, project); // 기존
+        dc.require();
+
+        draftRepo.ensureOpen(dc.getSessionId(), me.getIdx().longValue(), project);
+
+        // 네가 완성 시 저장하는 Project 도큐 구조로 매핑
+        var projDoc = modelMapper.map(project, com.illunex.emsaasrestapi.project.document.project.Project.class);
+        projDoc.setCreateDate(null); // 커밋 때 채움
+        projDoc.setUpdateDate(null);
+        draftRepo.upsert(dc.getSessionId(), new Update().set("projectDoc", projDoc));
+        return CustomResponse.builder().data(
+                java.util.Map.of("sessionId", dc.getSessionId().toHexString(), "step", 2)
+        ).build();
+    }
+
+
+    /**
      * 단일 엑셀 파일 업로드
      * @param projectIdx
      * @param excelFile
@@ -177,6 +215,42 @@ public class ProjectService {
 
         // 프로젝트 삭제 예외 응답
         throw new CustomException(ErrorCode.PROJECT_DELETED);
+    }
+
+    /**
+     * [Draft] 단일 엑셀 파일 업로드
+     * @param me
+     * @param projectIdx
+     * @param excelFile
+     * @param dc
+     * @return
+     * @throws CustomException
+     * @throws java.io.IOException
+     */
+    @Transactional
+    public CustomResponse<?> uploadSingleExcelFile(MemberVO me, Integer projectIdx, MultipartFile excelFile,
+                                                   DraftContext dc) throws CustomException, java.io.IOException {
+        if (!dc.isDraft()) return uploadSingleExcelFile(me, projectIdx, excelFile); // 기존
+        dc.require();
+
+        // S3 업로드 (기존처럼)
+        var res = com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO.builder()
+                .fileName(excelFile.getOriginalFilename())
+                .s3Resource(awsS3Component.upload(excelFile, AwsS3Component.FolderType.ProjectFile, "draft/" + dc.getSessionId()))
+                .build();
+
+        // 시트 메타만 추출
+        Excel excelMeta = excelMetaUtil.buildExcelMeta(res.getOrgFileName(), res.getPath(), res.getUrl(), res.getSize());
+
+        draftRepo.upsert(dc.getSessionId(), new Update()
+                .set("excelMeta", excelMeta)
+        );
+
+        return CustomResponse.builder().data(java.util.Map.of(
+                "sessionId", dc.getSessionId().toHexString(),
+                "step", 3,
+                "sheets", excelMeta.getExcelSheetList()
+        )).build();
     }
 
     /**
@@ -281,6 +355,53 @@ public class ProjectService {
     }
 
     /**
+     * [Draft] 프로젝트 한번에 수정
+     * @param memberVO
+     * @param project
+     * @param dc
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> replaceProject(MemberVO memberVO, RequestProjectDTO.Project project,
+                                            DraftContext dc) throws CustomException {
+        if (!dc.isDraft()) return replaceProject(memberVO, project); // 기존
+        dc.require();
+
+        // 1) 드래프트 projectDoc 갱신
+        var projDoc = modelMapper.map(project, com.illunex.emsaasrestapi.project.document.project.Project.class);
+        projDoc.setUpdateDate(java.time.LocalDateTime.now());
+        draftRepo.upsert(dc.getSessionId(), new Update().set("projectDoc", projDoc));
+
+        // 2) 노드/엣지 예상 카운트 (엑셀 메타 기반)
+        var draft = draftRepo.get(dc.getSessionId());
+        int nodeCount = 0, edgeCount = 0;
+        if (draft != null && draft.getExcelMeta() != null) {
+            var sheets = draft.getExcelMeta().getExcelSheetList();
+            if (project.getProjectNodeList() != null) {
+                for (var n : project.getProjectNodeList()) {
+                    nodeCount += sheets.stream()
+                            .filter(s -> s.getExcelSheetName().equals(n.getNodeType()))
+                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+                }
+            }
+            if (project.getProjectEdgeList() != null) {
+                for (var e : project.getProjectEdgeList()) {
+                    edgeCount += sheets.stream()
+                            .filter(s -> s.getExcelSheetName().equals(e.getEdgeType()))
+                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+                }
+            }
+        }
+
+        return CustomResponse.builder().data(java.util.Map.of(
+                "sessionId", dc.getSessionId().toHexString(),
+                "step", 4,
+                "nodeCount", nodeCount,
+                "edgeCount", edgeCount
+        )).build();
+    }
+
+    /**
      * 프로젝트 최종 저장(관계망 데이터 정제 처리)
      * @param projectIdx
      * @return
@@ -314,6 +435,75 @@ public class ProjectService {
 
         return CustomResponse.builder()
                 .build();
+    }
+
+    @Transactional
+    public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException {
+        if (!dc.isDraft()) return completeProject(memberVO, projectIdx); // 기존
+        dc.require();
+
+        var d = draftRepo.get(dc.getSessionId());
+        if (d == null || !"OPEN".equals(d.getStatus())) throw new CustomException(ErrorCode.COMMON_EMPTY);
+        if (d.getProjectDoc() == null || d.getExcelMeta() == null)
+            throw new CustomException(PROJECT_EMPTY_DATA);
+
+        Integer pid = d.getProjectIdx();
+        if (pid == null) {
+            // 신규 생성: RDB 프로젝트 한 번에 생성
+            var info = d.getProjectDoc();
+            var pvo = com.illunex.emsaasrestapi.project.vo.ProjectVO.builder()
+                    .partnershipIdx(d.getPartnershipIdx())
+                    .projectCategoryIdx(d.getProjectCategoryIdx())
+                    .title(d.getTitle())
+                    .description(d.getDescription())
+                    .imagePath(d.getImagePath())
+                    .imageUrl(d.getImageUrl())
+                    .statusCd(com.illunex.emsaasrestapi.common.code.EnumCode.Project.StatusCd.Step5.getCode()) // 정제중
+                    .build();
+            int ok = projectMapper.insertByProjectVO(pvo);
+            if (ok == 0) throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
+            // 생성자 멤버 추가 등 네 기존 로직 필요시 수행
+            pid = pvo.getIdx();
+
+            // Mongo Project 메타 저장
+            var projDoc = d.getProjectDoc();
+            projDoc.setProjectIdx(pid);
+            projDoc.setCreateDate(java.time.LocalDateTime.now());
+            mongoTemplate.insert(projDoc);
+        } else {
+            // 수정: 권한 체크만 하고 본 Project 도큐 덮어쓰기
+            var pm = partnershipComponent.checkPartnershipMemberAndProject(memberVO, pid);
+            projectComponent.checkProjectMember(pid, pm.getIdx());
+
+            var target = mongoTemplate.findById(pid, com.illunex.emsaasrestapi.project.document.project.Project.class);
+            if (target == null) throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
+
+            var replace = d.getProjectDoc();
+            replace.setProjectIdx(pid);
+            replace.setCreateDate(target.getCreateDate());
+            replace.setUpdateDate(java.time.LocalDateTime.now());
+            mongoTemplate.save(replace); // replace by _id = pid
+            // RDB 타이틀/이미지 등 필요한 필드만 업데이트 (원하면)
+            var pvo = projectMapper.selectByIdx(pid).orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+            pvo.setTitle(d.getTitle());
+            pvo.setDescription(d.getDescription());
+            pvo.setImagePath(d.getImagePath());
+            pvo.setImageUrl(d.getImageUrl());
+            pvo.setStatusCd(com.illunex.emsaasrestapi.common.code.EnumCode.Project.StatusCd.Step5.getCode()); // 정제중
+            projectMapper.updateByProjectVO(pvo);
+        }
+
+        // Excel 메타 본 컬렉션으로 저장(동기화)
+        var excel = d.getExcelMeta();
+        excel.setProjectIdx(pid);
+        mongoTemplate.findAndRemove(Query.query(Criteria.where("_id").is(pid)), Excel.class);
+        mongoTemplate.insert(excel);
+
+        // 워커 비동기 정제 시작 (sessionId 전달해서 S3+매핑 읽게)
+        projectProcessingService.processAsyncWithDraft(pid, dc.getSessionId());
+
+        draftRepo.mark(dc.getSessionId(), "COMMITTED");
+        return CustomResponse.builder().data(projectComponent.createResponseProject(pid)).build();
     }
 
     /**
@@ -547,23 +737,23 @@ public class ProjectService {
 
         // 엑셀 정보 조회
         Excel excel = mongoTemplate.findById(search.getProjectIdx(), Excel.class);
-        if (excel == null) throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+        if (excel == null) throw new CustomException(PROJECT_EMPTY_DATA);
 
         // 저장된 엑셀 정보에 존재하는 시트명 여부 확인
         ExcelSheet sheetInfo = excel.getExcelSheetList().stream()
                 .filter(s -> s.getExcelSheetName().equals(search.getExcelSheetName()))
                 .findFirst()
-                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY));
+                .orElseThrow(() -> new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY));
 
         // 해당 엑셀 파일 workbook 변환
         try (InputStream is = awsS3Component.downloadInputStream(sheetInfo.getFilePath());
              Workbook workbook = WorkbookFactory.create(is)) {
 
             Sheet sheet = workbook.getSheet(sheetInfo.getExcelSheetName());
-            if (sheet == null) throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+            if (sheet == null) throw new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
 
             Row header = sheet.getRow(0);
-            if (header == null) throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+            if (header == null) throw new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
 
             // 해당 컬럼명의 idx값 추출
             int colIdx = findColumnIndex(header, search.getExcelCellName());
@@ -602,6 +792,65 @@ public class ProjectService {
         }
     }
 
+    /**
+     * [Draft] 선택 컬럼 범위값 조회
+     * @param me
+     * @param search
+     * @param req
+     * @return
+     * @throws CustomException
+     * @throws IOException
+     */
+    public CustomResponse<?> getExcelValueRange(MemberVO me, RequestProjectDTO.ProjectExcelSummary search,
+                                                HttpServletRequest req) throws CustomException, IOException {
+        var dc = DraftContext.from(req);
+        if (!dc.isDraft()) {
+            // === 기존 그대로 ===
+            return getExcelValueRange(me, search);
+        }
+
+        dc.require();
+        var d = draftRepo.get(dc.getSessionId());
+        if (d == null || d.getExcelMeta() == null) throw new CustomException(PROJECT_EMPTY_DATA);
+
+        var sheetInfo = d.getExcelMeta().getExcelSheetList().stream()
+                .filter(s -> s.getExcelSheetName().equals(search.getExcelSheetName()))
+                .findFirst().orElseThrow(() -> new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY));
+
+        try (var is = awsS3Component.downloadInputStream(sheetInfo.getFilePath());
+             var workbook = WorkbookFactory.create(is)) {
+            Sheet sheet = workbook.getSheet(sheetInfo.getExcelSheetName());
+            if (sheet == null) throw new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+            Row header = sheet.getRow(0);
+            if (header == null) throw new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+
+            int colIdx = findColumnIndex(header, search.getExcelCellName());
+            Comparable<?> min = null, max = null;
+            Class<?> type = null;
+
+            for (int r = 1; r <= sheetInfo.getTotalRowCnt(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null || row.getLastCellNum() == -1) continue;
+
+                Cell cell = row.getCell(colIdx);
+                Object raw = projectComponent.getExcelColumnData(cell);
+                if (!(raw instanceof Comparable<?> comp) || org.springframework.util.ObjectUtils.isEmpty(raw)) continue;
+
+                if (type == null) type = comp.getClass();
+                if (!type.isInstance(comp)) continue;
+
+                @SuppressWarnings("unchecked")
+                Comparable<Object> current = (Comparable<Object>) comp;
+                if (min == null || current.compareTo(min) < 0) min = current;
+                if (max == null || current.compareTo(max) > 0) max = current;
+            }
+
+            var range = new com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO.ExcelValueRange();
+            range.setMax(max); range.setMin(min);
+            return com.illunex.emsaasrestapi.common.CustomResponse.builder().data(range).build();
+        }
+    }
+
 
     /**
      * 선택 컬럼 선택값 상위 20개 조회
@@ -618,23 +867,23 @@ public class ProjectService {
         long start = System.currentTimeMillis();
         // 엑셀 정보 조회
         Excel excel = mongoTemplate.findById(search.getProjectIdx(), Excel.class);
-        if (excel == null) throw new CustomException(ErrorCode.PROJECT_EMPTY_DATA);
+        if (excel == null) throw new CustomException(PROJECT_EMPTY_DATA);
 
         // 저장된 엑셀 정보에 존재하는 시트명 여부 확인
         ExcelSheet sheetInfo = excel.getExcelSheetList().stream()
                 .filter(s -> s.getExcelSheetName().equals(search.getExcelSheetName()))
                 .findFirst()
-                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY));
+                .orElseThrow(() -> new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY));
 
         // 해당 엑셀 파일 workbook 변환
         try (InputStream is = awsS3Component.downloadInputStream(sheetInfo.getFilePath());
              Workbook workbook = WorkbookFactory.create(is)) {
 
             Sheet sheet = workbook.getSheet(sheetInfo.getExcelSheetName());
-            if (sheet == null) throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+            if (sheet == null) throw new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
 
             Row header = sheet.getRow(0);
-            if (header == null) throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+            if (header == null) throw new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
 
             // 해당 컬럼명의 idx값 추출
             int colIdx = findColumnIndex(header, search.getExcelCellName());
@@ -674,6 +923,72 @@ public class ProjectService {
         }
     }
 
+
+    public CustomResponse<?> getExcelValueDistinct(MemberVO memberVO,
+                                                   RequestProjectDTO.ProjectExcelSummary search,
+                                                   HttpServletRequest req) throws CustomException, IOException {
+        var dc = DraftContext.from(req);
+        if (!dc.isDraft()) {
+            // === 기존 그대로 ===
+            return getExcelValueDistinct(memberVO, search);
+        }
+
+        // === Draft 모드 ===
+        dc.require();
+        var d = draftRepo.get(dc.getSessionId());
+        if (d == null || d.getExcelMeta() == null) throw new CustomException(PROJECT_EMPTY_DATA);
+
+        var sheetInfo = d.getExcelMeta().getExcelSheetList().stream()
+                .filter(s -> s.getExcelSheetName().equals(search.getExcelSheetName()))
+                .findFirst()
+                .orElseThrow(() -> new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY));
+
+        try (InputStream is = awsS3Component.downloadInputStream(sheetInfo.getFilePath());
+             Workbook workbook = WorkbookFactory.create(is)) {
+
+            Sheet sheet = workbook.getSheet(sheetInfo.getExcelSheetName());
+            if (sheet == null) throw new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+
+            Row header = sheet.getRow(0);
+            if (header == null) throw new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+
+            // 대상 컬럼 인덱스
+            int colIdx = findColumnIndex(header, search.getExcelCellName());
+
+            // 빈도수
+            Map<String, Integer> freq = new HashMap<>();
+
+            // 저장된 rowCount 만큼 루프
+            for (int r = 1; r <= sheetInfo.getTotalRowCnt(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null || row.getLastCellNum() == -1) continue;
+
+                Cell cell = row.getCell(colIdx);
+                Object raw = projectComponent.getExcelColumnData(cell);
+                if (ObjectUtils.isEmpty(raw)) continue;
+
+                String key = raw.toString().trim();
+                if (!key.isEmpty()) freq.merge(key, 1, Integer::sum);
+            }
+
+            // 상위 20개
+            List<ResponseProjectDTO.ExcelValueDistinctItem> list = freq.entrySet().stream()
+                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                    .limit(20)
+                    .map(e -> {
+                        ResponseProjectDTO.ExcelValueDistinctItem item = new ResponseProjectDTO.ExcelValueDistinctItem();
+                        item.setValue(e.getKey());
+                        item.setCount(e.getValue());
+                        return item;
+                    })
+                    .toList();
+
+            ResponseProjectDTO.ExcelValueDistinct distinct = new ResponseProjectDTO.ExcelValueDistinct();
+            distinct.setList(list);
+            return CustomResponse.builder().data(distinct).build();
+        }
+    }
+
     /**
      * header row 에서 조회하고자 하는 col idx 추출
      * @param header
@@ -688,7 +1003,7 @@ public class ProjectService {
                 return i;
             }
         }
-        throw new CustomException(ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
+        throw new CustomException(PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY);
     }
 
     @Transactional(rollbackFor = Exception.class)

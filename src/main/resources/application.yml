@@ -8,6 +8,10 @@ server:
   cors-list: ${cors-list}
   port: 80
   encrypt-key: ${enctype-key}           # 최대32자리(256bit/32byte)
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
 
 logging:
   pattern:
