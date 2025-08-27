@@ -50,7 +50,7 @@ public class NetworkService {
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
         // 모든 노드 조회
-        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)).limit(10000);
+        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)).limit(4000);
         List<Node> nodes = mongoTemplate.find(query, Node.class);
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
                 ResponseNetworkDTO.NodeInfo.builder()
