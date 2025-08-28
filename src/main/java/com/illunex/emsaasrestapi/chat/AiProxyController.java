@@ -11,9 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -33,16 +31,59 @@ public class AiProxyController {
     private final ChatService chatService;
     private final ObjectMapper objectMapper;
 
-    @RequestMapping(value = "ai/gpt/**", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+//    @PostMapping("/ai/gpt/v2/api/generate-pptx")
+//    public ResponseEntity<byte[]> proxyPptx(HttpServletRequest request,
+//                                            @CurrentMember MemberVO memberVO,
+//                                            @RequestParam("partnershipMemberIdx") Integer partnershipMemberIdx,
+//                                            @RequestParam("chatRoomIdx") Integer chatRoomIdx,
+//                                            @RequestBody Map<String, String> body) {
+//        URI target = UriComponentsBuilder.fromHttpUrl(aiGptBase)
+//                .path("/v2/api/generate-pptx")
+//                .encode(StandardCharsets.UTF_8)
+//                .build()
+//                .toUri();
+//
+//        byte[] body = webClient.post()
+//                .uri(target)
+//                .contentType(MediaType.APPLICATION_JSON)
+//                .accept(MediaType.APPLICATION_OCTET_STREAM)
+//                .headers(h -> h.add("X-Accel-Buffering", "no"))
+//                .bodyValue(Map.of("history", historyString))
+//                .retrieve()
+//                .onStatus(HttpStatus::isError, clientRes -> clientRes.bodyToMono(String.class).defaultIfEmpty("Upstream " + clientRes.statusCode().value()).flatMap(err -> {
+//                    log.error("Upstream error: {}", err);
+//                    return reactor.core.publisher.Mono.error(new RuntimeException(err));
+//                }))
+//                .bodyToMono(byte[].class)
+//                .block();
+//
+//        if (body == null || body.length == 0) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new byte[0]);
+//        }
+//
+//        // 3) ASSISTANT 메시지 저장 (pptx 바이너리는 맨 마지막 메시지로 간주)
+//        chatService.saveHistoryAsync(
+//                chatRoomIdx,
+//                EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
+//                "[pptx binary data]"
+//        );
+//    }
+
+
+    @RequestMapping(value = "ai/gpt/v2/api/report-generate", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> proxy(HttpServletRequest request,
                             @CurrentMember MemberVO memberVO,
                             @RequestParam("partnershipMemberIdx") Integer partnershipMemberIdx,
-                            @RequestParam("query") String query,
                             @RequestParam(value = "title", required = false) String title,
                             @RequestParam(value = "user_id", required = false, defaultValue = "hi") String userId,
-                            @RequestParam(value = "chatRoomIdx", required = false) Integer roomIdx) {
-
+                            @RequestParam(value = "chatRoomIdx", required = false) Integer roomIdx,
+                            @RequestBody Map<String, String> body) {
+        if (body.get("query") == null || body.get("query").isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        String query = body.get("query").trim();
         final SseEmitter emitter = new SseEmitter(0L);
+
 
         // 1) 신규/기존 방 결정 + USER 메시지 저장
         final int chatRoomIdx = (roomIdx == null)
@@ -69,7 +110,6 @@ public class AiProxyController {
         URI target = UriComponentsBuilder.fromHttpUrl(aiGptBase)
                 .path("/v2/api/report-generate")
                 .queryParam("user_id", userId)
-                .queryParam("query", query)
                 .encode(StandardCharsets.UTF_8)
                 .build()
                 .toUri();
@@ -81,7 +121,7 @@ public class AiProxyController {
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.TEXT_EVENT_STREAM)
                 .headers(h -> h.add("X-Accel-Buffering", "no"))
-                .bodyValue(Map.of("history", historyString))
+                .bodyValue(Map.of("query", query, "history", historyString))
                 .exchangeToFlux(clientRes -> {
                     var sc = clientRes.statusCode();
                     if (sc.is2xxSuccessful()) {
