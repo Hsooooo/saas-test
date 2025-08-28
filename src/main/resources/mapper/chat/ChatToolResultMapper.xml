@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.chat.mapper.ChatToolResultMapper">
+
+    <insert id="insertByChatToolResultVO" parameterType="ChatToolResultVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO chat_tool_result (chat_history_idx, tool_type, title, url, create_date, update_date)
+        VALUES (#{chatHistoryIdx}, #{toolType}, #{title}, #{url}, NOW(), NOW())
+    </insert>
+
+    <select id="selectByChatHistoryIdx" parameterType="Integer" resultType="ChatToolResultVO">
+        SELECT *
+        FROM chat_tool_result
+        WHERE chat_history_idx = #{chatHistoryIdx}
+    </select>
+</mapper>

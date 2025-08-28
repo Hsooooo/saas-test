@@ -46,4 +46,11 @@
          ORDER BY create_date DESC
          LIMIT #{count}
     </select>
+
+    <update id="updateMessageByIdx" parameterType="ChatHistoryVO">
+        UPDATE chat_history
+           SET message = #{message},
+               update_date = NOW()
+         WHERE idx = #{idx}
+    </update>
 </mapper>

@@ -261,4 +261,18 @@ public class EnumCode {
             private final String value;
         }
     }
+
+    public static class ChatToolResult {
+        /**
+         * Chat Tool Type
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum ToolType implements BaseCodeEnum {
+            QUERY_RESULT("CTT0001", "get_search_result_by_query_tool");
+
+            private final String code;
+            private final String value;
+        }
+    }
 }

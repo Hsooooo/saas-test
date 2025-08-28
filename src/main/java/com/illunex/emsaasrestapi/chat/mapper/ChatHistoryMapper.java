@@ -17,4 +17,6 @@ public interface ChatHistoryMapper {
     Integer countAllByChatRoomIdx(Integer chatRoomIdx);
 
     List<ChatHistoryVO> selectRecentByChatRoomIdx(Integer chatRoomIdx, int count);
+
+    void updateMessageByIdx(ChatHistoryVO chatHistoryVO);
 }
