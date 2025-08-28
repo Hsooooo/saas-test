@@ -75,7 +75,6 @@ public class AiProxyController {
                             @CurrentMember MemberVO memberVO,
                             @RequestParam("partnershipMemberIdx") Integer partnershipMemberIdx,
                             @RequestParam(value = "title", required = false) String title,
-                            @RequestParam(value = "user_id", required = false, defaultValue = "hi") String userId,
                             @RequestParam(value = "chatRoomIdx", required = false) Integer roomIdx,
                             @RequestBody Map<String, String> body) {
         if (body.get("query") == null || body.get("query").isBlank()) {
@@ -109,7 +108,6 @@ public class AiProxyController {
 
         URI target = UriComponentsBuilder.fromHttpUrl(aiGptBase)
                 .path("/v2/api/report-generate")
-                .queryParam("user_id", userId)
                 .encode(StandardCharsets.UTF_8)
                 .build()
                 .toUri();
