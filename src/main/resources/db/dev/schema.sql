@@ -410,6 +410,7 @@ COMMENT='프로젝트 쿼리 정보'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
 
+
 CREATE TABLE IF NOT EXISTS `em_saas`.`chat_room` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅방 번호',
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원번호',
@@ -455,4 +456,3 @@ CREATE TABLE `em_saas`.`chat_tool_result` (
 COMMENT='LLM 채팅 외부 도구 결과'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
-;

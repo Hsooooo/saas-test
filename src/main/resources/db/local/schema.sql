@@ -455,4 +455,3 @@ CREATE TABLE `em_saas`.`chat_tool_result` (
 COMMENT='LLM 채팅 외부 도구 결과'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
-;
