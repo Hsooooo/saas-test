@@ -10,4 +10,6 @@ public interface ChatToolResultMapper {
     void insertByChatToolResultVO(ChatToolResultVO chatToolResultVO);
 
     List<ChatToolResultVO> selectByChatHistoryIdx(Integer chatHistoryIdx);
+
+    void updateHistoryIdxByIdxs(int historyIdx, List<Long> toolResultIds);
 }

@@ -1,14 +1,18 @@
 package com.illunex.emsaasrestapi.chat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.illunex.emsaasrestapi.chat.mapper.ChatToolResultMapper;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ToolResultService {
     private final ChatService chatService;
+    private final ChatToolResultMapper chatToolResultMapper;
 
     /** 외부데이터 첫 감지 시 임시 assistant 생성 (idx 반환) */
     public int ensureTempAssistant(Integer currentIdx, int chatRoomIdx) {
@@ -21,8 +25,8 @@ public class ToolResultService {
     }
 
     /** tool payload upsert */
-    public void upsertToolPayload(int historyIdx, String toolType, String payloadJson) throws JsonProcessingException {
-        chatService.insertChatTool(historyIdx, toolType, payloadJson);
+    public List<Long> upsertToolPayload(String payloadJson) throws JsonProcessingException {
+        return chatService.insertChatTool(payloadJson);
     }
 
     /** 스트림 종료 시 최종 답변 저장(or 업데이트) */
@@ -37,5 +41,9 @@ public class ToolResultService {
                     finalText
             );
         }
+    }
+
+    public void linkResultsToHistory(List<Long> toolResultIds, int historyIdx) {
+        chatToolResultMapper.updateHistoryIdxByIdxs(historyIdx, toolResultIds);
     }
 }

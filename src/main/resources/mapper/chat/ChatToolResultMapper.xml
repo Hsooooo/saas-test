@@ -15,4 +15,13 @@
         FROM chat_tool_result
         WHERE chat_history_idx = #{chatHistoryIdx}
     </select>
+
+    <update id="updateHistoryIdxByIdxs">
+        UPDATE chat_tool_result
+        SET chat_history_idx = #{historyIdx}, update_date = NOW()
+        WHERE idx IN
+        <foreach item="item" index="index" collection="toolResultIds" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
 </mapper>

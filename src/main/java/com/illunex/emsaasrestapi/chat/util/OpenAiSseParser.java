@@ -65,4 +65,40 @@ public final class OpenAiSseParser {
     }
 
     private OpenAiSseParser() {}
+
+    public static String extractLastPptxFromSequence(String all) {
+        if (all == null || all.isBlank()) return "";
+        String last = "";
+        try {
+            MappingIterator<JsonNode> it = M.readerFor(JsonNode.class).readValues(all);
+            while (it.hasNext()) {
+                JsonNode n = it.next();
+                if (n.hasNonNull("pptx") && n.get("pptx").isTextual()) {
+                    last = n.get("pptx").asText("");
+                }
+            }
+        } catch (Exception ignore) {
+            // 만약 시퀀스 파싱이 실패하면 라인기반 백업
+            last = extractLastMessageLineFallback(all);
+        }
+        return last;
+    }
+
+    public static String extractLastDocsFromSequence(String all) {
+        if (all == null || all.isBlank()) return "";
+        String last = "";
+        try {
+            MappingIterator<JsonNode> it = M.readerFor(JsonNode.class).readValues(all);
+            while (it.hasNext()) {
+                JsonNode n = it.next();
+                if (n.hasNonNull("docs") && n.get("docs").isTextual()) {
+                    last = n.get("docs").asText("");
+                }
+            }
+        } catch (Exception ignore) {
+            // 만약 시퀀스 파싱이 실패하면 라인기반 백업
+            last = extractLastMessageLineFallback(all);
+        }
+        return last;
+    }
 }

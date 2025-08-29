@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -134,24 +135,41 @@ public class ChatService {
         chatHistoryMapper.updateMessageAndCategoryTypeByIdx(h);
     };
 
-    public void insertChatTool(Integer historyIdx, String toolType, String payloadJson) throws JsonProcessingException {
+    public List<Long> insertChatTool(String payloadJson) throws JsonProcessingException {
+        List<Long> insertedIds = new ArrayList<>();
         // Jackson으로 파싱
         JsonNode root = om.readTree(payloadJson);
 
         JsonNode resultsNode = root.path("results");
+
 
         if (resultsNode.isArray()) {
             for (JsonNode item : resultsNode) {
                 String title = item.path("title").asText("");
                 String url = item.path("url").asText("");
                 ChatToolResultVO vo = new ChatToolResultVO();
-                vo.setChatHistoryIdx(historyIdx);
                 vo.setToolType(EnumCode.ChatToolResult.ToolType.QUERY_RESULT.getCode());
                 vo.setTitle(title);
                 vo.setUrl(url);
                 chatToolResultMapper.insertByChatToolResultVO(vo);
+                Long newId = vo.getIdx();
+                if (newId != null) {
+                    insertedIds.add(newId);
+                }
             }
         }
+
+        return insertedIds;
     }
+
+    int saveHistory(int chatRoomIdx, String senderCode, String categoryCode, String message) {
+        ChatHistoryVO h = new ChatHistoryVO();
+        h.setChatRoomIdx(chatRoomIdx);
+        h.setSenderType(senderCode);
+        h.setCategoryType(categoryCode);
+        h.setMessage(message);
+        chatHistoryMapper.insertByChatHistoryVO(h);
+        return h.getIdx();
+    };
 
 }
