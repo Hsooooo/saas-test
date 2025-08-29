@@ -26,13 +26,14 @@ public class ToolResultService {
     }
 
     /** 스트림 종료 시 최종 답변 저장(or 업데이트) */
-    public void finalizeAssistant(int chatRoomIdx, Integer tempIdxOrNull, String finalText) {
+    public void finalizeAssistant(int chatRoomIdx, Integer tempIdxOrNull, String category, String finalText) {
         if (tempIdxOrNull != null) {
-            chatService.updateHistoryContent(tempIdxOrNull, finalText);
+            chatService.updateHistoryContent(tempIdxOrNull, finalText, category);
         } else {
             chatService.saveHistoryAsync(
                     chatRoomIdx,
                     EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
+                    category,
                     finalText
             );
         }

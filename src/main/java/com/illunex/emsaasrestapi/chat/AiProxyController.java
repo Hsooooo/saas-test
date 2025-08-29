@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.illunex.emsaasrestapi.chat.util.OpenAiSseParser;
 import com.illunex.emsaasrestapi.chat.vo.ChatHistoryVO;
 import com.illunex.emsaasrestapi.common.CurrentMember;
+import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,8 +23,10 @@ import reactor.core.publisher.Flux;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequiredArgsConstructor
@@ -47,7 +50,7 @@ public class AiProxyController {
         if (query.isBlank()) return ResponseEntity.badRequest().build();
 
         int chatRoomIdx = (roomIdx == null) ? chatService.resolveChatRoom(pmIdx, title) : roomIdx;
-        chatService.saveHistoryAsync(chatRoomIdx, EnumCode.ChatRoom.SenderType.USER.getCode(), query);
+        chatService.saveHistoryAsync(chatRoomIdx, EnumCode.ChatRoom.SenderType.USER.getCode(), EnumCode.ChatHistory.CategoryType.USER.getCode(),query);
 
         SseEmitter emitter = new SseEmitter(0L);
         try { emitter.send(SseEmitter.event().name("meta").data(Map.of("chatRoomIdx", chatRoomIdx, "created", roomIdx == null))); } catch (Exception ignore) {}
@@ -92,7 +95,9 @@ public class AiProxyController {
         Disposable d3 = source.ignoreElements().subscribe(null, null, () -> {
             String all = tee.toString(StandardCharsets.UTF_8);
             String last = OpenAiSseParser.extractLastMessageFromSequence(all);
-            toolSvc.finalizeAssistant(chatRoomIdx, tempAssistantIdx.get(), (last == null || last.isBlank()) ? all : last);
+            String category = OpenAiSseParser.extractLastCategoryFromSequence(all);
+            String cateType = EnumCode.ChatHistory.CategoryType.getCodeByValue(category);
+            toolSvc.finalizeAssistant(chatRoomIdx, tempAssistantIdx.get(), cateType, (last == null || last.isBlank()) ? all : last);
             try { emitter.send(SseEmitter.event().name("done").data("ok")); } catch (Exception ignore) {}
             emitter.complete();
         });

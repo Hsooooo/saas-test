@@ -14,6 +14,7 @@ public class ChatHistoryVO {
     private Integer chatRoomIdx;
     private String message;
     private String senderType;
+    private String categoryType;
     private ZonedDateTime createDate;
     private ZonedDateTime updateDate;
 }

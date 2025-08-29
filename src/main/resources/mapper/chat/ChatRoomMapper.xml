@@ -18,9 +18,22 @@
 
     <select id="selectByPartnershipMemberIdx" parameterType="Integer" resultType="ChatRoomVO">
         SELECT *
+        FROM chat_room
+        WHERE partnership_member_idx = #{partnershipMemberIdx}
+        ORDER BY CREATE_DATE DESC
+    </select>
+
+    <select id="selectByPartnershipMemberIdxAndPageable" parameterType="Integer" resultType="ChatRoomVO">
+        SELECT *
           FROM chat_room
          WHERE partnership_member_idx = #{partnershipMemberIdx}
-        ORDER BY CREATE_DATE DESC
+        <if test="pageable.sort != null and !pageable.sort.empty">
+            ORDER BY
+            <foreach item="order" collection="pageable.sort" separator=",">
+                ${order.property} ${order.direction}
+            </foreach>
+        </if>
+        LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
     </select>
 
     <select id="selectByPartnershipMemberIdxAndChatRoomIdx" resultType="ChatRoomVO">

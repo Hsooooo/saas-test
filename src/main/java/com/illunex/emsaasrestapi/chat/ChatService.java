@@ -47,23 +47,24 @@ public class ChatService {
         return room.getIdx();
     }
 
-    public void saveHistoryAsync(int chatRoomIdx, String senderType, String message) {
+    public void saveHistoryAsync(int chatRoomIdx, String senderType, String categoryType, String message) {
         Mono.fromRunnable(() -> {
             ChatHistoryVO h = new ChatHistoryVO();
             h.setChatRoomIdx(chatRoomIdx);
             h.setSenderType(senderType);
             h.setMessage(message);
+            h.setCategoryType(categoryType);
             chatHistoryMapper.insertByChatHistoryVO(h);
         }).subscribeOn(Schedulers.boundedElastic()).subscribe();
     }
 
-    public CustomResponse<?> getChatRoomList(MemberVO memberVO, Integer partnershipMemberIdx) throws CustomException {
+    public CustomResponse<?> getChatRoomList(MemberVO memberVO, Integer partnershipMemberIdx, CustomPageRequest page, String[] sort) throws CustomException {
         PartnershipMemberVO pm = partnershipMemberMapper.selectByIdx(partnershipMemberIdx)
                 .orElseThrow(() -> new IllegalArgumentException("Partnership member not found"));
         if (!memberVO.getIdx().equals(pm.getMemberIdx())) {
             throw new CustomException(ErrorCode.COMMON_INVALID);
         }
-
+        Pageable pageable = page.of(sort);
         return CustomResponse.builder()
                 .data(chatRoomMapper.selectByPartnershipMemberIdx(partnershipMemberIdx))
                 .build();
@@ -123,11 +124,12 @@ public class ChatService {
     };
 
     /** 기존 히스토리 본문 교체 (최종 응답으로 덮어쓰기) */
-    void updateHistoryContent(int historyIdx, String content) {
+    void updateHistoryContent(int historyIdx, String content, String category) {
         ChatHistoryVO h = new ChatHistoryVO();
         h.setIdx(historyIdx);
         h.setMessage(content);
-        chatHistoryMapper.updateMessageByIdx(h);
+        h.setCategoryType(category);
+        chatHistoryMapper.updateMessageAndCategoryTypeByIdx(h);
     };
 
     public void insertChatTool(Integer historyIdx, String toolType, String payloadJson) throws JsonProcessingException {

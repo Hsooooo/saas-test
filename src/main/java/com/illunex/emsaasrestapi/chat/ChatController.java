@@ -28,8 +28,10 @@ public class ChatController {
      */
     @GetMapping("/rooms")
     public CustomResponse<?> getChatRoomList(@CurrentMember MemberVO memberVO,
-                                             @RequestParam Integer partnershipMemberIdx) throws CustomException {
-        return chatService.getChatRoomList(memberVO, partnershipMemberIdx);
+                                             @RequestParam Integer partnershipMemberIdx,
+                                             CustomPageRequest page,
+                                             String[] sort) throws CustomException {
+        return chatService.getChatRoomList(memberVO, partnershipMemberIdx, page, sort);
     }
 
     @GetMapping("/history")

@@ -63,4 +63,11 @@ INSERT INTO em_saas.code (code, first_code, second_code, third_code, code_value,
 
 
 ('TTC0000', 'TTC', '00', '00', '- LLM 외부 도구 타입', 0),
-('TTC0001', 'TTC', '00', '01', 'get_search_result_by_query_tool', 1);
+('TTC0001', 'TTC', '00', '01', 'get_search_result_by_query_tool', 1),
+
+('CHT0000', 'CHT', '00', '00', '- LLM 응답 카테고리 타입', 0),
+('CHT0001', 'CHT', '00', '01', 'SIMPLE', 1),
+('CHT0002', 'CHT', '00', '02', 'GENERAL', 2),
+('CHT0003', 'CHT', '00', '03', 'PROFESSIONAL', 3),
+('CHT0004', 'CHT', '00', '04', 'USER', 3)
+;

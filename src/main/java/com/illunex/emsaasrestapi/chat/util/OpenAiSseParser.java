@@ -27,6 +27,24 @@ public final class OpenAiSseParser {
         return last;
     }
 
+    public static String extractLastCategoryFromSequence(String allText) {
+        if (allText == null || allText.isBlank()) return "";
+        String last = "";
+        try {
+            MappingIterator<JsonNode> it = M.readerFor(JsonNode.class).readValues(allText);
+            while (it.hasNext()) {
+                JsonNode n = it.next();
+                if (n.hasNonNull("category") && n.get("category").isTextual()) {
+                    last = n.get("category").asText("");
+                }
+            }
+        } catch (Exception ignore) {
+            // 만약 시퀀스 파싱이 실패하면 라인기반 백업
+            last = extractLastMessageLineFallback(allText);
+        }
+        return last;
+    }
+
     /** 라인 기반 백업 파서 (완성된 JSON 라인만 잡음) */
     private static String extractLastMessageLineFallback(String allText) {
         String last = "";
