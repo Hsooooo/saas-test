@@ -97,6 +97,8 @@ public class ChatService {
                     .chatRoomIdx(h.getChatRoomIdx())
                     .message(h.getMessage())
                     .senderType(h.getSenderType())
+                    .categoryType(h.getCategoryType())
+                    .categoryTypeDesc(EnumCode.getCodeDesc(h.getCategoryType()))
                     .createDate(h.getCreateDate())
                     .updateDate(h.getUpdateDate())
                     .toolResults(toolResults)

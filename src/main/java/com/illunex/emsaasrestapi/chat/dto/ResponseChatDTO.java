@@ -1,5 +1,6 @@
 package com.illunex.emsaasrestapi.chat.dto;
 
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import lombok.AllArgsConstructor;
@@ -21,9 +22,16 @@ public class ResponseChatDTO {
         private Integer chatRoomIdx;
         private String message;
         private String senderType;
+        private String categoryType;
+        private String categoryTypeDesc;
         private ZonedDateTime createDate;
         private ZonedDateTime updateDate;
         private List<ToolResult> toolResults;
+
+        public void setCategoryType(String categoryType) {
+            this.categoryType = categoryType;
+            this.categoryTypeDesc = EnumCode.getCodeDesc(categoryType);
+        }
     }
 
     @Getter
