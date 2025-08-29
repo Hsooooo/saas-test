@@ -430,7 +430,6 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_history` (
     `chat_room_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅방 번호',
     `message` LONGTEXT NULL DEFAULT NULL COMMENT '채팅 메세지' COLLATE 'utf8mb4_general_ci',
     `sender_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '보낸이 타입' COLLATE 'utf8mb4_general_ci',
-    `category_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '카테고리 타입' COLLATE 'utf8mb4_general_ci',
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
     PRIMARY KEY (`idx`) USING BTREE,
