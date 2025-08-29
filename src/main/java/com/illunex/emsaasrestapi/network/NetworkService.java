@@ -15,14 +15,18 @@ import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContent;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContentCell;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.GroupOperation;
+import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -356,6 +360,39 @@ public class NetworkService {
 
         return CustomResponse.builder()
                 .data(response)
+                .build();
+    }
+
+    /**
+     * 관계망 엣지 최소/최대값 조회 API
+     * @param memberVO
+     * @param aggregationMinMax
+     * @return
+     */
+    public CustomResponse<?> getAggregationMinMax(MemberVO memberVO, RequestNetworkDTO.AggregationMinMax aggregationMinMax) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, aggregationMinMax.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(aggregationMinMax.getProjectIdx(), partnershipMemberVO.getIdx());
+
+        MatchOperation match = Aggregation.match(
+                Criteria.where("_id.projectIdx").is(aggregationMinMax.getProjectIdx())
+                        .and("type").is(aggregationMinMax.getEdgeType())
+        );
+        GroupOperation group = Aggregation.group("_id.projectIdx")
+                .min("properties." + aggregationMinMax.getLabelEdgeCellName()).as("min")
+                .max("properties." + aggregationMinMax.getLabelEdgeCellName()).as("max");
+
+        Aggregation aggregation = Aggregation.newAggregation(match, group);
+        AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "edge", Document.class);
+
+        return CustomResponse.builder()
+                .data(
+                        ResponseNetworkDTO.AggregationMinMax.builder()
+                                .min(Objects.requireNonNull(results.getUniqueMappedResult()).get("min"))
+                                .max(Objects.requireNonNull(results.getUniqueMappedResult()).get("max"))
+                                .build()
+                )
                 .build();
     }
 }

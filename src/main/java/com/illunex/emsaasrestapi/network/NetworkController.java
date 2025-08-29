@@ -84,8 +84,6 @@ public class NetworkController {
         return networkService.getExtendNetworkSearch(memberVO, search);
     }
 
-
-
     /**
      * 자동완성 API
      * @param memberVO
@@ -97,5 +95,18 @@ public class NetworkController {
     public CustomResponse<?> getAutoComplete(@CurrentMember MemberVO memberVO,
                                              @RequestBody RequestNetworkDTO.AutoCompleteSearch autoCompleteSearch) throws CustomException {
         return networkService.getAutoComplete(memberVO,autoCompleteSearch);
+    }
+
+    /**
+     * 관계망 엣지 최소/최대값 조회 API
+     * @param memberVO
+     * @param aggregationMinMax
+     * @return
+     */
+    @PostMapping("/search/minmax")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getAggregationMinMax(@CurrentMember MemberVO memberVO,
+                                               @RequestBody RequestNetworkDTO.AggregationMinMax aggregationMinMax) throws CustomException {
+        return networkService.getAggregationMinMax(memberVO, aggregationMinMax);
     }
 }

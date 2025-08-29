@@ -57,4 +57,15 @@ public class RequestNetworkDTO {
         private String searchKeyword;      // 키워드
         private Integer limit;             // 제한수
     }
+
+    /**
+     * 최소 / 최대값 집계 조회
+     */
+    @Getter
+    @Setter
+    public static class AggregationMinMax {
+        private Integer projectIdx;         // 프로젝트 ID
+        private String edgeType;            // 엣지 타입(시트명)
+        private String labelEdgeCellName;   // 라벨 표시 엣지 셀명
+    }
 }
