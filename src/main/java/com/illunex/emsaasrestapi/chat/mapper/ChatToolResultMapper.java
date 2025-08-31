@@ -9,7 +9,7 @@ import java.util.List;
 public interface ChatToolResultMapper {
     void insertByChatToolResultVO(ChatToolResultVO chatToolResultVO);
 
-    List<ChatToolResultVO> selectByChatHistoryIdx(Integer chatHistoryIdx);
+    List<ChatToolResultVO> selectByChatHistoryIdxIn(List<Integer> chatHistoryIdxs);
 
     void updateHistoryIdxByIdxs(int historyIdx, List<Long> toolResultIds);
 }

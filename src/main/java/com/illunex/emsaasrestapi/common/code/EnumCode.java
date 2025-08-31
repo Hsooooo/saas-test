@@ -301,4 +301,22 @@ public class EnumCode {
             private final String value;
         }
     }
+
+    /**
+     * 채팅 관련 파일
+     */
+    public static class ChatFile {
+        /**
+         * 채팅 관련 파일 구분
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum FileCd implements BaseCodeEnum {
+            PPTX("CFC0001", "PPTX"),
+            DOCS("PFC0002", "DOCS");
+
+            private final String code;
+            private final String value;
+        }
+    }
 }

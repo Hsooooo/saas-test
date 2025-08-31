@@ -29,6 +29,7 @@ public class AwsS3Component {
         PartnershipMember,
         ProjectFile,
         ProjectImage,
+        LLMGeneratedPPTX,
     }
 
     /**
@@ -46,6 +47,11 @@ public class AwsS3Component {
             String fileKey = folderName + DELIMITER + folderType.name() + DELIMITER + detailPath + DELIMITER + Utils.createFileName(multipartFile.getOriginalFilename());
             return s3Operations.upload(bucket, fileKey, is, ObjectMetadata.builder().contentType(multipartFile.getContentType()).build());
         }
+    }
+
+    public S3Resource upload(InputStream is, FolderType folderType, String detailPath, String contentType, String fileName) throws IOException {
+        String fileKey = folderName + DELIMITER + folderType.name() + DELIMITER + detailPath + DELIMITER + Utils.createFileName(fileName);
+        return s3Operations.upload(bucket, fileKey, is, ObjectMetadata.builder().contentType(contentType).build());
     }
 
     /**

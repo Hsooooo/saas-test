@@ -3,9 +3,15 @@ package com.illunex.emsaasrestapi.chat;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.illunex.emsaasrestapi.chat.mapper.ChatFileMapper;
+import com.illunex.emsaasrestapi.chat.mapper.ChatFileSlideMapper;
 import com.illunex.emsaasrestapi.chat.util.OpenAiSseParser;
+import com.illunex.emsaasrestapi.chat.vo.ChatFileSlideVO;
+import com.illunex.emsaasrestapi.chat.vo.ChatFileVO;
 import com.illunex.emsaasrestapi.chat.vo.ChatHistoryVO;
 import com.illunex.emsaasrestapi.common.CurrentMember;
+import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
+import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import lombok.RequiredArgsConstructor;
@@ -13,10 +19,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -29,12 +38,16 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 public class AiProxyController {
 
+    private final ChatFileSlideMapper chatFileSlideMapper;
     @Value("${ai.url}") String aiGptBase;
 
     private final UpstreamSseClient upstream;     // aiGptBase 로 SSE 프록시하는 클라이언트 (Flux<String> data 청크)
     private final ChatService chatService;        // 채팅방/히스토리 저장
     private final ToolResultService toolSvc;      // tool_result upsert & link(history_idx)
     private final ObjectMapper om;
+    private final WebClient webClient;
+    private final AwsS3Component awsS3Component;
+    private final ChatFileMapper chatFileMapper;
 
     @PostMapping(value = "ai/gpt/v2/api/report-generate", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> proxy(@CurrentMember MemberVO memberVO,
@@ -81,8 +94,8 @@ public class AiProxyController {
         final var tee = new java.io.ByteArrayOutputStream(32 * 1024);
         final var lastAssistant = new AtomicReference<String>("");
         final var lastCategory  = new AtomicReference<String>(null);
-        final var lastPptxFlag  = new AtomicReference<String>(null);
-        final var lastDocsFlag  = new AtomicReference<String>(null);
+        final var lastPptxFlag  = new AtomicReference<>("no");  // 기본값 "no"
+        final var lastDocsFlag  = new AtomicReference<>("no");  // 기본값 "no"
 
         // 툴 결과 즉시 upsert된 row들의 id 모음 → 완료 시 history_idx로 연결
         final List<Long> toolResultIds = new CopyOnWriteArrayList<>();
@@ -128,54 +141,125 @@ public class AiProxyController {
 
             // c) 분류/플래그류 스누핑
             if (n.has("category") && !n.get("category").isNull()) lastCategory.set(n.get("category").asText());
-            if (n.has("pptx")     && !n.get("pptx").isNull())     lastPptxFlag.set(n.get("pptx").asText());
-            if (n.has("docs")     && !n.get("docs").isNull())     lastDocsFlag.set(n.get("docs").asText());
+            if (n.hasNonNull("pptx")) lastPptxFlag.set(n.get("pptx").asText());   // 있을 때만 갱신
+            if (n.hasNonNull("docs")) lastDocsFlag.set(n.get("docs").asText());   // 있을 때만 갱신
 
         }, e -> log.warn("tool/assistant parser error: {}", e.getMessage()));
 
         // 4-3) 완료 시점: 마지막 메시지 → chat_history 저장, 그 history_idx로 tool_result들 연결
         Disposable dDone = stream.ignoreElements().subscribe(null, null, () -> {
             final String all = tee.toString(StandardCharsets.UTF_8);
-            // 업스트림이 OpenAI 스타일 SSE 시퀀스를 준다면 백업 파서도 한번 더 시도
             final String fallbackLast = OpenAiSseParser.extractLastMessageFromSequence(all);
             final String finalText = (lastAssistant.get() == null || lastAssistant.get().isBlank())
                     ? (fallbackLast == null ? "" : fallbackLast)
                     : lastAssistant.get();
 
-            // 카테고리 코드 변환
-            String cate = lastCategory.get();
+            final String cate = lastCategory.get();
             final String cateCode = EnumCode.ChatHistory.CategoryType.getCodeByValue(cate);
 
-            // PPTX/Docs 플래그는 필요 시 후처리
-            final String pptx = lastPptxFlag.get();
-            final String docs = lastDocsFlag.get();
-            if ("yes".equalsIgnoreCase(pptx)) {
-                // TODO: finalText로 PPTX 생성 및 링크 수집(필요하면)
-                // callPptxGenerate(finalText);
-            }
-            if ("yes".equalsIgnoreCase(docs)) {
-                // TODO: 문서 생성 플로우가 있으면 여기에
-            }
-
-            // 1) 어시스턴트 최종 메시지 저장 → history_idx 획득
-            int historyIdx = chatService.saveHistory(
+            // 1) 최종 어시스턴트 메시지 저장 (flush 보장 권장)
+            final int historyIdx = chatService.saveHistory(
                     chatRoomIdx,
                     EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
                     cateCode,
                     finalText
             );
 
-            // 2) 방금 upsert했던 tool_result 들에 history_idx 연결
+            // 2) tool_result ↔ history 링크
             if (!toolResultIds.isEmpty()) {
-                try {
-                    toolSvc.linkResultsToHistory(toolResultIds, historyIdx);
-                } catch (Exception e) {
-                    log.error("linkResultsToHistory failed", e);
-                }
+                try { toolSvc.linkResultsToHistory(toolResultIds, historyIdx); }
+                catch (Exception e) { log.error("linkResultsToHistory failed", e); }
             }
 
-            try { emitter.send(SseEmitter.event().name("done").data("ok")); } catch (Exception ignore) {}
-            emitter.complete();
+            // 3) 프론트에 "final" 이벤트 먼저 발사 (최종 메시지 고정)
+            var finalPayload = Map.of(
+                    "status", "ok",
+                    "history", Map.of(
+                            "idx", historyIdx,
+                            "chatRoomIdx", chatRoomIdx,
+                            "senderType", EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
+                            "categoryType", cateCode,
+                            "message", finalText
+                    ),
+                    "flags", Map.of(
+                            "pptx", lastPptxFlag.get()
+                    )
+            );
+            try { emitter.send(SseEmitter.event().name("final").data(finalPayload)); }
+            catch (Exception ignore) {}
+
+            boolean needPpt = "yes".equalsIgnoreCase(lastPptxFlag.get());
+            boolean needDocs = "yes".equalsIgnoreCase(lastDocsFlag.get());
+
+            if (!(needPpt || needDocs)) {
+                // 4-A) 후처리 없으면 바로 done
+                try { emitter.send(SseEmitter.event().name("done").data("ok")); } catch (Exception ignore) {}
+                emitter.complete();
+                return;
+            }
+
+            // 4-B) 후처리 있으면 "파일 생성중..." 상태 먼저 보내고 실제 작업은 백그라운드 스레드에서
+            try {
+                emitter.send(SseEmitter.event().name("status").data(
+                        Map.of("stage", "postprocess", "message", "파일 생성중...")
+                ));
+            } catch (Exception ignore) {}
+
+            // 5) 외부 API 호출 + S3 업로드 + DB 인서트 (블로킹 작업 → boundedElastic)
+            reactor.core.publisher.Mono.fromCallable(() -> {
+                Map<String, Object> result = new java.util.HashMap<>();
+
+                if (needPpt) {
+                    JsonNode pptRes = callPptxGenerate(finalText, pmIdx, historyIdx);
+
+                    if (pptRes != null && pptRes.path("error").isMissingNode()) {
+                        Map<String, Object> pptMap = new LinkedHashMap<>();
+                        pptMap.put("attachmentIdx", pptRes.path("chat_file_idx").asInt(-1));
+                        pptMap.put("filename",      pptRes.path("filename").asText(""));
+                        pptMap.put("filesize",      pptRes.path("filesize").asLong(0L));
+                        pptMap.put("s3_url",        pptRes.path("s3_url").asText(""));
+
+                        // slides 배열 → List<String>
+                        List<String> slides = toStringList(pptRes.get("slides"));
+                        if (!slides.isEmpty()) pptMap.put("slides", slides);
+
+                        result.put("pptx", pptMap);
+                    } else {
+                        result.put("pptx", Map.of("error", pptRes == null
+                                ? "pptx generation failed"
+                                : pptRes.path("message").asText("pptx generation failed")));
+                    }
+                }
+
+                if (needDocs) {
+//                    JsonNode docRes = callDocsGenerate(finalText); // 너 쪽 docs 생성/업로드 메서드
+//                    Integer attachIdx = saveAttachmentMeta(historyIdx, docRes, "DOCS");
+//                    result.put("docs", Map.of(
+//                            "attachmentIdx", attachIdx,
+//                            "s3_bucket", docRes.path("s3_bucket").asText(null),
+//                            "s3_key", docRes.path("s3_key").asText(null),
+//                            "presigned_url", docRes.path("s3_presigned_url").asText(null)
+//                    ));
+                }
+
+                return result;
+            })
+            .subscribeOn(Schedulers.boundedElastic())
+            .subscribe(post -> {
+                // 6) 결과 전달
+                try { emitter.send(SseEmitter.event().name("assets").data(post)); } catch (Exception ignore) {}
+                try { emitter.send(SseEmitter.event().name("done").data("ok")); } catch (Exception ignore) {}
+                emitter.complete();
+            }, err -> {
+                log.error("postprocess failed", err);
+                try {
+                    emitter.send(SseEmitter.event().name("assets").data(
+                            Map.of("error", "파일 생성 중 오류: " + err.getMessage())
+                    ));
+                    emitter.send(SseEmitter.event().name("done").data("ok"));
+                } catch (Exception ignore) {}
+                emitter.complete();
+            });
         });
 
         // 5) 리소스 정리
@@ -235,18 +319,132 @@ public class AiProxyController {
     }
 
     // 필요 시 PPTX 생성 콜(엔드포인트 통일)
-    private String callPptxGenerate(String mdText) {
+    private JsonNode callPptxGenerate(String mdText, Integer pmIdx, Integer historyIdx) {
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(aiGptBase).path("/v2/api/generate-pptx").toUriString();
-            Map<String, String> request = Map.of("md_text", mdText);
-            // WebClient는 외부 주입/공유 인스턴스로 바꿔도 됨
-            String resp = org.springframework.web.reactive.function.client.WebClient.create(url)
-                    .post().bodyValue(request).retrieve().bodyToMono(String.class).block();
-            log.info("PPTX generation response: {}", resp);
-            return resp;
+            String genUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
+                    .path("/v2/api/generate-pptx").toUriString();
+
+            String genResp = webClient.post().uri(genUrl)
+                    .bodyValue(Map.of("md_text", mdText))
+                    .retrieve().bodyToMono(String.class).block();
+            JsonNode n = om.readTree(genResp);
+
+            boolean hasSlides = n.has("slides") && n.get("slides").isArray();
+            boolean hasDl = n.hasNonNull("pptx_download_url") && !n.get("pptx_download_url").asText().isBlank();
+
+            byte[] bytes = null;
+            String ctype = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            String fname = "slides.pptx";
+            long size = 0L;
+
+            if (hasDl) {
+                String dlUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
+                        .path(n.get("pptx_download_url").asText()).toUriString();
+
+                var fileEntity = webClient.get().uri(dlUrl)
+                        .accept(MediaType.APPLICATION_OCTET_STREAM)
+                        .retrieve()
+                        .toEntity(byte[].class)
+                        .block();
+
+                if (fileEntity == null || fileEntity.getBody() == null) {
+                    throw new IllegalStateException("Empty PPTX download response");
+                }
+                bytes = fileEntity.getBody();
+                HttpHeaders headers = fileEntity.getHeaders();
+                ctype  = headers.getContentType() != null ? headers.getContentType().toString() : ctype;
+                size   = headers.getContentLength() > 0 ? headers.getContentLength() : bytes.length;
+                fname  = resolveFileName(headers, fname);
+            }
+
+            // S3 업로드는 다운로드가 있을 때만
+            AwsS3ResourceDTO s3 = null;
+            if (bytes != null) {
+                try (var is = new java.io.ByteArrayInputStream(bytes)) {
+                    s3 = AwsS3ResourceDTO.builder()
+                            .fileName(fname)
+                            .s3Resource(awsS3Component.upload(
+                                    is, AwsS3Component.FolderType.LLMGeneratedPPTX,
+                                    pmIdx.toString(), ctype, fname))
+                            .build();
+                }
+            }
+
+            // DB 인서트 (PPTX가 실제로 생겼을 때만)
+            Long chatFileIdx = null;
+            if (s3 != null) {
+                ChatFileVO chatFileVO = new ChatFileVO();
+                chatFileVO.setChatHistoryIdx(historyIdx);
+                chatFileVO.setFileName(firstNonBlank(s3.getOrgFileName(), fname));
+                chatFileVO.setFileUrl(s3.getUrl());
+                chatFileVO.setFilePath(s3.getPath());
+                chatFileVO.setFileSize(s3.getSize() != null ? s3.getSize() : size);
+                chatFileVO.setFileCd(EnumCode.ChatFile.FileCd.PPTX.getCode());
+                chatFileMapper.insertByChatFileVO(chatFileVO);
+                chatFileIdx = chatFileVO.getIdx();
+            }
+
+            // 응답 구성: slides 포함(배열 그대로), 파일 메타 포함
+            var obj = n.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) n : om.createObjectNode();
+            if (hasSlides) {
+                obj.set("slides", n.get("slides")); // ★ 여기 핵심: asText() 말고 set()
+                // DB 저장은 chatFileIdx가 있을 때만 (PPTX 업로드 성공 케이스)
+                if (chatFileIdx != null) {
+                    JsonNode slidesNode = n.get("slides");
+                    if (slidesNode.isArray()) {
+                        int page = 1; // 1부터 시작이 일반적
+                        for (JsonNode slideNode : slidesNode) {
+                            ChatFileSlideVO slideVO = new ChatFileSlideVO();
+                            slideVO.setChatFileIdx(chatFileIdx);
+                            slideVO.setPage(page++);
+                            // asText()로 HTML 원문을 저장 (이스케이프 제거, 프론트에서 바로 렌더 용이)
+                            slideVO.setContent(slideNode.asText(""));
+                            chatFileSlideMapper.insertByChatFileSlideVO(slideVO);
+                        }
+                        // 필요하면 개수도 붙여주자
+                        obj.put("slide_count", slidesNode.size());
+                    }
+                } else {
+                    // PPTX 파일 없이 슬라이드만 있는 경우: DB 저장 스킵(혹은 placeholder ChatFile 생성 전략 선택)
+                    log.info("slides present but chatFileIdx is null; skip persisting slides.");
+                }
+            }
+            if (s3 != null) {
+                obj.put("s3_url", s3.getUrl() == null ? "" : s3.getUrl());
+            }
+            obj.put("filename", chatFileIdx == null ? fname : firstNonBlank(s3.getOrgFileName(), fname));
+            obj.put("filesize", chatFileIdx == null ? size : (s3.getSize() == null ? 0L : s3.getSize()));
+            if (chatFileIdx != null) obj.put("chat_file_idx", chatFileIdx);
+
+            return obj;
+
         } catch (Exception e) {
-            log.error("Error during PPTX generation call", e);
-            return null;
+            log.error("Error during PPTX generation/download/upload", e);
+            return om.createObjectNode().put("error", "pptx_generation_failed")
+                    .put("message", e.getMessage() == null ? "" : e.getMessage());
         }
+    }
+
+    private String firstNonBlank(String a, String b) {
+        return (a != null && !a.isBlank()) ? a : b;
+    }
+
+    private String resolveFileName(HttpHeaders headers, String fallback) {
+        String cd = headers.getFirst(HttpHeaders.CONTENT_DISPOSITION);
+        if (cd != null) {
+            try {
+                ContentDisposition d = ContentDisposition.parse(cd);
+                if (d.getFilename() != null && !d.getFilename().isBlank()) {
+                    return d.getFilename();
+                }
+            } catch (Exception ignore) {}
+        }
+        return fallback;
+    }
+    private List<String> toStringList(JsonNode node) {
+        if (node == null || !node.isArray()) return Collections.emptyList();
+        List<String> out = new ArrayList<>(node.size());
+        node.forEach(e -> out.add(e.asText(""))); // null 방지
+        return out;
     }
 }

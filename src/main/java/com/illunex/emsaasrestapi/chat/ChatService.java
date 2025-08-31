@@ -4,13 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.illunex.emsaasrestapi.chat.dto.ResponseChatDTO;
-import com.illunex.emsaasrestapi.chat.mapper.ChatHistoryMapper;
-import com.illunex.emsaasrestapi.chat.mapper.ChatRoomMapper;
-import com.illunex.emsaasrestapi.chat.mapper.ChatToolResultMapper;
+import com.illunex.emsaasrestapi.chat.mapper.*;
 import com.illunex.emsaasrestapi.chat.util.OpenAiSseParser;
-import com.illunex.emsaasrestapi.chat.vo.ChatHistoryVO;
-import com.illunex.emsaasrestapi.chat.vo.ChatRoomVO;
-import com.illunex.emsaasrestapi.chat.vo.ChatToolResultVO;
+import com.illunex.emsaasrestapi.chat.vo.*;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
@@ -29,7 +25,9 @@ import reactor.core.scheduler.Schedulers;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +36,8 @@ public class ChatService {
     private final ChatRoomMapper chatRoomMapper;
     private final ChatHistoryMapper chatHistoryMapper;
     private final ChatToolResultMapper chatToolResultMapper;
+    private final ChatFileMapper chatFileMapper;
+    private final ChatFileSlideMapper chatFileSlideMapper;
     private final ObjectMapper om;
 
     public int resolveChatRoom(int partnershipMemberIdx, String title) {
@@ -71,42 +71,112 @@ public class ChatService {
                 .build();
     }
 
-    public CustomResponse<?> getChatHistory(MemberVO memberVO, Integer partnershipMemberIdx, Integer chatRoomIdx, CustomPageRequest page, String[] sort) throws CustomException {
-        PartnershipMemberVO pm = partnershipMemberMapper.selectByIdx(partnershipMemberIdx)
-                .orElseThrow(() -> new IllegalArgumentException("Partnership member not found"));
-        if (!memberVO.getIdx().equals(pm.getMemberIdx())) {
+    public CustomResponse<?> getChatHistory(
+            MemberVO memberVO, Integer partnershipMemberIdx, Integer chatRoomIdx,
+            CustomPageRequest page, String[] sort) throws CustomException {
+
+        var pm = partnershipMemberMapper.selectByIdx(partnershipMemberIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID)); // not found도 통일
+        if (!Objects.equals(memberVO.getIdx(), pm.getMemberIdx())) {
             throw new CustomException(ErrorCode.COMMON_INVALID);
         }
-        chatRoomMapper.selectByPartnershipMemberIdxAndChatRoomIdx(partnershipMemberIdx, chatRoomIdx)
-                .orElseThrow(() -> new IllegalArgumentException("No access to this chat room"));
-        Pageable pageable = page.of(sort);
 
-        List<ChatHistoryVO> historyList = chatHistoryMapper.selectByChatRoomIdxAndPageable(chatRoomIdx, pageable);
+        chatRoomMapper.selectByPartnershipMemberIdxAndChatRoomIdx(partnershipMemberIdx, chatRoomIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID)); // 메시지/코드 통일
+
+        Pageable pageable = page.ofWithStableSort(sort, List.of("create_date,DESC", "idx,DESC")); // 타이브레이커 강제
+
+        List<ChatHistoryVO> historyList =
+                chatHistoryMapper.selectByChatRoomIdxAndPageable(chatRoomIdx, pageable);
+
+        if (historyList.isEmpty()) {
+            return CustomResponse.builder()
+                    .data(new PageImpl<>(List.of(), pageable, 0))
+                    .build();
+        }
+
+        // === 1) 배치 조회 준비
+        List<Integer> historyIds = historyList.stream().map(ChatHistoryVO::getIdx).toList();
+
+        // === 2) 도구결과 배치 조회 후 groupBy
+        Map<Integer, List<ChatToolResultVO>> toolMap =
+                chatToolResultMapper.selectByChatHistoryIdxIn(historyIds).stream()
+                        .collect(Collectors.groupingBy(ChatToolResultVO::getChatHistoryIdx));
+
+        // === 3) 파일 배치 조회 → 슬라이드도 한 번에
+        List<ChatFileVO> allFiles = chatFileMapper.selectByChatHistoryIdxIn(historyIds);
+        Map<Integer, List<ChatFileVO>> fileMap =
+                allFiles.stream().collect(Collectors.groupingBy(ChatFileVO::getChatHistoryIdx));
+
+        // PPTX 파일들의 id만 뽑아서 슬라이드 배치 조회
+        List<Long> pptxFileIds = allFiles.stream()
+                .filter(f -> Objects.equals(f.getFileCd(), EnumCode.ChatFile.FileCd.PPTX.getCode()))
+                .map(ChatFileVO::getIdx)
+                .toList();
+
+        Map<Long, List<ChatFileSlideVO>> slideMap = pptxFileIds.isEmpty()
+                ? Map.of()
+                : chatFileSlideMapper.selectByChatFileIdxIn(pptxFileIds).stream()
+                .collect(Collectors.groupingBy(ChatFileSlideVO::getChatFileIdx));
+
+        // === 4) DTO 매핑
         List<ResponseChatDTO.History> response = historyList.stream().map(h -> {
-            List<ChatToolResultVO> tools = chatToolResultMapper.selectByChatHistoryIdx(h.getIdx());
-            List<ResponseChatDTO.ToolResult> toolResults = tools.stream().map(t -> ResponseChatDTO.ToolResult.builder()
-                    .idx(t.getIdx())
-                    .chatHistoryIdx(t.getChatHistoryIdx())
-                    .toolType(t.getToolType())
-                    .title(t.getTitle())
-                    .url(t.getUrl())
-                    .createDate(t.getCreateDate())
-                    .updateDate(t.getUpdateDate())
-                    .build()).toList();
+            // tools
+            List<ResponseChatDTO.ToolResult> toolResults = toolMap.getOrDefault(h.getIdx(), List.of())
+                    .stream()
+                    .map(t -> ResponseChatDTO.ToolResult.builder()
+                            .idx(t.getIdx())
+                            .chatHistoryIdx(t.getChatHistoryIdx())
+                            .toolType(t.getToolType())
+                            .title(t.getTitle())
+                            .url(t.getUrl())
+                            .createDate(t.getCreateDate())
+                            .updateDate(t.getUpdateDate())
+                            .build())
+                    .toList();
+
+            // files (+slides)
+            List<ResponseChatDTO.ChatFileResult> chatFiles = fileMap.getOrDefault(h.getIdx(), List.of())
+                    .stream()
+                    .map(f -> {
+                        List<String> slides = slideMap.getOrDefault(f.getIdx(), List.of())
+                                .stream()
+                                .filter(Objects::nonNull)
+                                .map(s -> s.getPage() + ":" + s.getContent())
+                                .toList();
+                        return ResponseChatDTO.ChatFileResult.builder()
+                                .idx(f.getIdx())
+                                .chatHistoryIdx(f.getChatHistoryIdx())
+                                .fileName(f.getFileName())
+                                .fileUrl(f.getFileUrl())
+                                .filePath(f.getFilePath())
+                                .fileSize(f.getFileSize())
+                                .fileCd(f.getFileCd())
+                                .slides(slides) // 빌더에서 바로
+                                .createDate(f.getCreateDate())
+                                .updateDate(f.getUpdateDate())
+                                .build();
+                    })
+                    .toList();
+
             return ResponseChatDTO.History.builder()
                     .idx(h.getIdx())
                     .chatRoomIdx(h.getChatRoomIdx())
                     .message(h.getMessage())
                     .senderType(h.getSenderType())
                     .categoryType(h.getCategoryType())
-                    .categoryTypeDesc(EnumCode.getCodeDesc(h.getCategoryType()))
+                    .categoryTypeDesc(
+                            h.getCategoryType() == null ? null : EnumCode.getCodeDesc(h.getCategoryType())
+                    )
                     .createDate(h.getCreateDate())
                     .updateDate(h.getUpdateDate())
                     .toolResults(toolResults)
+                    .chatFiles(chatFiles) // ← 누락 보완
                     .build();
         }).toList();
 
-        Integer totalCount = chatHistoryMapper.countAllByChatRoomIdx(chatRoomIdx);
+        int totalCount = chatHistoryMapper.countAllByChatRoomIdx(chatRoomIdx);
+
         return CustomResponse.builder()
                 .data(new PageImpl<>(response, pageable, totalCount))
                 .build();

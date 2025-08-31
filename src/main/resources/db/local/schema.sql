@@ -455,3 +455,37 @@ CREATE TABLE `em_saas`.`chat_tool_result` (
 COMMENT='LLM 채팅 외부 도구 결과'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`chat_file` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 파일번호',
+    `chat_history_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 이력 번호',
+    `file_name` VARCHAR(255) NULL DEFAULT NULL COMMENT '파일명' COLLATE 'utf8mb4_general_ci',
+    `file_url` VARCHAR(512) NULL DEFAULT NULL COMMENT '파일URL' COLLATE 'utf8mb4_general_ci',
+    `file_path` VARCHAR(512) NULL DEFAULT NULL COMMENT '파일경로' COLLATE 'utf8mb4_general_ci',
+    `file_size` BIGINT(20) NULL DEFAULT NULL COMMENT '파일크기',
+    `file_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '파일 구분(code)' COLLATE 'utf8mb4_general_ci',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `file_cd` (`file_cd`) USING BTREE,
+    INDEX `fk_chat_file_chat_history_idx` (`chat_history_idx`) USING BTREE,
+    CONSTRAINT `fk_chat_file_chat_history_idx` FOREIGN KEY (`chat_history_idx`) REFERENCES `chat_history` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='채팅 관련 파일'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`chat_file_slide` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 ppt 슬라이드 번호',
+     `chat_file_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 파일 번호',
+     `content` LONGTEXT NULL DEFAULT NULL COMMENT '슬라이드 내용' COLLATE 'utf8mb4_general_ci',
+     `page` INT(11) NULL DEFAULT NULL COMMENT '페이지번호',
+     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_chat_file_slide_chat_file_idx` (`chat_file_idx`) USING BTREE,
+     CONSTRAINT `fk_chat_file_slide_chat_file_idx` FOREIGN KEY (`chat_file_idx`) REFERENCES `chat_file` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='채팅 파일 슬라이드 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;

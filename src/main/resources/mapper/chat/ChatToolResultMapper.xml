@@ -10,10 +10,13 @@
         VALUES (#{chatHistoryIdx}, #{toolType}, #{title}, #{url}, NOW(), NOW())
     </insert>
 
-    <select id="selectByChatHistoryIdx" parameterType="Integer" resultType="ChatToolResultVO">
+    <select id="selectByChatHistoryIdxIn" parameterType="Integer" resultType="ChatToolResultVO">
         SELECT *
         FROM chat_tool_result
-        WHERE chat_history_idx = #{chatHistoryIdx}
+        WHERE chat_history_idx IN
+        <foreach item="item" index="index" collection="chatHistoryIdxs" open="(" separator="," close=")">
+            #{item}
+        </foreach>
     </select>
 
     <update id="updateHistoryIdxByIdxs">
