@@ -51,23 +51,8 @@ public class NetworkService {
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
-        ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
-
-        // 모든 노드 조회
-        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
-        List<Node> nodes = mongoTemplate.find(query, Node.class);
-        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
-                ResponseNetworkDTO.NodeInfo.builder()
-                        .nodeId(target.getNodeId())
-                        .label(target.getLabel())
-                        .properties(target.getProperties())
-                        .build()
-        ).toList();
-        response.setNodes(nodeInfoList);
-
-
-        //관계망 검색
-        networkComponent.networkSearch(response, nodes, projectIdx);
+        // 전체관계망 검색
+        ResponseNetworkDTO.SearchNetwork response = networkComponent.networkSearchAll(projectIdx, 10000);
 
         if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
         if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
@@ -76,7 +61,6 @@ public class NetworkService {
                 .data(response)
                 .build();
     }
-
 
     /**
      * 단일 노드 확장 조회
@@ -185,7 +169,6 @@ public class NetworkService {
                 .data(data)
                 .build();
     }
-
 
     /**
      * 관계망 조회 API
