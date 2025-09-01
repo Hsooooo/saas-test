@@ -35,6 +35,8 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.poi.util.StringUtil.isBlank;
+
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -74,6 +76,7 @@ public class AiProxyController {
 
         final String raw = String.valueOf(body.get("query"));
         final String query = raw == null ? "" : raw.trim();
+        final var sseBuf = new java.util.concurrent.atomic.AtomicReference<>(new StringBuilder(8192));
         if (query.isBlank()) return ResponseEntity.badRequest().build();
 
         final int chatRoomIdx = (roomIdx == null)
@@ -135,43 +138,59 @@ public class AiProxyController {
 
         // 4-2) 즉시 처리 파이프: “tool” 필드 포함된 이벤트 → tool_result upsert
         Disposable dTool = stream.subscribe(chunk -> {
-            Optional<JsonNode> opt = tryExtractJsonFromSseChunk(chunk, om);
-            if (opt.isEmpty()) return;
+            // 청크 누적 → 완전 프레임의 data JSON들만 얻음
+            java.util.List<String> jsons = drainSseDataJsons(sseBuf.get(), chunk);
+            if (jsons.isEmpty()) return;
 
-            JsonNode n = opt.get();
-
-            // a) tool 이벤트 즉시 저장
-            if (n.hasNonNull("tool")) {
+            for (String js : jsons) {
                 try {
-                    List<Long> ids = toolSvc.upsertToolPayload(n.toString()); // 구현: payload JSON 기준 upsert → id 리스트 반환
-                    if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
-                } catch (JsonProcessingException e) {
-                    log.warn("tool payload parse fail", e);
+                    JsonNode n = om.readTree(js);
+
+                    // a) tool 이벤트 즉시 저장
+                    if (n.hasNonNull("tool")) {
+                        java.util.List<Long> ids = toolSvc.upsertToolPayload(n.toString());
+                        if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
+                    }
+
+                    // b) 마지막 assistant content 후보
+                    String content = extractAssistantText(n);
+                    if (content != null && !content.isBlank()) lastAssistant.set(content);
+
+                    // c) 분류/플래그류
+                    if (n.has("category") && !n.get("category").isNull()) {
+                        String cat = n.get("category").asText();
+                        if (cat != null && !"null".equalsIgnoreCase(cat.trim()) && !cat.isBlank()) {
+                            lastCategory.set(cat);
+                        }
+                    }
+                    if (n.hasNonNull("pptx")) lastPptxFlag.set(n.get("pptx").asText());
+                    if (n.hasNonNull("docs")) lastDocsFlag.set(n.get("docs").asText());
+                } catch (Exception ex) {
+                    log.warn("tool/assistant parse fail: {}", ex.toString());
                 }
             }
-
-            // b) 마지막 assistant content 후보 누적(수신 모델 포맷에 맞춰 유연 처리)
-            //    - delta/content/text 등 다양성 고려
-            String content = extractAssistantText(n);
-            if (content != null && !content.isBlank()) lastAssistant.set(content);
-
-            // c) 분류/플래그류 스누핑
-            if (n.has("category") && !n.get("category").isNull()) lastCategory.set(n.get("category").asText());
-            if (n.hasNonNull("pptx")) lastPptxFlag.set(n.get("pptx").asText());   // 있을 때만 갱신
-            if (n.hasNonNull("docs")) lastDocsFlag.set(n.get("docs").asText());   // 있을 때만 갱신
-
         }, e -> log.warn("tool/assistant parser error: {}", e.getMessage()));
 
         // 4-3) 완료 시점: 마지막 메시지 → chat_history 저장, 그 history_idx로 tool_result들 연결
         Disposable dDone = stream.ignoreElements().subscribe(null, null, () -> {
             final String all = tee.toString(StandardCharsets.UTF_8);
+
+// ★ 추가: 전체 스트림에서 "마지막 유효 텍스트" 보정
+            String fixedText = extractLastAssistantFromStream(all, om);
             final String fallbackLast = OpenAiSseParser.extractLastMessageFromSequence(all);
-            final String finalText = (lastAssistant.get() == null || lastAssistant.get().isBlank())
-                    ? (fallbackLast == null ? "" : fallbackLast)
-                    : lastAssistant.get();
+
+            final String finalText = !isBlank(lastAssistant.get())
+                    ? lastAssistant.get()
+                    : (!isBlank(fixedText) ? fixedText
+                    : (fallbackLast == null ? "" : fallbackLast));
+
+// ★ 추가: 전체 스트림에서 pptx/docs 마지막 값 보정
+            Map<String, String> lastFlags = extractLastFlagsFromStream(all, om);
+            if (lastFlags.containsKey("pptx")) lastPptxFlag.set(lastFlags.get("pptx"));
+            if (lastFlags.containsKey("docs")) lastDocsFlag.set(lastFlags.get("docs"));
 
             final String cate = lastCategory.get();
-            final String cateCode = EnumCode.ChatHistory.CategoryType.getCodeByValue(cate);
+            final String cateCode = safeCateCode(cate);
 
             // 1) 최종 어시스턴트 메시지 저장 (flush 보장 권장)
             final int historyIdx = chatService.saveHistory(
@@ -290,6 +309,10 @@ public class AiProxyController {
         emitter.onError(ex -> cleanup.run());
 
         HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "text/event-stream; charset=utf-8");
+        headers.setCacheControl("no-cache");
+        headers.setConnection("keep-alive");
+        headers.add("X-Accel-Buffering", "no"); // nginx 쓰면 버퍼링 차단
         headers.add("X-Chat-Room-Idx", String.valueOf(chatRoomIdx));
         headers.add("Access-Control-Expose-Headers", "X-Chat-Room-Idx");
         return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
@@ -443,9 +466,12 @@ public class AiProxyController {
         if (n.hasNonNull("content")) return n.get("content").asText();
         if (n.has("delta") && n.get("delta").hasNonNull("content")) return n.get("delta").get("content").asText();
         if (n.has("message") && n.get("message").hasNonNull("content")) return n.get("message").get("content").asText();
+        if (n.has("message") && n.get("message").isTextual()) return n.get("message").asText(); // ★ 추가
         if (n.hasNonNull("text")) return n.get("text").asText();
+        if (n.has("message") && n.get("message").isTextual()) return n.get("message").asText();
         return null;
     }
+
 
     // 필요 시 PPTX 생성 콜(엔드포인트 통일)
     private JsonNode callPptxGenerate(String mdText, Integer pmIdx, Integer historyIdx) {
@@ -575,5 +601,156 @@ public class AiProxyController {
         List<String> out = new ArrayList<>(node.size());
         node.forEach(e -> out.add(e.asText(""))); // null 방지
         return out;
+    }
+
+    private String safeCateCode(String cate) {
+        if (cate == null || cate.isBlank() || "null".equalsIgnoreCase(cate)) {
+            return EnumCode.ChatHistory.CategoryType.GENERAL.getCode();
+        }
+        try { return EnumCode.ChatHistory.CategoryType.getCodeByValue(cate); }
+        catch (IllegalArgumentException ex) { return EnumCode.ChatHistory.CategoryType.GENERAL.getCode(); }
+    }
+
+    // 청크들을 누적하다가 \n\n 로 끝나는 "완전한 SSE 프레임"만 뽑아, 각 프레임의 data: 라인을 합쳐 JSON 문자열 리스트로 반환
+    private static java.util.List<String> drainSseDataJsons(StringBuilder buf, String incoming) {
+        if (incoming != null) buf.append(incoming);
+        final String SEP = "\n\n";
+        java.util.List<String> out = new java.util.ArrayList<>();
+        int from = 0, cut;
+        String all = buf.toString();
+        while ((cut = all.indexOf(SEP, from)) >= 0) {
+            String frame = all.substring(from, cut);
+            from = cut + SEP.length();
+
+            // 프레임에서 data: 라인만 추출해 합치기
+            StringBuilder data = new StringBuilder();
+            for (String line : frame.split("\n")) {
+                if (line.startsWith(":")) continue;            // 주석
+                if (line.startsWith("data:")) {
+                    if (data.length() > 0) data.append('\n');  // 여러 data: 라인 합치기
+                    data.append(line.substring(5).trim());
+                }
+            }
+            String s = data.toString().trim();
+            // 유효 JSON일 때만 반환
+            if (!s.isEmpty() && s.charAt(0) == '{' && s.charAt(s.length()-1) == '}') {
+                out.add(s);
+            }
+        }
+        // 남은 꼬리 버퍼 보존
+        buf.setLength(0);
+        buf.append(all.substring(from));
+        return out;
+    }
+
+    // tee(전체 SSE 텍스트)를 \n\n 프레임 단위로 쪼개서,
+// 각 프레임의 data: 라인을 합쳐 JSON을 만들고,
+// pptx/docs의 "마지막으로 관측된 값"을 반환한다.
+    private static Map<String, String> extractLastFlagsFromStream(String all, ObjectMapper om) {
+        Map<String, String> out = new HashMap<>();
+        JsonNode last = extractLastDataJson(all, om);
+        if (last == null) return out;
+        if (last.hasNonNull("pptx")) out.put("pptx", last.get("pptx").asText());
+        if (last.hasNonNull("docs")) out.put("docs", last.get("docs").asText());
+        return out;
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    // tee 전체에서 \n\n 프레임 단위로 data: 라인을 합쳐 JSON을 만들고,
+// content/delta.content/message.content/message(문자열)/text 순으로
+// "마지막 유효 텍스트"를 찾아 반환.
+    private static String extractLastAssistantFromStream(String all, ObjectMapper om) {
+        if (isBlank(all)) return "";
+        final String SEP = "\n\n";
+        int from = 0, cut;
+        String last = "";
+        while ((cut = all.indexOf(SEP, from)) >= 0) {
+            String frame = all.substring(from, cut);
+            from = cut + SEP.length();
+
+            StringBuilder data = new StringBuilder();
+            for (String line : frame.split("\n")) {
+                if (line.startsWith("data:")) {
+                    if (data.length() > 0) data.append('\n');
+                    data.append(line.substring(5).trim());
+                }
+            }
+            String s = data.toString().trim();
+            if (s.isEmpty() || s.charAt(0) != '{' || s.charAt(s.length()-1) != '}') continue;
+
+            try {
+                JsonNode n = om.readTree(s);
+                // 1) content
+                if (n.hasNonNull("content")) last = n.get("content").asText();
+                // 2) delta.content
+                if (n.has("delta") && n.get("delta").hasNonNull("content")) last = n.get("delta").get("content").asText();
+                // 3) message.content (객체형)
+                if (n.has("message") && n.get("message").hasNonNull("content")) last = n.get("message").get("content").asText();
+                // 4) message (문자열형) ← 네 케이스에서 자주 쓰이는 형태
+                if (n.has("message") && n.get("message").isTextual()) last = n.get("message").asText();
+                // 5) text
+                if (n.hasNonNull("text")) last = n.get("text").asText();
+            } catch (Exception ignore) {}
+        }
+        return last == null ? "" : last;
+    }
+
+    // 교체: data: 유무 모두 처리 (없으면 텍스트에서 마지막 JSON 객체를 직접 찾음)
+    private static JsonNode extractLastDataJson(String all, ObjectMapper om) {
+        if (all == null || all.isEmpty()) return null;
+
+        // 1) data: 라인이 있는 SSE 포맷 처리
+        if (all.contains("data:")) {
+            final String SEP = "\n\n";
+            int from = 0, cut;
+            JsonNode last = null;
+            while ((cut = all.indexOf(SEP, from)) >= 0) {
+                String frame = all.substring(from, cut);
+                from = cut + SEP.length();
+
+                StringBuilder data = new StringBuilder();
+                for (String line : frame.split("\n")) {
+                    if (line.startsWith("data:")) {
+                        if (data.length() > 0) data.append('\n');
+                        data.append(line.substring(5).trim());
+                    }
+                }
+                String s = data.toString().trim();
+                if (s.startsWith("{") && s.endsWith("}")) {
+                    try { last = om.readTree(s); } catch (Exception ignore) {}
+                }
+            }
+            if (last != null) return last; // 찾았으면 종료
+            // 못 찾았으면 아래 루즈 파서로 폴백
+        }
+
+        // 2) data: 가 없는 “그냥 JSON 텍스트” 처리 — 마지막 완전한 JSON 객체를 찾아 파싱
+        int start = -1, depth = 0;
+        boolean inStr = false, esc = false;
+        for (int i = 0; i < all.length(); i++) {
+            char c = all.charAt(i);
+            if (inStr) {
+                if (esc) { esc = false; continue; }
+                if (c == '\\') { esc = true; continue; }
+                if (c == '"') { inStr = false; }
+                continue;
+            }
+            if (c == '"') { inStr = true; continue; }
+            if (c == '{') {
+                if (depth == 0) start = i;
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0 && start >= 0) {
+                    String obj = all.substring(start, i + 1);
+                    try { return om.readTree(obj); } catch (Exception ignore) {}
+                    start = -1; // 다음 후보로
+                }
+            }
+        }
+        return null;
     }
 }
