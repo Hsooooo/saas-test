@@ -28,6 +28,7 @@ import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
+import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -343,6 +344,10 @@ public class ProjectService {
     public CustomResponse<?> getProjectList(MemberVO memberVO, RequestProjectDTO.SearchProject searchProject, CustomPageRequest pageRequest, String[] sort) throws CustomException {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, searchProject.getPartnershipIdx());
+
+        if (StringUtils.isNotBlank(searchProject.getStatusCd()) && !searchProject.getStatusCd().equals(EnumCode.Project.StatusCd.Complete.getCode())) {
+            searchProject.setStatusCd(null);
+        }
 
         Pageable pageable = pageRequest.of(sort);
         // 프로젝트 목록 조회

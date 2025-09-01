@@ -113,18 +113,14 @@
         WHERE idx = #{idx}
     </update>
 
-    <select id="selectByIdx" parameterType="Integer" resultType="ProjectVO">
-        SELECT
-            *
-        FROM project
-        WHERE idx = #{idx}
-    </select>
-<!--파트너쉽&카테고리&프로젝트 구성원에 포함된 목록 조회-->
     <select id="selectAllBySearchProjectListAndPartnershipMemberIdx" resultType="ProjectVO">
         SELECT *
         FROM project p
         INNER JOIN project_member pm ON pm.project_idx = p.idx
         WHERE p.partnership_idx = #{searchProject.partnershipIdx}
+        <if test="searchProject.statusCd != null and !searchProject.statusCd.isEmpty()">
+            AND p.status_cd = #{searchProject.statusCd}
+        </if>
         AND p.delete_date IS NULL
         <choose>
             <when test="searchProject.searchType != null and searchProject.searchType.name().equals('category')">
@@ -142,6 +138,13 @@
             </foreach>
         </if>
         LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
+    </select>
+    <!--파트너쉽&카테고리&프로젝트 구성원에 포함된 목록 조회-->
+    <select id="selectByIdx" parameterType="Integer" resultType="ProjectVO">
+        SELECT
+            *
+        FROM project
+        WHERE idx = #{idx}
     </select>
 
     <select id="selectAllBySearchProjectListAndPartnershipMemberIdxNotPaging" resultType="ProjectVO">
@@ -167,6 +170,9 @@
         FROM project p
         INNER JOIN project_member pm ON pm.project_idx = p.idx
         WHERE p.partnership_idx = #{searchProject.partnershipIdx}
+        <if test="searchProject.statusCd != null and !searchProject.statusCd.isEmpty()">
+            AND p.status_cd = #{searchProject.statusCd}
+        </if>
         AND p.delete_date IS NULL
         <choose>
             <when test="searchProject.searchType != null and searchProject.searchType.name().equals('category')">
