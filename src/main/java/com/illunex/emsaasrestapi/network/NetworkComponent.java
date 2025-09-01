@@ -43,7 +43,6 @@ public class NetworkComponent {
                         .properties(target.getProperties())
                         .build()
         ).toList();
-        response.setNodes(nodeInfoList);
 
         // 노드 없을 경우 예외처리
         if (nodes.isEmpty()) return response;
@@ -100,6 +99,22 @@ public class NetworkComponent {
         newLinks.addAll(edgeInfoList);
         newLinks = newLinks.stream().distinct().toList();
         response.setLinks(newLinks);
+
+        // 메인 노드 컨텐츠 기준 정렬 + 1만개 제한
+        nodeInfoList = nodeInfoList.stream()
+                .distinct()
+                .sorted(Comparator.comparing(
+                        n -> {
+                            if (n.getProperties() == null) return null;
+                            Object v = n.getProperties().get(mainLabel);
+                            if (v == null) return null;
+                            String s = v.toString().trim();
+                            return s.isEmpty() ? null : s; // 공백 문자열도 null 취급
+                        },
+                        Comparator.nullsLast(Comparator.naturalOrder())
+                ))
+                .toList();
+        response.setNodes(nodeInfoList);
 
         return response;
     }
