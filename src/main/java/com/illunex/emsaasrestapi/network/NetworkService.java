@@ -394,6 +394,9 @@ public class NetworkService {
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(aggregationMinMax.getProjectIdx(), partnershipMemberVO.getIdx());
 
+        if (aggregationMinMax.getLabelEdgeCellName() == null || aggregationMinMax.getLabelEdgeCellName().isBlank()) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
         MatchOperation match = Aggregation.match(
                 Criteria.where("_id.projectIdx").is(aggregationMinMax.getProjectIdx())
                         .and("type").is(aggregationMinMax.getEdgeType())
