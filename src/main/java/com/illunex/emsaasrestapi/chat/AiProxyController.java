@@ -117,53 +117,42 @@ public class AiProxyController {
         final List<Long> toolResultIds = new CopyOnWriteArrayList<>();
 
         // 업스트림 구독 (SSE 텍스트 조각을 그대로 흘려보내며, 동시에 파싱)
-        Flux<String> stream = upstream.stream(aiGptBase, "/v2/api/report-generate", payload).share();
+        Flux<String> streamRaw = upstream.stream(aiGptBase, "/v2/api/report-generate", payload).share();
+        Flux<SseFrame> frames = frameSse(streamRaw).share();
 
         // 4-1) 다운스트림으로 프록시 + tee 에 기록
-        Disposable dProxy = stream.subscribe(chunk -> {
+        Disposable dProxy = frames.subscribe(f -> {
+            try { tee.write((f.data() + "\n").getBytes(StandardCharsets.UTF_8)); } catch (IOException ex) { /* noop */ }
             try {
-                tee.write(chunk.getBytes(StandardCharsets.UTF_8));
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
-            // 그대로 클라이언트에게 흘려보냄
-            try { emitter.send(SseEmitter.event().data(chunk)); } catch (Exception ignore) {}
+                var ev = SseEmitter.event();
+                if (f.event() != null && !f.event().isBlank()) ev.name(f.event());
+                if (f.id() != null && !f.id().isBlank())       ev.id(f.id());
+                // data는 완전한 JSON 문자열
+                emitter.send(ev.data(f.data(), MediaType.APPLICATION_JSON));
+            } catch (Exception ignore) {}
         }, e -> {
             try { emitter.send("event: error\ndata: " + (e.getMessage() == null ? "" : e.getMessage()) + "\n\n"); } catch (Exception ignore) {}
             emitter.complete();
         });
 
         // 4-2) 즉시 처리 파이프: “tool” 필드 포함된 이벤트 → tool_result upsert
-        Disposable dTool = stream.subscribe(chunk -> {
-            Optional<JsonNode> opt = tryExtractJsonFromSseChunk(chunk, om);
-            if (opt.isEmpty()) return;
-
-            JsonNode n = opt.get();
-
-            // a) tool 이벤트 즉시 저장
-            if (n.hasNonNull("tool")) {
-                try {
-                    List<Long> ids = toolSvc.upsertToolPayload(n.toString()); // 구현: payload JSON 기준 upsert → id 리스트 반환
+        Disposable dTool = frames.subscribe(f -> {
+            try {
+                JsonNode n = om.readTree(f.data()); // 항상 완전한 JSON
+                if (n.hasNonNull("tool")) {
+                    List<Long> ids = toolSvc.upsertToolPayload(n.toString());
                     if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
-                } catch (JsonProcessingException e) {
-                    log.warn("tool payload parse fail", e);
                 }
-            }
-
-            // b) 마지막 assistant content 후보 누적(수신 모델 포맷에 맞춰 유연 처리)
-            //    - delta/content/text 등 다양성 고려
-            String content = extractAssistantText(n);
-            if (content != null && !content.isBlank()) lastAssistant.set(content);
-
-            // c) 분류/플래그류 스누핑
-            if (n.has("category") && !n.get("category").isNull()) lastCategory.set(n.get("category").asText());
-            if (n.hasNonNull("pptx")) lastPptxFlag.set(n.get("pptx").asText());   // 있을 때만 갱신
-            if (n.hasNonNull("docs")) lastDocsFlag.set(n.get("docs").asText());   // 있을 때만 갱신
-
+                String content = extractAssistantText(n);
+                if (content != null && !content.isBlank()) lastAssistant.set(content);
+                if (n.has("category") && !n.get("category").isNull()) lastCategory.set(n.get("category").asText());
+                if (n.hasNonNull("pptx")) lastPptxFlag.set(n.get("pptx").asText());
+                if (n.hasNonNull("docs")) lastDocsFlag.set(n.get("docs").asText());
+            } catch (Exception ignore) {}
         }, e -> log.warn("tool/assistant parser error: {}", e.getMessage()));
 
         // 4-3) 완료 시점: 마지막 메시지 → chat_history 저장, 그 history_idx로 tool_result들 연결
-        Disposable dDone = stream.ignoreElements().subscribe(null, null, () -> {
+        Disposable dDone = frames.ignoreElements().subscribe(null, null, () -> {
             final String all = tee.toString(StandardCharsets.UTF_8);
             final String fallbackLast = OpenAiSseParser.extractLastMessageFromSequence(all);
             final String finalText = (lastAssistant.get() == null || lastAssistant.get().isBlank())
@@ -290,6 +279,10 @@ public class AiProxyController {
         emitter.onError(ex -> cleanup.run());
 
         HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "text/event-stream; charset=utf-8");
+        headers.setCacheControl("no-cache");
+        headers.setConnection("keep-alive");
+        headers.add("X-Accel-Buffering", "no"); // nginx 사용 시
         headers.add("X-Chat-Room-Idx", String.valueOf(chatRoomIdx));
         headers.add("Access-Control-Expose-Headers", "X-Chat-Room-Idx");
         return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
@@ -575,5 +568,39 @@ public class AiProxyController {
         List<String> out = new ArrayList<>(node.size());
         node.forEach(e -> out.add(e.asText(""))); // null 방지
         return out;
+    }
+
+    record SseFrame(String event, String id, String data) {}
+
+    // Flux<String> 청크 → SSE 프레임 단위로 분리
+    static Flux<SseFrame> frameSse(Flux<String> chunks) {
+        final String SEP = "\n\n";
+        return chunks
+                .scan(new StringBuilder(), (buf, s) -> { buf.append(s); return buf; })
+                .flatMapIterable(buf -> {
+                    String all = buf.toString();
+                    int cut, from = 0;
+                    List<SseFrame> out = new ArrayList<>();
+                    while ((cut = all.indexOf(SEP, from)) >= 0) {
+                        String frame = all.substring(from, cut);
+                        from = cut + SEP.length();
+
+                        String event = null, id = null;
+                        StringBuilder data = new StringBuilder();
+                        for (String line : frame.split("\n")) {
+                            if (line.startsWith(":")) continue;
+                            if (line.startsWith("event:")) { event = line.substring(6).trim(); continue; }
+                            if (line.startsWith("id:"))    { id    = line.substring(3).trim(); continue; }
+                            if (line.startsWith("data:"))  {
+                                if (data.length() > 0) data.append('\n');
+                                data.append(line.substring(5).trim());
+                            }
+                        }
+                        if (data.length() > 0) out.add(new SseFrame(event, id, data.toString()));
+                    }
+                    buf.setLength(0);
+                    buf.append(all.substring(from));
+                    return out;
+                });
     }
 }
