@@ -32,7 +32,7 @@ public class ResponseAIDTO {
         @JsonIgnoreProperties(ignoreUnknown = true)
         public static class GraphNode {
             private String id;
-            private List<String> labels;
+            private String labels;
             private Map<String, Object> properties;
         }
 

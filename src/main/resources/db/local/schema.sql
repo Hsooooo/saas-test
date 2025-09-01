@@ -508,7 +508,7 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_node` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 노드 번호',
     `chat_network_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 관계망 번호',
     `id` VARCHAR(255) NULL DEFAULT NULL COMMENT '노드 아이디' COLLATE 'utf8mb4_general_ci',
-    `labels` JSON NULL DEFAULT NULL COMMENT '노드 라벨' COLLATE 'utf8mb4_general_ci',
+    `labels` VARCHAR(50) NULL DEFAULT NULL COMMENT '노드 라벨' COLLATE 'utf8mb4_general_ci',
     `properties` JSON NULL DEFAULT NULL COMMENT '노드 속성' COLLATE 'utf8mb4_general_ci',
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',

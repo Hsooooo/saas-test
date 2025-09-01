@@ -340,7 +340,7 @@ public class ChatService {
                 nodeVO.setChatNetworkIdx(networkVO.getIdx());
                 nodeVO.setId(n.getId());
                 nodeVO.setProperties(toJson(n.getProperties()));
-                nodeVO.setLabels(toJson(n.getLabels()));
+                nodeVO.setLabels(n.getLabels());
                 nodes.add(nodeVO);
             }
         }
