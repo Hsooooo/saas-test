@@ -160,7 +160,7 @@ public class AiProxyController {
                     : lastAssistant.get();
 
             final String cate = lastCategory.get();
-            final String cateCode = EnumCode.ChatHistory.CategoryType.getCodeByValue(cate);
+            final String cateCode = safeCateCode(cate);
 
             // 1) 최종 어시스턴트 메시지 저장 (flush 보장 권장)
             final int historyIdx = chatService.saveHistory(
@@ -602,5 +602,16 @@ public class AiProxyController {
                     buf.append(all.substring(from));
                     return out;
                 });
+    }
+    private String safeCateCode(String cate) {
+        // null, "", 미등록 value → GENERAL 로 폴백(원하면 SIMPLE로 바꿔도 됨)
+        if (cate == null || cate.isBlank()) {
+            return EnumCode.ChatHistory.CategoryType.GENERAL.getCode();
+        }
+        try {
+            return EnumCode.ChatHistory.CategoryType.getCodeByValue(cate);
+        } catch (IllegalArgumentException ex) {
+            return EnumCode.ChatHistory.CategoryType.GENERAL.getCode();
+        }
     }
 }
