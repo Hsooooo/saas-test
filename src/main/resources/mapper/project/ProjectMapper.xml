@@ -118,8 +118,11 @@
         FROM project p
         INNER JOIN project_member pm ON pm.project_idx = p.idx
         WHERE p.partnership_idx = #{searchProject.partnershipIdx}
-        <if test="searchProject.statusCd != null and !searchProject.statusCd.isEmpty()">
-            AND p.status_cd = #{searchProject.statusCd}
+        <if test="searchProject.statusCdList != null and !searchProject.statusCdList.isEmpty()">
+            AND p.status_cd IN
+            <foreach collection="searchProject.statusCdList" item="cd" open="(" separator="," close=")">
+                #{cd}
+            </foreach>
         </if>
         AND p.delete_date IS NULL
         <choose>
@@ -170,8 +173,11 @@
         FROM project p
         INNER JOIN project_member pm ON pm.project_idx = p.idx
         WHERE p.partnership_idx = #{searchProject.partnershipIdx}
-        <if test="searchProject.statusCd != null and !searchProject.statusCd.isEmpty()">
-            AND p.status_cd = #{searchProject.statusCd}
+        <if test="searchProject.statusCdList != null and !searchProject.statusCdList.isEmpty()">
+            AND p.status_cd IN
+            <foreach collection="searchProject.statusCdList" item="cd" open="(" separator="," close=")">
+                #{cd}
+            </foreach>
         </if>
         AND p.delete_date IS NULL
         <choose>

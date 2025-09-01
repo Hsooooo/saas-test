@@ -18,7 +18,7 @@ public class RequestProjectDTO {
         private Integer partnershipIdx;                             // 파트너쉽 번호
         private ProjectComponent.CategorySearchType searchType;     // 프로젝트 카테고리 타입
         private Integer projectCategoryIdx;                         // 프로젝트 카테고리번호
-        private String statusCd;               // 프로젝트 상태코드
+        private List<String> statusCdList;
     }
 
     /**

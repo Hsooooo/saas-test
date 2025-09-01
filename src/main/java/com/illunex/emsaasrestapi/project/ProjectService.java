@@ -345,10 +345,6 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, searchProject.getPartnershipIdx());
 
-        if (StringUtils.isNotBlank(searchProject.getStatusCd()) && !searchProject.getStatusCd().equals(EnumCode.Project.StatusCd.Complete.getCode())) {
-            searchProject.setStatusCd(null);
-        }
-
         Pageable pageable = pageRequest.of(sort);
         // 프로젝트 목록 조회
         List<ProjectVO> projectList = projectMapper.selectAllBySearchProjectListAndPartnershipMemberIdx(searchProject, partnershipMemberVO.getIdx(), pageable);
