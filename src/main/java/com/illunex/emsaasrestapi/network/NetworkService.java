@@ -102,6 +102,42 @@ public class NetworkService {
                 .build();
     }
 
+    public CustomResponse<?> getNetworkMultiExtend(MemberVO memberVO, RequestNetworkDTO.MultiExtendSearch multiExtendSearch) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, multiExtendSearch.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(multiExtendSearch.getProjectIdx(), partnershipMemberVO.getIdx());
+
+        ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
+
+        // 노드검색
+        Query query = Query.query(
+                Criteria.where("_id.projectIdx").is(multiExtendSearch.getProjectIdx())
+                        .and("_id.nodeIdx").in(multiExtendSearch.getIdxList())
+                        .and("label").is(multiExtendSearch.getLabel())
+        ).limit(10000);
+        List<Node> nodes = mongoTemplate.find(query, Node.class);
+        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
+                ResponseNetworkDTO.NodeInfo.builder()
+                        .nodeId(target.getNodeId())
+                        .label(target.getLabel())
+                        .properties(target.getProperties())
+                        .build()
+        ).toList();
+
+        response.setNodes(nodeInfoList);
+
+        // 관계망 검색
+        networkComponent.networkSearch(response, nodes, multiExtendSearch.getProjectIdx(), multiExtendSearch.getDepth());
+
+        if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
+        if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
+
+        return CustomResponse.builder()
+                .data(response)
+                .build();
+    }
+
     /**
      * 노드 상세정보 조회
      * @param memberVO

@@ -44,6 +44,20 @@ public class NetworkController {
     }
 
     /**
+     * 단일 노드 확장 조회
+     * @param memberVO
+     * @param multiExtendSearch
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/extend/multi")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getNetworkMultiExtend(@CurrentMember MemberVO memberVO,
+                                                    @RequestBody RequestNetworkDTO.MultiExtendSearch multiExtendSearch) throws CustomException {
+        return networkService.getNetworkMultiExtend(memberVO, multiExtendSearch);
+    }
+
+    /**
      * 단일노드 상세정보 조회
      * @param memberVO
      * @param selectNode
