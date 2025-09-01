@@ -27,6 +27,7 @@ public class ResponseChatDTO {
         private ZonedDateTime createDate;
         private ZonedDateTime updateDate;
         private List<ToolResult> toolResults;
+        private List<ChatFileResult> chatFiles;
 
         public void setCategoryType(String categoryType) {
             this.categoryType = categoryType;
@@ -48,4 +49,28 @@ public class ResponseChatDTO {
         private ZonedDateTime createDate;
         private ZonedDateTime updateDate;
     }
+
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    public static class ChatFileResult {
+        private Long idx;
+        private Integer chatHistoryIdx;
+        private String fileName;
+        private String fileUrl;
+        private String filePath;
+        private Long fileSize;
+        private String fileCd;
+        private String fileCdDesc;
+        private List<String> slides = new ArrayList<>();
+        private ZonedDateTime updateDate;
+        private ZonedDateTime createDate;
+
+        public void setFileCd(String fileCd) {
+            this.fileCd = fileCd;
+            this.fileCdDesc = EnumCode.getCodeDesc(fileCd);
+        }
+    }
+
 }

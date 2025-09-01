@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.chat.mapper.ChatFileMapper">
+
+    <insert id="insertByChatFileVO" parameterType="ChatFileVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO chat_file (chat_history_idx, file_name, file_url, file_path, file_size, file_cd, create_date, update_date)
+        VALUES (#{chatHistoryIdx}, #{fileName}, #{fileUrl}, #{filePath}, #{fileSize}, #{fileCd}, NOW(), NOW())
+    </insert>
+
+    <select id="selectByChatHistoryIdxIn" resultType="ChatFileVO">
+        SELECT *
+        FROM chat_file
+        WHERE chat_history_idx IN
+        <foreach item="item" index="index" collection="historyIdxs" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+</mapper>
