@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Optional;
 
 @Mapper
 public interface ChatHistoryMapper {
@@ -19,4 +20,6 @@ public interface ChatHistoryMapper {
     List<ChatHistoryVO> selectRecentByChatRoomIdx(Integer chatRoomIdx, int count);
 
     void updateMessageAndCategoryTypeByIdx(ChatHistoryVO chatHistoryVO);
+
+    Optional<ChatHistoryVO> selectByIdx(Integer chatHistoryIdx);
 }

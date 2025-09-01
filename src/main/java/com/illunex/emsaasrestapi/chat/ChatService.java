@@ -1,17 +1,17 @@
 package com.illunex.emsaasrestapi.chat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.illunex.emsaasrestapi.chat.dto.ResponseAIDTO;
 import com.illunex.emsaasrestapi.chat.dto.ResponseChatDTO;
 import com.illunex.emsaasrestapi.chat.mapper.*;
-import com.illunex.emsaasrestapi.chat.util.OpenAiSseParser;
 import com.illunex.emsaasrestapi.chat.vo.*;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
-import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
@@ -38,6 +38,9 @@ public class ChatService {
     private final ChatToolResultMapper chatToolResultMapper;
     private final ChatFileMapper chatFileMapper;
     private final ChatFileSlideMapper chatFileSlideMapper;
+    private final ChatNetworkMapper chatNetworkMapper;
+    private final ChatNodeMapper chatNodeMapper;
+    private final ChatLinkMapper chatLinkMapper;
     private final ObjectMapper om;
 
     public int resolveChatRoom(int partnershipMemberIdx, String title) {
@@ -71,7 +74,7 @@ public class ChatService {
                 .build();
     }
 
-    public CustomResponse<?> getChatHistory(
+    public CustomResponse<?> getChatHistoryList(
             MemberVO memberVO, Integer partnershipMemberIdx, Integer chatRoomIdx,
             CustomPageRequest page, String[] sort) throws CustomException {
 
@@ -118,6 +121,27 @@ public class ChatService {
                 ? Map.of()
                 : chatFileSlideMapper.selectByChatFileIdxIn(pptxFileIds).stream()
                 .collect(Collectors.groupingBy(ChatFileSlideVO::getChatFileIdx));
+//
+//        List<ChatNetworkVO> networks = chatNetworkMapper.selectByChatHistoryIdxIn(historyIds);
+//        Map<Integer, List<ChatNetworkVO>> networkMap =
+//                networks.stream().collect(Collectors.groupingBy(ChatNetworkVO::getChatHistoryIdx));
+        List<ChatNetworkVO> networks = chatNetworkMapper.selectByChatHistoryIdxIn(historyIds);
+        Map<Integer, List<ChatNetworkVO>> networkMap =
+                networks.stream().collect(Collectors.groupingBy(ChatNetworkVO::getChatHistoryIdx));
+
+        List<Integer> networkIds = networks.stream().map(ChatNetworkVO::getIdx).toList();
+
+// full 모드: 노드/링크까지 한 번에 당겨오기
+        List<ChatNodeVO> allNodes = networkIds.isEmpty() ? List.of()
+                : chatNodeMapper.selectByChatNetworkIdxIn(networkIds);
+        List<ChatLinkVO> allLinks = networkIds.isEmpty() ? List.of()
+                : chatLinkMapper.selectByChatNetworkIdxIn(networkIds);
+
+        // groupBy
+        Map<Integer, List<ChatNodeVO>> nodeMap =
+                allNodes.stream().collect(Collectors.groupingBy(ChatNodeVO::getChatNetworkIdx));
+        Map<Integer, List<ChatLinkVO>> linkMap =
+                allLinks.stream().collect(Collectors.groupingBy(ChatLinkVO::getChatNetworkIdx));
 
         // === 4) DTO 매핑
         List<ResponseChatDTO.History> response = historyList.stream().map(h -> {
@@ -159,6 +183,44 @@ public class ChatService {
                     })
                     .toList();
 
+            // networks (full)
+            List<ResponseChatDTO.ChatNetwork> chatNetworks = networkMap.getOrDefault(h.getIdx(), List.of())
+                    .stream()
+                    .map(n -> {
+                        // 노드/링크 붙이기
+                        List<ResponseChatDTO.ChatNode> dtoNodes =
+                                nodeMap.getOrDefault(n.getIdx(), List.of()).stream()
+                                        .map(v -> ResponseChatDTO.ChatNode.builder()
+                                                .idx(v.getIdx())
+                                                .id(v.getId())
+                                                .labels(parseLabels(v.getLabels()))
+                                                .properties(parseProps(v.getProperties()))
+                                                .build())
+                                        .toList();
+
+                        List<ResponseChatDTO.ChatLink> dtoLinks =
+                                linkMap.getOrDefault(n.getIdx(), List.of()).stream()
+                                        .map(v -> ResponseChatDTO.ChatLink.builder()
+                                                .idx(v.getIdx())
+                                                .type(v.getType())
+                                                .start(v.getStart())
+                                                .end(v.getEnd())
+                                                .properties(parseProps(v.getProperties()))
+                                                .build())
+                                        .toList();
+
+                        return ResponseChatDTO.ChatNetwork.builder()
+                                .idx(n.getIdx())
+                                .chatHistoryIdx(n.getChatHistoryIdx())
+                                .title(n.getTitle())
+                                .nodes(dtoNodes)
+                                .links(dtoLinks)
+                                .createDate(n.getCreateDate())
+                                .updateDate(n.getUpdateDate())
+                                .build();
+                    })
+                    .toList();
+
             return ResponseChatDTO.History.builder()
                     .idx(h.getIdx())
                     .chatRoomIdx(h.getChatRoomIdx())
@@ -172,6 +234,7 @@ public class ChatService {
                     .updateDate(h.getUpdateDate())
                     .toolResults(toolResults)
                     .chatFiles(chatFiles) // ← 누락 보완
+                    .chatNetworks(chatNetworks)
                     .build();
         }).toList();
 
@@ -242,4 +305,96 @@ public class ChatService {
         return h.getIdx();
     };
 
+    public ChatHistoryVO getChatHistory(MemberVO memberVO, Integer pmIdx, Integer chatHistoryIdx) throws CustomException {
+        var pm = partnershipMemberMapper.selectByIdx(pmIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        if (!Objects.equals(memberVO.getIdx(), pm.getMemberIdx())) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        ChatHistoryVO history = chatHistoryMapper.selectByIdx(chatHistoryIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+
+        chatRoomMapper.selectByPartnershipMemberIdxAndChatRoomIdx(pmIdx, history.getChatRoomIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+
+        return history;
+    }
+
+    public void saveGraph(ChatHistoryVO history, String graphResponse) throws JsonProcessingException {
+        ChatRoomVO room = chatRoomMapper.selectByIdx(history.getChatRoomIdx())
+                .orElseThrow(() -> new IllegalArgumentException("Chat room not found"));
+        String payload = normalizeGraphJson(graphResponse, om);
+        ResponseAIDTO.Graph graph = om.readValue(payload, ResponseAIDTO.Graph.class);
+        ChatNetworkVO networkVO = new ChatNetworkVO();
+        networkVO.setChatHistoryIdx(history.getIdx());
+        networkVO.setTitle(room.getTitle());
+
+        chatNetworkMapper.insertByChatNetworkVO(networkVO);
+
+        List<ChatNodeVO> nodes = new ArrayList<>();
+        List<ChatLinkVO> links = new ArrayList<>();
+        if (graph.getGraphData().getNodes() !=  null) {
+            for (ResponseAIDTO.Graph.GraphNode n : graph.getGraphData().getNodes()) {
+                ChatNodeVO nodeVO = new ChatNodeVO();
+                nodeVO.setChatNetworkIdx(networkVO.getIdx());
+                nodeVO.setId(n.getId());
+                nodeVO.setProperties(toJson(n.getProperties()));
+                nodeVO.setLabels(toJson(n.getLabels()));
+                nodes.add(nodeVO);
+            }
+        }
+
+        if (graph.getGraphData().getRelationships() != null) {
+            for (ResponseAIDTO.Graph.GraphRelationship r : graph.getGraphData().getRelationships()) {
+                ChatLinkVO linkVO = new ChatLinkVO();
+                linkVO.setChatNetworkIdx(networkVO.getIdx());
+                linkVO.setType(r.getType());
+                linkVO.setStart(r.getStart());
+                linkVO.setEnd(r.getEnd());
+                linkVO.setProperties(toJson(r.getProperties()));
+                links.add(linkVO);
+            }
+        }
+
+        chatNodeMapper.insertBulkNode(nodes);
+        chatLinkMapper.insertBulkLink(links);
+    }
+
+    private String toJson(Object o) throws JsonProcessingException {
+        return om.writeValueAsString(o == null ? new Object() : o);
+    }
+
+    public String normalizeGraphJson(String raw, ObjectMapper om) throws JsonProcessingException {
+        if (raw == null) throw new IllegalArgumentException("graphResponse is null");
+        String s = raw.strip();
+
+        // BOM 제거
+        if (!s.isEmpty() && s.charAt(0) == '\uFEFF') s = s.substring(1);
+
+        // 서버가 전체를 "문자열"로 감싸 보낸 경우: 1~2회까지 언쿼트 시도
+        for (int i = 0; i < 2; i++) {
+            if (s.startsWith("\"") && s.endsWith("\"")) {
+                s = om.readValue(s, String.class); // 언이스케이프
+                s = s.strip();
+            } else {
+                break;
+            }
+        }
+        // 최종적으로 객체/배열 형태여야 함
+        if (!(s.startsWith("{") || s.startsWith("["))) {
+            throw new IllegalStateException("Invalid JSON payload after normalize: " +
+                    (s.length() > 200 ? s.substring(0, 200) + "..." : s));
+        }
+        return s;
+    }
+
+    private List<String> parseLabels(String json) {
+        try { return json == null ? List.of() : om.readValue(json, new TypeReference<List<String>>(){}); }
+        catch (Exception e) { return List.of(); }
+    }
+    private Map<String,Object> parseProps(String json) {
+        try { return json == null ? Map.of() : om.readValue(json, new TypeReference<Map<String,Object>>(){}); }
+        catch (Exception e) { return Map.of(); }
+    }
 }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.chat.mapper.ChatLinkMapper">
+
+    <insert id="insertBulkLink">
+        INSERT INTO chat_link (chat_network_idx, type, start, end, properties, create_date, update_date)
+        VALUES
+        <foreach collection="list" item="n" separator=",">
+            (#{n.chatNetworkIdx}, #{n.type}, #{n.start}, #{n.end}, #{n.properties}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <select id="selectByChatNetworkIdxIn" resultType="ChatLinkVO">
+        SELECT *
+        FROM chat_link
+        WHERE chat_network_idx IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+</mapper>

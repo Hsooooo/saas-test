@@ -11,6 +11,7 @@ import lombok.Setter;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ResponseChatDTO {
     @Getter
@@ -28,6 +29,7 @@ public class ResponseChatDTO {
         private ZonedDateTime updateDate;
         private List<ToolResult> toolResults;
         private List<ChatFileResult> chatFiles;
+        private List<ChatNetwork> chatNetworks;
 
         public void setCategoryType(String categoryType) {
             this.categoryType = categoryType;
@@ -71,6 +73,46 @@ public class ResponseChatDTO {
             this.fileCd = fileCd;
             this.fileCdDesc = EnumCode.getCodeDesc(fileCd);
         }
+    }
+
+
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    public static class ChatNetwork {
+
+        private Integer idx;
+        private Integer chatHistoryIdx;
+        private String title;
+        private List<ChatNode> nodes;
+        private List<ChatLink> links;
+        private ZonedDateTime createDate;
+        private ZonedDateTime updateDate;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    public static class ChatNode {
+        private Integer idx;
+        private String id;
+        private List<String> labels;
+        private Map<String, Object> properties;
+    }
+
+
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    public static class ChatLink {
+        private Integer idx;
+        private String type;
+        private String start;
+        private String end;
+        private Map<String, Object> properties;
     }
 
 }

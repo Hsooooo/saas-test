@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.chat;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.illunex.emsaasrestapi.chat.dto.ResponseAIDTO;
 import com.illunex.emsaasrestapi.chat.mapper.ChatFileMapper;
 import com.illunex.emsaasrestapi.chat.mapper.ChatFileSlideMapper;
 import com.illunex.emsaasrestapi.chat.util.OpenAiSseParser;
@@ -10,6 +11,7 @@ import com.illunex.emsaasrestapi.chat.vo.ChatFileSlideVO;
 import com.illunex.emsaasrestapi.chat.vo.ChatFileVO;
 import com.illunex.emsaasrestapi.chat.vo.ChatHistoryVO;
 import com.illunex.emsaasrestapi.common.CurrentMember;
+import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
 import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
@@ -48,6 +50,20 @@ public class AiProxyController {
     private final WebClient webClient;
     private final AwsS3Component awsS3Component;
     private final ChatFileMapper chatFileMapper;
+
+    @PostMapping(value = "ai/gpt/v2/api/generate-graph")
+    public ResponseEntity<?> graphProxy(@CurrentMember MemberVO memberVO,
+                                   @RequestParam("partnershipMemberIdx") Integer pmIdx,
+                                   @RequestParam("chatHistoryIdx") Integer chatHistoryIdx) throws Exception {
+        ChatHistoryVO history =  chatService.getChatHistory(memberVO, pmIdx, chatHistoryIdx);
+        final String graphUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
+                .path("/v2/api/generate-graph").toUriString();
+        String graphResp = webClient.post().uri(graphUrl)
+                .bodyValue(Map.of("md_text", history.getMessage()))
+                .retrieve().bodyToMono(String.class).block();
+        chatService.saveGraph(history, graphResp);
+        return ResponseEntity.ok(om.readValue(chatService.normalizeGraphJson(graphResp, om), ResponseAIDTO.Graph.class));
+    }
 
     @PostMapping(value = "ai/gpt/v2/api/report-generate", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> proxy(@CurrentMember MemberVO memberVO,
@@ -182,7 +198,8 @@ public class AiProxyController {
                             "message", finalText
                     ),
                     "flags", Map.of(
-                            "pptx", lastPptxFlag.get()
+                            "pptx", lastPptxFlag.get(),
+                            "docs", lastDocsFlag.get()
                     )
             );
             try { emitter.send(SseEmitter.event().name("final").data(finalPayload)); }
@@ -278,15 +295,127 @@ public class AiProxyController {
         return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
     }
 
+    private JsonNode callDocsGenerate(String mdText, Integer pmIdx, Integer historyIdx) {
+        try {
+            String genUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
+                    .path("/v2/api/generate-docs").toUriString();
+
+            String genResp = webClient.post().uri(genUrl)
+                    .bodyValue(Map.of("md_text", mdText))
+                    .retrieve().bodyToMono(String.class).block();
+            JsonNode n = om.readTree(genResp);
+
+            boolean hasSlides = n.has("slides") && n.get("slides").isArray();
+            boolean hasDl = n.hasNonNull("pptx_download_url") && !n.get("pptx_download_url").asText().isBlank();
+
+            byte[] bytes = null;
+            String ctype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            String fname = "slides.pptx";
+            long size = 0L;
+
+            if (hasDl) {
+                String dlUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
+                        .path(n.get("pptx_download_url").asText()).toUriString();
+
+                var fileEntity = webClient.get().uri(dlUrl)
+                        .accept(MediaType.APPLICATION_OCTET_STREAM)
+                        .retrieve()
+                        .toEntity(byte[].class)
+                        .block();
+
+                if (fileEntity == null || fileEntity.getBody() == null) {
+                    throw new IllegalStateException("Empty PPTX download response");
+                }
+                bytes = fileEntity.getBody();
+                HttpHeaders headers = fileEntity.getHeaders();
+                ctype  = headers.getContentType() != null ? headers.getContentType().toString() : ctype;
+                size   = headers.getContentLength() > 0 ? headers.getContentLength() : bytes.length;
+                fname  = resolveFileName(headers, fname);
+            }
+
+            // S3 업로드는 다운로드가 있을 때만
+            AwsS3ResourceDTO s3 = null;
+            if (bytes != null) {
+                try (var is = new java.io.ByteArrayInputStream(bytes)) {
+                    s3 = AwsS3ResourceDTO.builder()
+                            .fileName(fname)
+                            .s3Resource(awsS3Component.upload(
+                                    is, AwsS3Component.FolderType.LLMGeneratedPPTX,
+                                    pmIdx.toString(), ctype, fname))
+                            .build();
+                }
+            }
+
+            // DB 인서트 (PPTX가 실제로 생겼을 때만)
+            Long chatFileIdx = null;
+            if (s3 != null) {
+                ChatFileVO chatFileVO = new ChatFileVO();
+                chatFileVO.setChatHistoryIdx(historyIdx);
+                chatFileVO.setFileName(firstNonBlank(s3.getOrgFileName(), fname));
+                chatFileVO.setFileUrl(s3.getUrl());
+                chatFileVO.setFilePath(s3.getPath());
+                chatFileVO.setFileSize(s3.getSize() != null ? s3.getSize() : size);
+                chatFileVO.setFileCd(EnumCode.ChatFile.FileCd.PPTX.getCode());
+                chatFileMapper.insertByChatFileVO(chatFileVO);
+                chatFileIdx = chatFileVO.getIdx();
+            }
+
+            // 응답 구성: slides 포함(배열 그대로), 파일 메타 포함
+            var obj = n.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) n : om.createObjectNode();
+            if (hasSlides) {
+                obj.set("slides", n.get("slides")); // ★ 여기 핵심: asText() 말고 set()
+                // DB 저장은 chatFileIdx가 있을 때만 (PPTX 업로드 성공 케이스)
+                if (chatFileIdx != null) {
+                    JsonNode slidesNode = n.get("slides");
+                    if (slidesNode.isArray()) {
+                        int page = 1; // 1부터 시작이 일반적
+                        for (JsonNode slideNode : slidesNode) {
+                            ChatFileSlideVO slideVO = new ChatFileSlideVO();
+                            slideVO.setChatFileIdx(chatFileIdx);
+                            slideVO.setPage(page++);
+                            // asText()로 HTML 원문을 저장 (이스케이프 제거, 프론트에서 바로 렌더 용이)
+                            slideVO.setContent(slideNode.asText(""));
+                            chatFileSlideMapper.insertByChatFileSlideVO(slideVO);
+                        }
+                        // 필요하면 개수도 붙여주자
+                        obj.put("slide_count", slidesNode.size());
+                    }
+                } else {
+                    // PPTX 파일 없이 슬라이드만 있는 경우: DB 저장 스킵(혹은 placeholder ChatFile 생성 전략 선택)
+                    log.info("slides present but chatFileIdx is null; skip persisting slides.");
+                }
+            }
+            if (s3 != null) {
+                obj.put("s3_url", s3.getUrl() == null ? "" : s3.getUrl());
+            }
+            obj.put("filename", chatFileIdx == null ? fname : firstNonBlank(s3.getOrgFileName(), fname));
+            obj.put("filesize", chatFileIdx == null ? size : (s3.getSize() == null ? 0L : s3.getSize()));
+            if (chatFileIdx != null) obj.put("chat_file_idx", chatFileIdx);
+
+            return obj;
+
+        } catch (Exception e) {
+            log.error("Error during PPTX generation/download/upload", e);
+            return om.createObjectNode().put("error", "pptx_generation_failed")
+                    .put("message", e.getMessage() == null ? "" : e.getMessage());
+        }
+    }
+
     // 최근 히스토리를 프롬프트 압축 포맷으로 변환(예: [{"u":"..."},{"a":"..."}])
     private String toHistoryJsonString(List<ChatHistoryVO> histories) {
         if (histories == null || histories.isEmpty()) return "[]";
         try {
             var list = histories.stream()
-                    .map(h -> Map.of(
-                            h.getSenderType().equals(EnumCode.ChatRoom.SenderType.USER.getCode()) ? "u" : "a",
-                            h.getMessage() == null ? "" : h.getMessage()
-                    )).toList();
+                    .map(h -> {
+                        String key = h.getSenderType().equals(EnumCode.ChatRoom.SenderType.USER.getCode()) ? "u" : "a";
+                        String msg = h.getMessage() == null ? "" : h.getMessage();
+                        String category = EnumCode.getCodeDesc(h.getCategoryType()) == null ? "" : EnumCode.getCodeDesc(h.getCategoryType());
+
+                        return Map.of(
+                                key, msg,
+                                "category", category
+                        );
+                    }).toList();
             return om.writeValueAsString(list);
         } catch (Exception e) {
             throw new RuntimeException(e);

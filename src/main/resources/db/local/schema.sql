@@ -489,3 +489,51 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_file_slide` (
 COMMENT='채팅 파일 슬라이드 정보'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`chat_network` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 관계망 번호',
+    `chat_history_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 이력 번호',
+    `title` VARCHAR(255) NULL DEFAULT NULL COMMENT '관계망 제목' COLLATE 'utf8mb4_general_ci',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `fk_chat_network_chat_history_idx` (`chat_history_idx`) USING BTREE,
+    CONSTRAINT `fk_chat_network_chat_history_idx` FOREIGN KEY (`chat_history_idx`) REFERENCES `chat_history` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='LLM 채팅 관계망 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`chat_node` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 노드 번호',
+    `chat_network_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 관계망 번호',
+    `id` VARCHAR(255) NULL DEFAULT NULL COMMENT '노드 아이디' COLLATE 'utf8mb4_general_ci',
+    `labels` JSON NULL DEFAULT NULL COMMENT '노드 라벨' COLLATE 'utf8mb4_general_ci',
+    `properties` JSON NULL DEFAULT NULL COMMENT '노드 속성' COLLATE 'utf8mb4_general_ci',
+    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `fk_chat_node_chat_network_idx` (`chat_network_idx`) USING BTREE,
+    CONSTRAINT `fk_chat_node_chat_network_idx` FOREIGN KEY (`chat_network_idx`) REFERENCES `chat_network` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='LLM 채팅 노드 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`chat_link` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 링크 번호',
+     `chat_network_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 관계망 번호',
+     `type` VARCHAR(255) NULL DEFAULT NULL COMMENT '링크 유형' COLLATE 'utf8mb4_general_ci',
+     `start` VARCHAR(255) NULL DEFAULT NULL COMMENT '시작' COLLATE 'utf8mb4_general_ci',
+     `end` VARCHAR(255) NULL DEFAULT NULL COMMENT '끝' COLLATE 'utf8mb4_general_ci',
+     `properties` JSON NULL DEFAULT NULL COMMENT '링크 속성' COLLATE 'utf8mb4_general_ci',
+     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_chat_link_chat_network_idx` (`chat_network_idx`) USING BTREE,
+     CONSTRAINT `fk_chat_link_chat_network_idx` FOREIGN KEY (`chat_network_idx`) REFERENCES `chat_network` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='LLM 채팅 노드 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
