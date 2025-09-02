@@ -303,7 +303,7 @@ public class AiProxyController {
                     emitter.send(SseEmitter.event().name("assets").data(
                             Map.of("error", "파일 생성 중 오류: " + err.getMessage())
                     ));
-                    emitter.send(SseEmitter.event().name("done").data("ok"));
+                    emitter.send(SseEmitter.event().name("done").data(Map.of("status", "ok")));
                 } catch (Exception ignore) {}
                 emitter.complete();
             });
