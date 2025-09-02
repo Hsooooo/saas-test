@@ -295,7 +295,7 @@ public class AiProxyController {
             .subscribe(post -> {
                 // 6) 결과 전달
                 try { emitter.send(SseEmitter.event().name("assets").data(post)); } catch (Exception ignore) {}
-                try { emitter.send(SseEmitter.event().name("done").data("ok")); } catch (Exception ignore) {}
+                try { emitter.send(SseEmitter.event().name("done").data(Map.of("status", "ok"))); } catch (Exception ignore) {}
                 emitter.complete();
             }, err -> {
                 log.error("postprocess failed", err);
