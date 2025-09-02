@@ -8,13 +8,12 @@ import java.time.ZonedDateTime;
 
 @Getter
 @Setter
-@Alias("ChatHistoryVO")
-public class ChatHistoryVO {
-    private Integer idx;
-    private Integer chatRoomIdx;
-    private String message;
-    private String senderType;
-    private String categoryType;
+@Alias("ChatFileSlideVO")
+public class ChatFileSlideVO {
+    private Long idx;
+    private Long chatFileIdx;
+    private String content;
+    private Integer page;
     private ZonedDateTime createDate;
     private ZonedDateTime updateDate;
 }

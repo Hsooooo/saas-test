@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -256,6 +257,63 @@ public class EnumCode {
         public enum SenderType implements BaseCodeEnum {
             USER("RST0001", "USER"),
             ASSISTANT("RST0002", "ASSISTANT");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    public static class ChatHistory {
+        /**
+         * 프로젝트 쿼리 구분
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum CategoryType implements BaseCodeEnum {
+            SIMPLE("CHT0001", "SIMPLE"),
+            GENERAL("CHT0002", "GENERAL"),
+            PROFESSIONAL("CHT0003", "PROFESSIONAL"),
+            USER("CHT0004", "USER");
+
+            private final String code;
+            private final String value;
+
+            public static String getCodeByValue(String value) {
+                return Arrays.stream(CategoryType.values())
+                        .filter(e -> e.getValue().equals(value))
+                        .map(CategoryType::getCode)
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 value: " + value));
+            }
+        }
+    }
+
+    public static class ChatToolResult {
+        /**
+         * Chat Tool Type
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum ToolType implements BaseCodeEnum {
+            QUERY_RESULT("CTT0001", "get_search_result_by_query_tool");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    /**
+     * 채팅 관련 파일
+     */
+    public static class ChatFile {
+        /**
+         * 채팅 관련 파일 구분
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum FileCd implements BaseCodeEnum {
+            PPTX("CFC0001", "PPTX"),
+            DOCS("PFC0002", "DOCS");
 
             private final String code;
             private final String value;

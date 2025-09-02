@@ -5,16 +5,17 @@ import lombok.Setter;
 import org.apache.ibatis.type.Alias;
 
 import java.time.ZonedDateTime;
+import java.util.Map;
 
-@Getter
 @Setter
-@Alias("ChatHistoryVO")
-public class ChatHistoryVO {
+@Getter
+@Alias("ChatNodeVO")
+public class ChatNodeVO {
     private Integer idx;
-    private Integer chatRoomIdx;
-    private String message;
-    private String senderType;
-    private String categoryType;
+    private Integer chatNetworkIdx;
+    private String id;
+    private String labels;
+    private String properties;
     private ZonedDateTime createDate;
     private ZonedDateTime updateDate;
 }

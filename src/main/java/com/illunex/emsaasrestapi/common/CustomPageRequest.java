@@ -45,6 +45,28 @@ public class CustomPageRequest {
                 "create_date");
     }
 
+    public org.springframework.data.domain.PageRequest ofWithStableSort(String[] properties, List<String> stableFallbacks) {
+        Sort sort;
+        if (properties == null || properties.length == 0) {
+            sort = Sort.by(direction, "create_date", "idx"); // 기본 안정 정렬
+        } else {
+            sort = parseSort(properties);
+            // fallback 추가: 항상 create_date → idx 순으로 최종 보장
+            for (String fb : stableFallbacks) {
+                String[] parts = fb.split(",");
+                String col = changeCamelToSnakeCase(parts[0].trim());
+                Sort.Direction dir = parts.length > 1 && "ASC".equalsIgnoreCase(parts[1])
+                        ? Sort.Direction.ASC : Sort.Direction.DESC;
+                sort = sort.and(Sort.by(dir, col));
+            }
+        }
+        return org.springframework.data.domain.PageRequest.of(
+                page > 0 ? page - 1 : page,
+                size > 0 ? size : DEFAULT_SIZE,
+                sort
+        );
+    }
+
     /**
      * pageable로 넘어온 sort를 Sort클래스로 변환하는 함수
      * @param properties

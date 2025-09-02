@@ -134,4 +134,15 @@ public class ResponseNetworkDTO {
         private Object nodeId;
         private String nodeLabelTitle;
     }
+
+    /**
+     * 관계망 엣지 최소/최대값 조회
+     */
+    @Getter
+    @Setter
+    @Builder
+    public static class AggregationMinMax {
+        private Object min;
+        private Object max;
+    }
 }

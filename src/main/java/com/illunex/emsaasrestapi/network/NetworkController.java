@@ -44,6 +44,20 @@ public class NetworkController {
     }
 
     /**
+     * 단일 노드 확장 조회
+     * @param memberVO
+     * @param multiExtendSearch
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/extend/multi")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getNetworkMultiExtend(@CurrentMember MemberVO memberVO,
+                                                    @RequestBody RequestNetworkDTO.MultiExtendSearch multiExtendSearch) throws CustomException {
+        return networkService.getNetworkMultiExtend(memberVO, multiExtendSearch);
+    }
+
+    /**
      * 단일노드 상세정보 조회
      * @param memberVO
      * @param selectNode
@@ -84,8 +98,6 @@ public class NetworkController {
         return networkService.getExtendNetworkSearch(memberVO, search);
     }
 
-
-
     /**
      * 자동완성 API
      * @param memberVO
@@ -97,5 +109,18 @@ public class NetworkController {
     public CustomResponse<?> getAutoComplete(@CurrentMember MemberVO memberVO,
                                              @RequestBody RequestNetworkDTO.AutoCompleteSearch autoCompleteSearch) throws CustomException {
         return networkService.getAutoComplete(memberVO,autoCompleteSearch);
+    }
+
+    /**
+     * 관계망 엣지 최소/최대값 조회 API
+     * @param memberVO
+     * @param aggregationMinMax
+     * @return
+     */
+    @PostMapping("/search/minmax")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getAggregationMinMax(@CurrentMember MemberVO memberVO,
+                                               @RequestBody RequestNetworkDTO.AggregationMinMax aggregationMinMax) throws CustomException {
+        return networkService.getAggregationMinMax(memberVO, aggregationMinMax);
     }
 }

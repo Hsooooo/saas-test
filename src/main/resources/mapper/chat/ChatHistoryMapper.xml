@@ -12,8 +12,8 @@
     </select>
 
     <insert id="insertByChatHistoryVO" parameterType="ChatHistoryVO" useGeneratedKeys="true" keyProperty="idx">
-        INSERT INTO chat_history (chat_room_idx, message, sender_type, create_date, update_date)
-        VALUES (#{chatRoomIdx}, #{message}, #{senderType}, NOW(), NOW())
+        INSERT INTO chat_history (chat_room_idx, message, sender_type, category_type, create_date, update_date)
+        VALUES (#{chatRoomIdx}, #{message}, #{senderType}, #{categoryType}, NOW(), NOW())
     </insert>
 
     <select id="selectByChatRoomIdxAndPageable" resultType="ChatHistoryVO">
@@ -45,5 +45,21 @@
          WHERE chat_room_idx = #{chatRoomIdx}
          ORDER BY create_date DESC
          LIMIT #{count}
+    </select>
+
+    <update id="updateMessageAndCategoryTypeByIdx" parameterType="ChatHistoryVO">
+        UPDATE chat_history
+           SET message = #{message},
+               category_type = #{categoryType},
+               update_date = NOW()
+         WHERE idx = #{idx}
+    </update>
+
+    <select id="selectByChatRoomIdxAndCategoryTypeOrderByCreateDateDesc" resultType="ChatHistoryVO">
+        SELECT *
+          FROM chat_history
+         WHERE chat_room_idx = #{chatRoomIdx}
+           AND category_type = #{categoryType}
+         ORDER BY create_date DESC
     </select>
 </mapper>

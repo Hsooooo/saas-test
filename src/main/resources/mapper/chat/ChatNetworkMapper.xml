@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.chat.mapper.ChatNetworkMapper">
+
+    <insert id="insertByChatNetworkVO" parameterType="ChatNetworkVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO chat_network (chat_history_idx, title, create_date, update_date)
+        VALUES (#{chatHistoryIdx}, #{title}, NOW(), NOW())
+    </insert>
+
+    <select id="selectByChatHistoryIdxIn">
+        SELECT *
+          FROM chat_network
+         WHERE chat_history_idx IN
+        <foreach item="item" index="index" collection="chatHistoryIdxList" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+</mapper>

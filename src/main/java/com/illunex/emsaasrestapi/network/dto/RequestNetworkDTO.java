@@ -40,6 +40,18 @@ public class RequestNetworkDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class MultiExtendSearch {
+        private Integer projectIdx;
+        private String label;
+        private List<Object> idxList;
+        private Integer depth;
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ExtendSearch {
         private Integer projectIdx;         // 프로젝트 ID
         private List<Object> searchIdxList; // 검색할 노드 인덱스 목록
@@ -56,5 +68,16 @@ public class RequestNetworkDTO {
         private List<String> nodeType;     // 검색할 노트타입
         private String searchKeyword;      // 키워드
         private Integer limit;             // 제한수
+    }
+
+    /**
+     * 최소 / 최대값 집계 조회
+     */
+    @Getter
+    @Setter
+    public static class AggregationMinMax {
+        private Integer projectIdx;         // 프로젝트 ID
+        private String edgeType;            // 엣지 타입(시트명)
+        private String labelEdgeCellName;   // 라벨 표시 엣지 셀명
     }
 }

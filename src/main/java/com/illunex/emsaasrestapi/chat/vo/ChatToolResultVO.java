@@ -8,13 +8,14 @@ import java.time.ZonedDateTime;
 
 @Getter
 @Setter
-@Alias("ChatHistoryVO")
-public class ChatHistoryVO {
-    private Integer idx;
-    private Integer chatRoomIdx;
-    private String message;
-    private String senderType;
-    private String categoryType;
+@Alias("ChatToolResultVO")
+public class ChatToolResultVO {
+    private Long idx;
+    private Integer chatHistoryIdx;
+    private String toolType;
+    /** 통으로 저장할 JSON (문자열) */
+    private String title;
+    private String url;
     private ZonedDateTime createDate;
     private ZonedDateTime updateDate;
 }

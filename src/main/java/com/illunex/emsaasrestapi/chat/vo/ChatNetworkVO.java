@@ -8,13 +8,11 @@ import java.time.ZonedDateTime;
 
 @Getter
 @Setter
-@Alias("ChatHistoryVO")
-public class ChatHistoryVO {
+@Alias("ChatNetworkVO")
+public class ChatNetworkVO {
     private Integer idx;
-    private Integer chatRoomIdx;
-    private String message;
-    private String senderType;
-    private String categoryType;
+    private Integer chatHistoryIdx;
+    private String title;
     private ZonedDateTime createDate;
     private ZonedDateTime updateDate;
 }

@@ -15,14 +15,18 @@ import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContent;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNodeContentCell;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.GroupOperation;
+import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -47,23 +51,8 @@ public class NetworkService {
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
-        ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
-
-        // 모든 노드 조회
-        Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
-        List<Node> nodes = mongoTemplate.find(query, Node.class);
-        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
-                ResponseNetworkDTO.NodeInfo.builder()
-                        .nodeId(target.getNodeId())
-                        .label(target.getLabel())
-                        .properties(target.getProperties())
-                        .build()
-        ).toList();
-        response.setNodes(nodeInfoList);
-
-
-        //관계망 검색
-        networkComponent.networkSearch(response, nodes, projectIdx);
+        // 전체관계망 검색
+        ResponseNetworkDTO.SearchNetwork response = networkComponent.networkSearchAll(projectIdx, 10000);
 
         if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
         if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
@@ -72,7 +61,6 @@ public class NetworkService {
                 .data(response)
                 .build();
     }
-
 
     /**
      * 단일 노드 확장 조회
@@ -105,6 +93,42 @@ public class NetworkService {
 
         // 관계망 검색
         networkComponent.networkSearch(response, nodes, selectNode.getProjectIdx(), selectNode.getDepth());
+
+        if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
+        if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
+
+        return CustomResponse.builder()
+                .data(response)
+                .build();
+    }
+
+    public CustomResponse<?> getNetworkMultiExtend(MemberVO memberVO, RequestNetworkDTO.MultiExtendSearch multiExtendSearch) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, multiExtendSearch.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(multiExtendSearch.getProjectIdx(), partnershipMemberVO.getIdx());
+
+        ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
+
+        // 노드검색
+        Query query = Query.query(
+                Criteria.where("_id.projectIdx").is(multiExtendSearch.getProjectIdx())
+                        .and("_id.nodeIdx").in(multiExtendSearch.getIdxList())
+                        .and("label").is(multiExtendSearch.getLabel())
+        ).limit(10000);
+        List<Node> nodes = mongoTemplate.find(query, Node.class);
+        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
+                ResponseNetworkDTO.NodeInfo.builder()
+                        .nodeId(target.getNodeId())
+                        .label(target.getLabel())
+                        .properties(target.getProperties())
+                        .build()
+        ).toList();
+
+        response.setNodes(nodeInfoList);
+
+        // 관계망 검색
+        networkComponent.networkSearch(response, nodes, multiExtendSearch.getProjectIdx(), multiExtendSearch.getDepth());
 
         if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
         if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
@@ -181,7 +205,6 @@ public class NetworkService {
                 .data(data)
                 .build();
     }
-
 
     /**
      * 관계망 조회 API
@@ -356,6 +379,42 @@ public class NetworkService {
 
         return CustomResponse.builder()
                 .data(response)
+                .build();
+    }
+
+    /**
+     * 관계망 엣지 최소/최대값 조회 API
+     * @param memberVO
+     * @param aggregationMinMax
+     * @return
+     */
+    public CustomResponse<?> getAggregationMinMax(MemberVO memberVO, RequestNetworkDTO.AggregationMinMax aggregationMinMax) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, aggregationMinMax.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(aggregationMinMax.getProjectIdx(), partnershipMemberVO.getIdx());
+
+        if (aggregationMinMax.getLabelEdgeCellName() == null || aggregationMinMax.getLabelEdgeCellName().isBlank()) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+        MatchOperation match = Aggregation.match(
+                Criteria.where("_id.projectIdx").is(aggregationMinMax.getProjectIdx())
+                        .and("type").is(aggregationMinMax.getEdgeType())
+        );
+        GroupOperation group = Aggregation.group("_id.projectIdx")
+                .min("properties." + aggregationMinMax.getLabelEdgeCellName()).as("min")
+                .max("properties." + aggregationMinMax.getLabelEdgeCellName()).as("max");
+
+        Aggregation aggregation = Aggregation.newAggregation(match, group);
+        AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "edge", Document.class);
+
+        return CustomResponse.builder()
+                .data(
+                        ResponseNetworkDTO.AggregationMinMax.builder()
+                                .min(Objects.requireNonNull(results.getUniqueMappedResult()).get("min"))
+                                .max(Objects.requireNonNull(results.getUniqueMappedResult()).get("max"))
+                                .build()
+                )
                 .build();
     }
 }
