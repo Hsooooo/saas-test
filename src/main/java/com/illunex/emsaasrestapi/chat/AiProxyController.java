@@ -45,8 +45,8 @@ public class AiProxyController {
     private final ChatFileSlideMapper chatFileSlideMapper;
     @Value("${ai.url}") String aiGptBase;
 
-    private final UpstreamSseClient upstream;     // aiGptBase 로 SSE 프록시하는 클라이언트 (Flux<String> data 청크)
-    private final ChatService chatService;        // 채팅방/히스토리 저장
+    private final UpstreamSseClient upstream;     // aiGptBase 로 SSE 프록시하는 클라이언트
+    private final ChatService chatService;
     private final ToolResultService toolSvc;      // tool_result upsert & link(history_idx)
     private final ObjectMapper om;
     private final WebClient webClient;
@@ -206,9 +206,15 @@ public class AiProxyController {
                 catch (Exception e) { log.error("linkResultsToHistory failed", e); }
             }
 
+            boolean needPpt  = "yes".equalsIgnoreCase(lastPptxFlag.get());
+            boolean needDocs = "yes".equalsIgnoreCase(lastDocsFlag.get());
+            boolean hasPost  = (needPpt || needDocs);
+
+            String finalStatus = hasPost ? "processing" : "ok";
+
             // 3) 프론트에 "final" 이벤트 먼저 발사 (최종 메시지 고정)
             var finalPayload = Map.of(
-                    "status", "ok",
+                    "status", finalStatus,
                     "history", Map.of(
                             "idx", historyIdx,
                             "chatRoomIdx", chatRoomIdx,
@@ -224,10 +230,8 @@ public class AiProxyController {
             try { emitter.send(SseEmitter.event().name("final").data(finalPayload)); }
             catch (Exception ignore) {}
 
-            boolean needPpt = "yes".equalsIgnoreCase(lastPptxFlag.get());
-            boolean needDocs = "yes".equalsIgnoreCase(lastDocsFlag.get());
 
-            if (!(needPpt || needDocs)) {
+            if (!hasPost) {
                 // 4-A) 후처리 없으면 바로 done
                 try { emitter.send(SseEmitter.event().name("done").data("ok")); } catch (Exception ignore) {}
                 emitter.complete();
@@ -268,14 +272,21 @@ public class AiProxyController {
                 }
 
                 if (needDocs) {
-//                    JsonNode docRes = callDocsGenerate(finalText); // 너 쪽 docs 생성/업로드 메서드
-//                    Integer attachIdx = saveAttachmentMeta(historyIdx, docRes, "DOCS");
-//                    result.put("docs", Map.of(
-//                            "attachmentIdx", attachIdx,
-//                            "s3_bucket", docRes.path("s3_bucket").asText(null),
-//                            "s3_key", docRes.path("s3_key").asText(null),
-//                            "presigned_url", docRes.path("s3_presigned_url").asText(null)
-//                    ));
+                    JsonNode docx = callDocxGenerate(finalText, pmIdx, historyIdx);
+
+                    if (docx != null && docx.path("error").isMissingNode()) {
+                        Map<String, Object> docxMap = new LinkedHashMap<>();
+                        docxMap.put("attachmentIdx", docx.path("chat_file_idx").asInt(-1));
+                        docxMap.put("filename",      docx.path("filename").asText(""));
+                        docxMap.put("filesize",      docx.path("filesize").asLong(0L));
+                        docxMap.put("s3_url",        docx.path("s3_url").asText(""));
+
+                        result.put("docx", docxMap);
+                    } else {
+                        result.put("docx", Map.of("error", docx == null
+                                ? "docx generation failed"
+                                : docx.path("message").asText("docx generation failed")));
+                    }
                 }
 
                 return result;
@@ -318,43 +329,26 @@ public class AiProxyController {
         return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
     }
 
-    private JsonNode callDocsGenerate(String mdText, Integer pmIdx, Integer historyIdx) {
+    private JsonNode callDocxGenerate(String mdText, Integer pmIdx, Integer historyIdx) {
         try {
             String genUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
-                    .path("/v2/api/generate-docs").toUriString();
-
-            String genResp = webClient.post().uri(genUrl)
-                    .bodyValue(Map.of("md_text", mdText))
-                    .retrieve().bodyToMono(String.class).block();
-            JsonNode n = om.readTree(genResp);
-
-            boolean hasSlides = n.has("slides") && n.get("slides").isArray();
-            boolean hasDl = n.hasNonNull("pptx_download_url") && !n.get("pptx_download_url").asText().isBlank();
+                    .path("/v2/api/generate-docx").toUriString();
 
             byte[] bytes = null;
             String ctype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            String fname = "slides.pptx";
+            String fname = "document.docx";
             long size = 0L;
 
-            if (hasDl) {
-                String dlUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
-                        .path(n.get("pptx_download_url").asText()).toUriString();
-
-                var fileEntity = webClient.get().uri(dlUrl)
-                        .accept(MediaType.APPLICATION_OCTET_STREAM)
-                        .retrieve()
-                        .toEntity(byte[].class)
-                        .block();
-
-                if (fileEntity == null || fileEntity.getBody() == null) {
-                    throw new IllegalStateException("Empty PPTX download response");
-                }
-                bytes = fileEntity.getBody();
-                HttpHeaders headers = fileEntity.getHeaders();
-                ctype  = headers.getContentType() != null ? headers.getContentType().toString() : ctype;
-                size   = headers.getContentLength() > 0 ? headers.getContentLength() : bytes.length;
-                fname  = resolveFileName(headers, fname);
-            }
+            var fileEntity = webClient.post().uri(genUrl)
+                    .bodyValue(Map.of("md_text", mdText))
+                    .retrieve()
+                    .toEntity(byte[].class)
+                    .block();
+            bytes = fileEntity.getBody();
+            HttpHeaders headers = fileEntity.getHeaders();
+            ctype  = headers.getContentType() != null ? headers.getContentType().toString() : ctype;
+            size   = headers.getContentLength() > 0 ? headers.getContentLength() : bytes.length;
+            fname  = resolveFileName(headers, fname);
 
             // S3 업로드는 다운로드가 있을 때만
             AwsS3ResourceDTO s3 = null;
@@ -382,32 +376,8 @@ public class AiProxyController {
                 chatFileMapper.insertByChatFileVO(chatFileVO);
                 chatFileIdx = chatFileVO.getIdx();
             }
+            var obj = om.createObjectNode();
 
-            // 응답 구성: slides 포함(배열 그대로), 파일 메타 포함
-            var obj = n.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) n : om.createObjectNode();
-            if (hasSlides) {
-                obj.set("slides", n.get("slides")); // ★ 여기 핵심: asText() 말고 set()
-                // DB 저장은 chatFileIdx가 있을 때만 (PPTX 업로드 성공 케이스)
-                if (chatFileIdx != null) {
-                    JsonNode slidesNode = n.get("slides");
-                    if (slidesNode.isArray()) {
-                        int page = 1; // 1부터 시작이 일반적
-                        for (JsonNode slideNode : slidesNode) {
-                            ChatFileSlideVO slideVO = new ChatFileSlideVO();
-                            slideVO.setChatFileIdx(chatFileIdx);
-                            slideVO.setPage(page++);
-                            // asText()로 HTML 원문을 저장 (이스케이프 제거, 프론트에서 바로 렌더 용이)
-                            slideVO.setContent(slideNode.asText(""));
-                            chatFileSlideMapper.insertByChatFileSlideVO(slideVO);
-                        }
-                        // 필요하면 개수도 붙여주자
-                        obj.put("slide_count", slidesNode.size());
-                    }
-                } else {
-                    // PPTX 파일 없이 슬라이드만 있는 경우: DB 저장 스킵(혹은 placeholder ChatFile 생성 전략 선택)
-                    log.info("slides present but chatFileIdx is null; skip persisting slides.");
-                }
-            }
             if (s3 != null) {
                 obj.put("s3_url", s3.getUrl() == null ? "" : s3.getUrl());
             }
@@ -443,22 +413,6 @@ public class AiProxyController {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    // SSE 청크에서 JSON 노드 시도 추출 (data: {...}\n\n 형태나 그냥 {...} 를 모두 수용)
-    private static Optional<JsonNode> tryExtractJsonFromSseChunk(String chunk, ObjectMapper om) {
-        try {
-            String s = chunk.trim();
-            // "data:" 접두가 여러 줄일 수 있음 → 마지막 data 라인만 노림
-            int idx = s.lastIndexOf("data:");
-            if (idx >= 0) {
-                s = s.substring(idx + 5).trim();
-            }
-            if (s.startsWith("{") && s.endsWith("}")) {
-                return Optional.of(om.readTree(s));
-            }
-        } catch (Exception ignore) {}
-        return Optional.empty();
     }
 
     // 다양한 공급자 포맷에서 어시스턴트 텍스트 후보를 뽑아냄
@@ -660,8 +614,8 @@ public class AiProxyController {
     }
 
     // tee 전체에서 \n\n 프레임 단위로 data: 라인을 합쳐 JSON을 만들고,
-// content/delta.content/message.content/message(문자열)/text 순으로
-// "마지막 유효 텍스트"를 찾아 반환.
+    // content/delta.content/message.content/message(문자열)/text 순으로
+    // "마지막 유효 텍스트"를 찾아 반환.
     private static String extractLastAssistantFromStream(String all, ObjectMapper om) {
         if (isBlank(all)) return "";
         final String SEP = "\n\n";
