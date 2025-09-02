@@ -64,7 +64,7 @@ public class ProjectProcessingService {
         }
     }
 
-    private void processProject(ProjectVO vo) throws IOException, CustomException {
+    public void processProject(ProjectVO vo) throws IOException, CustomException {
         final int projectIdx = vo.getIdx();
         long start = System.currentTimeMillis();
 

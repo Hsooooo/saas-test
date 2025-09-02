@@ -83,7 +83,7 @@ public class ProjectController {
     @PostMapping("complete")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> completeProject(@CurrentMember MemberVO memberVO,
-                                             @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+                                             @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException, IOException {
         return projectService.completeProject(memberVO, projectIdx);
     }
 

@@ -287,7 +287,7 @@ public class ProjectService {
      * @return
      */
     @Transactional
-    public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx) throws CustomException {
+    public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx) throws CustomException, IOException {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
@@ -309,9 +309,9 @@ public class ProjectService {
         // 프로젝트 상태 정제중으로 변경
         projectVO.setStatusCd(EnumCode.Project.StatusCd.Step5.getCode());
         projectMapper.updateByProjectVO(projectVO);
-
+        projectProcessingService.processProject(projectVO);
         // 여기까지 확인됐으면, 워커에 요청만 전달
-        projectProcessingService.processAsync(projectIdx);
+//        projectProcessingService.processAsync(projectIdx);
 
         return CustomResponse.builder()
                 .build();

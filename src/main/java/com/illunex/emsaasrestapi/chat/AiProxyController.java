@@ -468,6 +468,7 @@ public class AiProxyController {
 
             boolean hasSlides = n.has("slides") && n.get("slides").isArray();
             boolean hasDl = n.hasNonNull("pptx_download_url") && !n.get("pptx_download_url").asText().isBlank();
+            boolean hasTitle = n.hasNonNull("title") && !n.get("title").asText().isBlank();
 
             byte[] bytes = null;
             String ctype = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
@@ -512,7 +513,7 @@ public class AiProxyController {
             if (s3 != null) {
                 ChatFileVO chatFileVO = new ChatFileVO();
                 chatFileVO.setChatHistoryIdx(historyIdx);
-                chatFileVO.setFileName(firstNonBlank(s3.getOrgFileName(), fname));
+                chatFileVO.setFileName(n.get("title").asText().isBlank() ? fname : n.get("title").asText());
                 chatFileVO.setFileUrl(s3.getUrl());
                 chatFileVO.setFilePath(s3.getPath());
                 chatFileVO.setFileSize(s3.getSize() != null ? s3.getSize() : size);
