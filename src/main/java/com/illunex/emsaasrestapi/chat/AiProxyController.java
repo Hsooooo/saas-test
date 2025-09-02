@@ -233,7 +233,7 @@ public class AiProxyController {
 
             if (!hasPost) {
                 // 4-A) 후처리 없으면 바로 done
-                try { emitter.send(SseEmitter.event().name("done").data("ok")); } catch (Exception ignore) {}
+                try { emitter.send(SseEmitter.event().name("done").data(Map.of("status", "ok"))); } catch (Exception ignore) {}
                 emitter.complete();
                 return;
             }
