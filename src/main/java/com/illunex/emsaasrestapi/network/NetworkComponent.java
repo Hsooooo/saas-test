@@ -65,7 +65,14 @@ public class NetworkComponent {
         // start와 end에 노드번호가 포함되어 있는것
         List<Criteria> orEdge = typeToIds.entrySet().stream()
                 .flatMap(e -> Stream.of(
-                        Criteria.where("startType").is(e.getKey()).and("start").in(e.getValue()).and("endType").is(e.getKey()).and("end").in(e.getValue())
+                        new Criteria().andOperator(
+                                Criteria.where("startType").is(e.getKey()),
+                                Criteria.where("start").in(e.getValue())
+                        ),
+                        new Criteria().andOperator(
+                                Criteria.where("endType").is(e.getKey()),
+                                Criteria.where("end").in(e.getValue())
+                        )
                 ))
                 .toList();
 
