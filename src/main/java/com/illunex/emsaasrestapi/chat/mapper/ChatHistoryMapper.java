@@ -22,4 +22,6 @@ public interface ChatHistoryMapper {
     void updateMessageAndCategoryTypeByIdx(ChatHistoryVO chatHistoryVO);
 
     Optional<ChatHistoryVO> selectByIdx(Integer chatHistoryIdx);
+
+    List<ChatHistoryVO> selectByChatRoomIdxAndCategoryTypeOrderByCreateDateDesc(Integer chatRoomIdx, String categoryType);
 }

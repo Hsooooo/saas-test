@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.illunex.emsaasrestapi.chat.dto.ResponseAIDTO;
 import com.illunex.emsaasrestapi.chat.mapper.ChatFileMapper;
 import com.illunex.emsaasrestapi.chat.mapper.ChatFileSlideMapper;
+import com.illunex.emsaasrestapi.chat.mapper.ChatHistoryMapper;
 import com.illunex.emsaasrestapi.chat.util.OpenAiSseParser;
 import com.illunex.emsaasrestapi.chat.vo.ChatFileSlideVO;
 import com.illunex.emsaasrestapi.chat.vo.ChatFileVO;
@@ -43,6 +44,7 @@ import static org.apache.poi.util.StringUtil.isBlank;
 public class AiProxyController {
 
     private final ChatFileSlideMapper chatFileSlideMapper;
+    private final ChatHistoryMapper chatHistoryMapper;
     @Value("${ai.url}") String aiGptBase;
 
     private final UpstreamSseClient upstream;     // aiGptBase 로 SSE 프록시하는 클라이언트
@@ -114,7 +116,7 @@ public class AiProxyController {
         final var lastAssistant = new AtomicReference<String>("");
         final var lastCategory  = new AtomicReference<String>(null);
         final var lastPptxFlag  = new AtomicReference<>("no");  // 기본값 "no"
-        final var lastDocsFlag  = new AtomicReference<>("no");  // 기본값 "no"
+        final var lastDocxFlag  = new AtomicReference<>("no");  // 기본값 "no"
 
         // 툴 결과 즉시 upsert된 row들의 id 모음 → 완료 시 history_idx로 연결
         final List<Long> toolResultIds = new CopyOnWriteArrayList<>();
@@ -157,14 +159,9 @@ public class AiProxyController {
                     if (content != null && !content.isBlank()) lastAssistant.set(content);
 
                     // c) 분류/플래그류
-                    if (n.has("category") && !n.get("category").isNull()) {
-                        String cat = n.get("category").asText();
-                        if (cat != null && !"null".equalsIgnoreCase(cat.trim()) && !cat.isBlank()) {
-                            lastCategory.set(cat);
-                        }
-                    }
+                    if (n.hasNonNull("category")) lastCategory.set(n.get("category").asText());
                     if (n.hasNonNull("pptx")) lastPptxFlag.set(n.get("pptx").asText());
-                    if (n.hasNonNull("docs")) lastDocsFlag.set(n.get("docs").asText());
+                    if (n.hasNonNull("docx")) lastDocxFlag.set(n.get("docx").asText());
                 } catch (Exception ex) {
                     log.warn("tool/assistant parse fail: {}", ex.toString());
                 }
@@ -175,22 +172,44 @@ public class AiProxyController {
         Disposable dDone = stream.ignoreElements().subscribe(null, null, () -> {
             final String all = tee.toString(StandardCharsets.UTF_8);
 
-// ★ 추가: 전체 스트림에서 "마지막 유효 텍스트" 보정
+            var lastOkOpt = findLastOkEvent(all, om);
+
+            if (lastOkOpt.isEmpty()) {
+                // 최종 OK 이벤트가 없으면 안전 종료 (히스토리 저장/후처리 수행 안 함)
+                try {
+                    emitter.send(SseEmitter.event().name("final").data(
+                            Map.of(
+                                    "status", "no_ok_event",
+                                    "reason", "최종 OK(status=200) 이벤트를 찾지 못했습니다."
+                            )
+                    ));
+                    emitter.send(SseEmitter.event().name("done").data(Map.of("status", "ok")));
+                } catch (Exception ignore) {}
+                emitter.complete();
+                return;
+            }
+
+            var lastOk = lastOkOpt.get();
+
+            // 1) 메시지 결정: OK 이벤트의 message 우선 → 폴백 체인
+            String okMessage = getTextOrEmpty(lastOk, "message");
+
+            // 기존 폴백 계산
             String fixedText = extractLastAssistantFromStream(all, om);
             final String fallbackLast = OpenAiSseParser.extractLastMessageFromSequence(all);
 
-            final String finalText = !isBlank(lastAssistant.get())
-                    ? lastAssistant.get()
+            final String finalText = !isBlank(okMessage) ? okMessage
+                    : (!isBlank(lastAssistant.get()) ? lastAssistant.get()
                     : (!isBlank(fixedText) ? fixedText
-                    : (fallbackLast == null ? "" : fallbackLast));
+                    : (fallbackLast == null ? "" : fallbackLast)));
 
-// ★ 추가: 전체 스트림에서 pptx/docs 마지막 값 보정
-            Map<String, String> lastFlags = extractLastFlagsFromStream(all, om);
-            if (lastFlags.containsKey("pptx")) lastPptxFlag.set(lastFlags.get("pptx"));
-            if (lastFlags.containsKey("docs")) lastDocsFlag.set(lastFlags.get("docs"));
-
-            final String cate = lastCategory.get();
+            // 2) 카테고리/코드
+            String cate = getTextOrEmpty(lastOk, "category");
+            if (isBlank(cate)) cate = lastCategory.get(); // 그래도 없으면 기존 값 폴백
             final String cateCode = safeCateCode(cate);
+            String okPptx = ynOrNull(lastOk, "pptx");
+            String okDocx = ynOrNull(lastOk, "docx");
+
 
             // 1) 최종 어시스턴트 메시지 저장 (flush 보장 권장)
             final int historyIdx = chatService.saveHistory(
@@ -206,9 +225,17 @@ public class AiProxyController {
                 catch (Exception e) { log.error("linkResultsToHistory failed", e); }
             }
 
+            // 스트림 전체에서 마지막 플래그 재보정
+            Map<String, String> lastFlags = extractLastFlagsFromStream(all, om);
+            if (okPptx == null && lastFlags.containsKey("pptx")) okPptx = lastFlags.get("pptx");
+            if (okDocx == null && lastFlags.containsKey("docx")) okDocx = lastFlags.get("docx");
+
+            if (okPptx != null) lastPptxFlag.set(okPptx);
+            if (okDocx != null) lastDocxFlag.set(okDocx);
+
             boolean needPpt  = "yes".equalsIgnoreCase(lastPptxFlag.get());
-            boolean needDocs = "yes".equalsIgnoreCase(lastDocsFlag.get());
-            boolean hasPost  = (needPpt || needDocs);
+            boolean needDocx = "yes".equalsIgnoreCase(lastDocxFlag.get());
+            boolean hasPost  = (needPpt || needDocx);
 
             String finalStatus = hasPost ? "processing" : "ok";
 
@@ -224,7 +251,7 @@ public class AiProxyController {
                     ),
                     "flags", Map.of(
                             "pptx", lastPptxFlag.get(),
-                            "docs", lastDocsFlag.get()
+                            "docx", lastDocxFlag.get()
                     )
             );
             try { emitter.send(SseEmitter.event().name("final").data(finalPayload)); }
@@ -244,13 +271,14 @@ public class AiProxyController {
                         Map.of("stage", "postprocess", "message", "파일 생성중...")
                 ));
             } catch (Exception ignore) {}
+            ChatHistoryVO professionalMsg = chatHistoryMapper.selectByChatRoomIdxAndCategoryTypeOrderByCreateDateDesc(chatRoomIdx, EnumCode.ChatHistory.CategoryType.PROFESSIONAL.getCode()).get(0);
 
             // 5) 외부 API 호출 + S3 업로드 + DB 인서트 (블로킹 작업 → boundedElastic)
             reactor.core.publisher.Mono.fromCallable(() -> {
                 Map<String, Object> result = new java.util.HashMap<>();
 
                 if (needPpt) {
-                    JsonNode pptRes = callPptxGenerate(finalText, pmIdx, historyIdx);
+                    JsonNode pptRes = callPptxGenerate(professionalMsg.getMessage(), pmIdx, historyIdx);
 
                     if (pptRes != null && pptRes.path("error").isMissingNode()) {
                         Map<String, Object> pptMap = new LinkedHashMap<>();
@@ -271,8 +299,8 @@ public class AiProxyController {
                     }
                 }
 
-                if (needDocs) {
-                    JsonNode docx = callDocxGenerate(finalText, pmIdx, historyIdx);
+                if (needDocx) {
+                    JsonNode docx = callDocxGenerate(professionalMsg.getMessage(), pmIdx, historyIdx);
 
                     if (docx != null && docx.path("error").isMissingNode()) {
                         Map<String, Object> docxMap = new LinkedHashMap<>();
@@ -605,7 +633,7 @@ public class AiProxyController {
         JsonNode last = extractLastDataJson(all, om);
         if (last == null) return out;
         if (last.hasNonNull("pptx")) out.put("pptx", last.get("pptx").asText());
-        if (last.hasNonNull("docs")) out.put("docs", last.get("docs").asText());
+        if (last.hasNonNull("docx")) out.put("docx", last.get("docx").asText());
         return out;
     }
 
@@ -643,7 +671,7 @@ public class AiProxyController {
                 if (n.has("delta") && n.get("delta").hasNonNull("content")) last = n.get("delta").get("content").asText();
                 // 3) message.content (객체형)
                 if (n.has("message") && n.get("message").hasNonNull("content")) last = n.get("message").get("content").asText();
-                // 4) message (문자열형) ← 네 케이스에서 자주 쓰이는 형태
+                // 4) message (문자열형)
                 if (n.has("message") && n.get("message").isTextual()) last = n.get("message").asText();
                 // 5) text
                 if (n.hasNonNull("text")) last = n.get("text").asText();
@@ -706,5 +734,43 @@ public class AiProxyController {
             }
         }
         return null;
+    }
+
+    private Optional<com.fasterxml.jackson.databind.node.ObjectNode> findLastOkEvent(String all, ObjectMapper om) {
+        if (all == null || all.isBlank()) return Optional.empty();
+        try (var p = om.getFactory().createParser(all)) {
+            com.fasterxml.jackson.databind.node.ObjectNode lastOk = null;
+            while (p.nextToken() != null) {
+                // 이벤트가 연속된 JSON object라고 가정
+                var node = om.readTree(p);
+                if (node != null && node.isObject()) {
+                    var obj = (com.fasterxml.jackson.databind.node.ObjectNode) node;
+                    var st = obj.get("status");
+                    boolean isOk = false;
+                    if (st != null) {
+                        if (st.isInt()) isOk = (st.intValue() == 200);
+                        else if (st.isTextual()) isOk = "200".equals(st.asText());
+                    }
+                    if (isOk) lastOk = obj;
+                }
+            }
+            return Optional.ofNullable(lastOk);
+        } catch (Exception e) {
+            log.warn("findLastOkEvent parse failed", e);
+            return Optional.empty();
+        }
+    }
+
+    private static String getTextOrEmpty(JsonNode n, String field) {
+        var v = n == null ? null : n.get(field);
+        return (v == null || v.isNull()) ? "" : v.asText("");
+    }
+
+    private static String ynOrNull(JsonNode n, String field) {
+        var v = n == null ? null : n.get(field);
+        if (v == null || v.isNull()) return null;
+        var t = v.asText("");
+        if (t.isBlank()) return null;
+        return t; // "yes"/"no" 그대로
     }
 }

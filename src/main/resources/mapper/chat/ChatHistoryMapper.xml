@@ -54,4 +54,12 @@
                update_date = NOW()
          WHERE idx = #{idx}
     </update>
+
+    <select id="selectByChatRoomIdxAndCategoryTypeOrderByCreateDateDesc" resultType="ChatHistoryVO">
+        SELECT *
+          FROM chat_history
+         WHERE chat_room_idx = #{chatRoomIdx}
+           AND category_type = #{categoryType}
+         ORDER BY create_date DESC
+    </select>
 </mapper>
