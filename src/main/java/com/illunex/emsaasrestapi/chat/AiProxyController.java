@@ -391,7 +391,7 @@ public class AiProxyController {
                 }
             }
 
-            // DB 인서트 (PPTX가 실제로 생겼을 때만)
+            // DB 인서트 (DOCX 실제로 생겼을 때만)
             Long chatFileIdx = null;
             if (s3 != null) {
                 ChatFileVO chatFileVO = new ChatFileVO();
@@ -400,7 +400,7 @@ public class AiProxyController {
                 chatFileVO.setFileUrl(s3.getUrl());
                 chatFileVO.setFilePath(s3.getPath());
                 chatFileVO.setFileSize(s3.getSize() != null ? s3.getSize() : size);
-                chatFileVO.setFileCd(EnumCode.ChatFile.FileCd.PPTX.getCode());
+                chatFileVO.setFileCd(EnumCode.ChatFile.FileCd.DOCS.getCode());
                 chatFileMapper.insertByChatFileVO(chatFileVO);
                 chatFileIdx = chatFileVO.getIdx();
             }
@@ -416,8 +416,8 @@ public class AiProxyController {
             return obj;
 
         } catch (Exception e) {
-            log.error("Error during PPTX generation/download/upload", e);
-            return om.createObjectNode().put("error", "pptx_generation_failed")
+            log.error("Error during DOCX generation/download/upload", e);
+            return om.createObjectNode().put("error", "docx_generation_failed")
                     .put("message", e.getMessage() == null ? "" : e.getMessage());
         }
     }
