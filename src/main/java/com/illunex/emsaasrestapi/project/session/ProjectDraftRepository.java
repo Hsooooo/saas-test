@@ -15,6 +15,22 @@ import java.util.Date;
 public class ProjectDraftRepository {
     private final MongoTemplate mongo;
 
+    public ObjectId open(ObjectId sessionId, Long memberId, RequestProjectDTO.Project p) {
+        ObjectId sid = (sessionId != null) ? sessionId : new ObjectId();
+        // status=OPEN, 생성자/파트너십/카테고리 등 최소 메타 저장
+        upsert(sid, new Update()
+                .setOnInsert("status", "OPEN")
+                .setOnInsert("ownerMemberId", memberId)
+                .set("partnershipIdx", p.getPartnershipIdx())
+                .set("projectCategoryIdx", p.getProjectCategoryIdx())
+                .set("title", p.getTitle())
+                .set("description", p.getDescription())
+                .set("imagePath", p.getImagePath())
+                .set("imageUrl", p.getImageUrl())
+        );
+        return sid;
+    }
+
     public void ensureOpen(ObjectId sid, Long ownerId, RequestProjectDTO.Project project) {
         var existing = mongo.findById(sid, ProjectDraft.class);
         if (existing == null) {

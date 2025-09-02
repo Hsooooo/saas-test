@@ -37,6 +37,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.data.domain.PageImpl;
@@ -148,17 +149,20 @@ public class ProjectService {
     public CustomResponse<?> createProject(MemberVO me, RequestProjectDTO.Project project,
                                            DraftContext dc) throws CustomException {
         if (!dc.isDraft()) return createProject(me, project); // 기존
-        dc.require();
+        // 1) 세션 없으면 여기서 생성
+        ObjectId sid = (dc.getSessionId() != null)
+                ? dc.getSessionId()
+                : draftRepo.open(null, me.getIdx().longValue(), project);
 
-        draftRepo.ensureOpen(dc.getSessionId(), me.getIdx().longValue(), project);
-
-        // 네가 완성 시 저장하는 Project 도큐 구조로 매핑
+        // 2) 드래프트 도큐 업서트
         var projDoc = modelMapper.map(project, com.illunex.emsaasrestapi.project.document.project.Project.class);
-        projDoc.setCreateDate(null); // 커밋 때 채움
+        projDoc.setCreateDate(null);
         projDoc.setUpdateDate(null);
-        draftRepo.upsert(dc.getSessionId(), new Update().set("projectDoc", projDoc));
+        draftRepo.upsert(sid, new Update().set("projectDoc", projDoc));
+
+        // 3) 응답으로 sessionId 내려줌 → 프론트는 이후 헤더에 실어 재호출
         return CustomResponse.builder().data(
-                java.util.Map.of("sessionId", dc.getSessionId().toHexString(), "step", 2)
+                Map.of("sessionId", sid.toHexString(), "step", 2)
         ).build();
     }
 
