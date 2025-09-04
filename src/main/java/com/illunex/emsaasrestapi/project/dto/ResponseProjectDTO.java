@@ -18,6 +18,7 @@ public class ResponseProjectDTO {
     @Getter
     @Setter
     public static class Project {
+        private Object sessionId;
         private Integer projectIdx;                                 // 프로젝트 번호
         private Integer partnershipIdx;                             // 파트너쉽 번호
         private Integer projectCategoryIdx;                         // 프로젝트 카테고리번호

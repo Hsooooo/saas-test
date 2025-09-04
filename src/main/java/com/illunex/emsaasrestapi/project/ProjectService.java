@@ -26,6 +26,7 @@ import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import com.illunex.emsaasrestapi.project.session.DraftContext;
 import com.illunex.emsaasrestapi.project.session.ExcelMetaUtil;
+import com.illunex.emsaasrestapi.project.session.ProjectDraft;
 import com.illunex.emsaasrestapi.project.session.ProjectDraftRepository;
 import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
@@ -159,10 +160,11 @@ public class ProjectService {
         projDoc.setCreateDate(null);
         projDoc.setUpdateDate(null);
         draftRepo.upsert(sid, new Update().set("projectDoc", projDoc));
+        ProjectDraft d = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(sid)), ProjectDraft.class);
 
         // 3) 응답으로 sessionId 내려줌 → 프론트는 이후 헤더에 실어 재호출
         return CustomResponse.builder().data(
-                Map.of("sessionId", sid.toHexString(), "step", 2)
+                projectComponent.createResponseProject(null, d)
         ).build();
     }
 
@@ -398,12 +400,9 @@ public class ProjectService {
             }
         }
 
-        return CustomResponse.builder().data(java.util.Map.of(
-                "sessionId", dc.getSessionId().toHexString(),
-                "step", 4,
-                "nodeCount", nodeCount,
-                "edgeCount", edgeCount
-        )).build();
+        return CustomResponse.builder().data(
+                projectComponent.createResponseProject(null, draft)
+        ).build();
     }
 
     /**
@@ -443,20 +442,22 @@ public class ProjectService {
     }
 
     @Transactional
-    public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException {
+    public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException, IOException {
         if (!dc.isDraft()) return completeProject(memberVO, projectIdx); // 기존
         dc.require();
 
         var d = draftRepo.get(dc.getSessionId());
+
         if (d == null || !"OPEN".equals(d.getStatus())) throw new CustomException(ErrorCode.COMMON_EMPTY);
         if (d.getProjectDoc() == null || d.getExcelMeta() == null)
             throw new CustomException(PROJECT_EMPTY_DATA);
 
         Integer pid = d.getProjectIdx();
+        ProjectVO pvo = null;
         if (pid == null) {
             // 신규 생성: RDB 프로젝트 한 번에 생성
             var info = d.getProjectDoc();
-            var pvo = com.illunex.emsaasrestapi.project.vo.ProjectVO.builder()
+            pvo = com.illunex.emsaasrestapi.project.vo.ProjectVO.builder()
                     .partnershipIdx(d.getPartnershipIdx())
                     .projectCategoryIdx(d.getProjectCategoryIdx())
                     .title(d.getTitle())
@@ -473,8 +474,27 @@ public class ProjectService {
             // Mongo Project 메타 저장
             var projDoc = d.getProjectDoc();
             projDoc.setProjectIdx(pid);
-            projDoc.setCreateDate(java.time.LocalDateTime.now());
-            mongoTemplate.insert(projDoc);
+
+            var now = java.time.LocalDateTime.now();
+
+            // 1) 기준 쿼리
+            Query q = Query.query(Criteria.where("_id").is(pid));
+
+            // 2) POJO → Document 변환
+            org.bson.Document doc = new org.bson.Document();
+            mongoTemplate.getConverter().write(projDoc, doc);
+
+            // 3) 업데이트 바디에서 _id 제거 (immutable)
+            doc.remove("_id");
+            doc.remove("id"); // @Id 필드명이 id라면 보호차원에서 같이 제거
+
+            // 4) createDate는 최초 insert시에만, updateDate는 매번 갱신
+            Update u = Update.fromDocument(doc)          // doc에 있는 필드를 $set으로 적용
+                    .setOnInsert("createDate", now)      // 새 문서에만
+                    .set("updateDate", now);             // 항상 갱신
+
+            // 5) 단일 upsert로 끝
+            mongoTemplate.upsert(q, u, com.illunex.emsaasrestapi.project.document.project.Project.class);
         } else {
             // 수정: 권한 체크만 하고 본 Project 도큐 덮어쓰기
             var pm = partnershipComponent.checkPartnershipMemberAndProject(memberVO, pid);
@@ -489,7 +509,7 @@ public class ProjectService {
             replace.setUpdateDate(java.time.LocalDateTime.now());
             mongoTemplate.save(replace); // replace by _id = pid
             // RDB 타이틀/이미지 등 필요한 필드만 업데이트 (원하면)
-            var pvo = projectMapper.selectByIdx(pid).orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+            pvo = projectMapper.selectByIdx(pid).orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
             pvo.setTitle(d.getTitle());
             pvo.setDescription(d.getDescription());
             pvo.setImagePath(d.getImagePath());
@@ -505,10 +525,32 @@ public class ProjectService {
         mongoTemplate.insert(excel);
 
         // 워커 비동기 정제 시작 (sessionId 전달해서 S3+매핑 읽게)
-        projectProcessingService.processAsyncWithDraft(pid, dc.getSessionId());
+//        projectProcessingService.processAsyncWithDraft(pid, dc.getSessionId());
+        projectProcessingService.processProjectFromDraft(pvo, d);   // ← 핵심
+        log.info("[THREAD-SUCCESS] Draft 정제 완료 projectIdx={}", projectIdx);
 
         draftRepo.mark(dc.getSessionId(), "COMMITTED");
         return CustomResponse.builder().data(projectComponent.createResponseProject(pid)).build();
+    }
+
+    /**
+     * 프로젝트 조회 (Draft)
+     * @param projectIdx
+     * @return
+     */
+    public CustomResponse<?> getProjectDetail(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException {
+        if (!dc.isDraft()) return getProjectDetail(memberVO, projectIdx); // 기존
+        dc.require();
+
+        ProjectDraft d = draftRepo.get(dc.getSessionId()); // 존재 여부 체크용
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+
+        return CustomResponse.builder()
+                .data(projectComponent.createResponseProject(projectIdx, d))
+                .build();
     }
 
     /**

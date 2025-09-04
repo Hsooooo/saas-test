@@ -146,7 +146,7 @@ public class DatabaseService {
                 sortList.add(sortColumn + "," + sortDirection);
             }
         } else {
-            sortList.add("properties._id,DESC"); // 기본 정렬
+            sortList.add("id,DESC"); // 기본 정렬
         }
 
         // 조회용 쿼리 (limit, skip 포함)

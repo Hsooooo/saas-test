@@ -111,7 +111,7 @@ public class ProjectProcessingService {
     }
 
     /** ✅ 드래프트 메타를 읽어서 정제 (라이브와 동일 로직, 소스만 draft로) */
-    private void processProjectFromDraft(ProjectVO vo, ProjectDraft draft) throws IOException, CustomException {
+    public void processProjectFromDraft(ProjectVO vo, ProjectDraft draft) throws IOException, CustomException {
         final int projectIdx = vo.getIdx();
         long start = System.currentTimeMillis();
 

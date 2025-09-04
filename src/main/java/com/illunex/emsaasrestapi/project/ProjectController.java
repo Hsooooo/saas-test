@@ -59,7 +59,7 @@ public class ProjectController {
     @PostMapping("upload/single")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> uploadSingleExcelFile(@CurrentMember MemberVO memberVO,
-                                                   @RequestParam(name = "projectIdx") Integer projectIdx,
+                                                   @RequestParam(name = "projectIdx", required = false) Integer projectIdx,
                                                    @RequestPart(name = "excel") MultipartFile excelFile,
                                                    HttpServletRequest req) throws CustomException, IOException {
         return projectService.uploadSingleExcelFile(memberVO, projectIdx, excelFile, DraftContext.from(req));
@@ -89,8 +89,8 @@ public class ProjectController {
     @PostMapping("complete")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> completeProject(@CurrentMember MemberVO memberVO,
-                                             @RequestParam(name = "projectIdx") Integer projectIdx,
-                                             HttpServletRequest req) throws CustomException {
+                                             @RequestParam(name = "projectIdx", required = false) Integer projectIdx,
+                                             HttpServletRequest req) throws Exception {
         return projectService.completeProject(memberVO, projectIdx, DraftContext.from(req));
     }
 
@@ -104,8 +104,9 @@ public class ProjectController {
     @GetMapping()
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> getProjectDetail(@CurrentMember MemberVO memberVO,
-                                              @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
-        return projectService.getProjectDetail(memberVO, projectIdx);
+                                              @RequestParam(name = "projectIdx", required = false) Integer projectIdx,
+                                              HttpServletRequest req) throws CustomException {
+        return projectService.getProjectDetail(memberVO, projectIdx, DraftContext.from(req));
     }
 
     /**
