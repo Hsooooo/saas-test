@@ -89,7 +89,7 @@ public class ProjectProcessingService {
     }
 
     /** 라이브(본 DB) 메타를 읽어서 정제 */
-    private void processProject(ProjectVO vo) throws IOException, CustomException {
+    public void processProject(ProjectVO vo) throws IOException, CustomException {
         final int projectIdx = vo.getIdx();
         long start = System.currentTimeMillis();
 
