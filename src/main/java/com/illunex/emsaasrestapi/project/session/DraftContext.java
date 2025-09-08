@@ -25,4 +25,6 @@ public class DraftContext {
     public void require() {
         if (!draft || sessionId == null) throw new IllegalArgumentException("Draft mode requires X-Draft-Mode & X-Session-Id");
     }
+
+    public boolean hasSession() { return draft && sessionId != null; }
 }

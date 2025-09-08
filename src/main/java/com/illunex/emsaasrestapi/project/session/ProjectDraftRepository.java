@@ -1,7 +1,9 @@
 package com.illunex.emsaasrestapi.project.session;
 
 
+import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
+import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -57,4 +59,32 @@ public class ProjectDraftRepository {
                 new Update().set("status", status).set("updatedAt", new Date()),
                 ProjectDraft.class);
     }
+
+    // 새 세션 생성 + 기존 프로젝트 스냅샷 적재
+    public ObjectId openFromExistingProject(int projectIdx, long memberId,
+                                            ProjectVO pvo,
+                                            com.illunex.emsaasrestapi.project.document.project.Project projDoc,
+                                            Excel excelMeta) {
+        ObjectId sid = new ObjectId();
+        Update u = new Update()
+                .setOnInsert("status", "OPEN")
+                .setOnInsert("ownerMemberId", memberId)
+                .set("projectIdx", projectIdx)
+                .set("partnershipIdx", pvo.getPartnershipIdx())
+                .set("projectCategoryIdx", pvo.getProjectCategoryIdx())
+                .set("title", pvo.getTitle())
+                .set("description", pvo.getDescription())
+                .set("imagePath", pvo.getImagePath())
+                .set("imageUrl", pvo.getImageUrl());
+
+        if (projDoc != null) u.set("projectDoc", projDoc);
+        if (excelMeta != null) u.set("excelMeta", excelMeta);
+
+        upsert(sid, u);
+        return sid;
+    }
+
+    // 필요하면 락
+    public boolean tryLock(ObjectId sid, long memberId) { /* owner/ttl 체크 후 true/false */ return true; }
+    public void unlock(ObjectId sid, long memberId) { /* ... */ }
 }

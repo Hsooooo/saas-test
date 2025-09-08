@@ -372,6 +372,30 @@ public class ProjectService {
     public CustomResponse<?> replaceProject(MemberVO memberVO, RequestProjectDTO.Project project,
                                             DraftContext dc) throws CustomException {
         if (!dc.isDraft()) return replaceProject(memberVO, project); // 기존
+        if (!dc.hasSession()) {
+            // === 세션 없음: 여기서 자동 발급 & 스냅샷 적재 후 sessionId만 리턴 ===
+            if (!dc.hasSession()) {
+                // 권한 체크
+                PartnershipMemberVO pm = partnershipComponent.checkPartnershipMemberAndProject(memberVO, project.getProjectIdx());
+                projectComponent.checkProjectMember(project.getProjectIdx(), pm.getIdx());
+
+                // 스냅샷 준비 (RDB + Mongo)
+                ProjectVO pvo = projectMapper.selectByIdx(project.getProjectIdx())
+                        .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+                var projDoc = mongoTemplate.findById(project.getProjectIdx(),
+                        com.illunex.emsaasrestapi.project.document.project.Project.class); // null 허용
+                var excelMeta = mongoTemplate.findById(project.getProjectIdx(), Excel.class); // null 허용
+
+                // 세션 발급 + 드래프트 오픈
+                var sid = draftRepo.openFromExistingProject(project.getProjectIdx(),
+                        memberVO.getIdx().longValue(), pvo, projDoc, excelMeta);
+
+                // 프론트는 이 sessionId 저장 후, 같은 replace를 다시 호출하면 정상 진행됨
+                return CustomResponse.builder()
+                        .data(projectComponent.createResponseProject(null, draftRepo.get(sid)))
+                        .build();
+            }
+        }
         dc.require();
 
         // 1) 드래프트 projectDoc 갱신
@@ -543,13 +567,9 @@ public class ProjectService {
         dc.require();
 
         ProjectDraft d = draftRepo.get(dc.getSessionId()); // 존재 여부 체크용
-        // 파트너쉽 회원 여부 체크
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
-        // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
         return CustomResponse.builder()
-                .data(projectComponent.createResponseProject(projectIdx, d))
+                .data(projectComponent.createResponseProject(null, d))
                 .build();
     }
 
