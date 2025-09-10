@@ -126,8 +126,8 @@ public class RequestProjectDTO {
     public static class ProjectItemModel {
         private String label;
         private String color;
-        private Integer start;
-        private Integer end;
+        private String start;
+        private String end;
         private String value;
     }
 
