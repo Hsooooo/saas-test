@@ -16,9 +16,9 @@ public class ProjectItemModel {
     @Comment("범례 색상")
     private String color;
     @Comment("범례 시작 범위")
-    private Integer start;
+    private String start;
     @Comment("범례 끝 범위")
-    private Integer end;
+    private String end;
     @Comment("범례 선택 값")
     private String value;
 }
