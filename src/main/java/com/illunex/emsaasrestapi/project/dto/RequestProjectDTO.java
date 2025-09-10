@@ -1,5 +1,6 @@
 package com.illunex.emsaasrestapi.project.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.ProjectComponent;
 import lombok.Getter;
@@ -26,6 +27,7 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Project {
         private Integer projectIdx;                                 // 프로젝트 번호
         private Integer partnershipIdx;                             // 파트너쉽 번호
@@ -57,6 +59,7 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ProjectNode {
         private String nodeType;
         private String uniqueCellName;
@@ -69,6 +72,7 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ProjectEdge {
         private String edgeType;
         private String srcEdgeCellName;
@@ -90,6 +94,7 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ProjectNodeSize {
         private String labelCategory;
         private List<ProjectItem> projectItemList;
@@ -100,6 +105,7 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ProjectFilter {
         private String label;
         private List<ProjectItem> projectItemList;
@@ -136,6 +142,7 @@ public class RequestProjectDTO {
      */
     @Getter
     @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ProjectNodeContent {
         private String nodeType;
         private String labelTitleCellName;
