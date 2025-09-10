@@ -1,5 +1,6 @@
 package com.illunex.emsaasrestapi.project;
 
+import com.illunex.emsaasrestapi.chat.ChatService;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
@@ -77,6 +78,7 @@ public class ProjectService {
     private final ProjectProcessingService projectProcessingService;
     private final ProjectComponent projectComponent;
     private final AwsS3Component awsS3Component;
+    private final ChatService chatService;
 
     private final ProjectDraftRepository draftRepo;
     private final ExcelMetaUtil excelMetaUtil;
@@ -1083,6 +1085,182 @@ public class ProjectService {
         return CustomResponse.builder()
                 .data(response)
                 .build();
+    }
+
+    /**
+     * 프로젝트에 저장된 엑셀 파일로 ai를 통해 프로젝트 설정 저장
+     * @param memberVO
+     * @param projectIdx
+     * @param dc
+     * @return
+     */
+    public CustomResponse<?> replaceProjectByAi(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException {
+        if (!dc.isDraft()) return replaceProjectByAi(memberVO, projectIdx); // 기존
+        dc.require();
+
+        var d = draftRepo.get(dc.getSessionId());
+        if (d == null || d.getExcelMeta() == null) throw new CustomException(PROJECT_EMPTY_DATA);
+        if (d.getProjectDoc() == null) throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
+        var excel = d.getExcelMeta();
+
+        RequestProjectDTO.Project project = chatService.convertExcelProject(excel.getExcelFileList().get(0).getFileUrl());
+
+        if (!dc.hasSession()) {
+            // === 세션 없음: 여기서 자동 발급 & 스냅샷 적재 후 sessionId만 리턴 ===
+            if (!dc.hasSession()) {
+                // 권한 체크
+                PartnershipMemberVO pm = partnershipComponent.checkPartnershipMemberAndProject(memberVO, project.getProjectIdx());
+                projectComponent.checkProjectMember(project.getProjectIdx(), pm.getIdx());
+
+                // 스냅샷 준비 (RDB + Mongo)
+                ProjectVO pvo = projectMapper.selectByIdx(project.getProjectIdx())
+                        .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+                var projDoc = mongoTemplate.findById(project.getProjectIdx(),
+                        com.illunex.emsaasrestapi.project.document.project.Project.class); // null 허용
+                var excelMeta = mongoTemplate.findById(project.getProjectIdx(), Excel.class); // null 허용
+
+                // 세션 발급 + 드래프트 오픈
+                var sid = draftRepo.openFromExistingProject(project.getProjectIdx(),
+                        memberVO.getIdx().longValue(), pvo, projDoc, excelMeta);
+
+                // 프론트는 이 sessionId 저장 후, 같은 replace를 다시 호출하면 정상 진행됨
+                return CustomResponse.builder()
+                        .data(projectComponent.createResponseProject(null, draftRepo.get(sid)))
+                        .build();
+            }
+        }
+        dc.require();
+
+        // 1) 드래프트 projectDoc 갱신
+        var projDoc = modelMapper.map(project, com.illunex.emsaasrestapi.project.document.project.Project.class);
+        projDoc.setUpdateDate(java.time.LocalDateTime.now());
+        draftRepo.upsert(dc.getSessionId(), new Update().set("projectDoc", projDoc));
+
+        // 2) 노드/엣지 예상 카운트 (엑셀 메타 기반)
+        var draft = draftRepo.get(dc.getSessionId());
+        int nodeCount = 0, edgeCount = 0;
+        if (draft != null && draft.getExcelMeta() != null) {
+            var sheets = draft.getExcelMeta().getExcelSheetList();
+            if (project.getProjectNodeList() != null) {
+                for (var n : project.getProjectNodeList()) {
+                    nodeCount += sheets.stream()
+                            .filter(s -> s.getExcelSheetName().equals(n.getNodeType()))
+                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+                }
+            }
+            if (project.getProjectEdgeList() != null) {
+                for (var e : project.getProjectEdgeList()) {
+                    edgeCount += sheets.stream()
+                            .filter(s -> s.getExcelSheetName().equals(e.getEdgeType()))
+                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+                }
+            }
+        }
+
+        return CustomResponse.builder().data(
+                projectComponent.createResponseProject(null, draft)
+        ).build();
+    }
+
+
+    public CustomResponse<?> replaceProjectByAi(MemberVO memberVO, Integer projectIdx) throws CustomException {
+        ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+        Excel excel = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Excel.class);
+        if (excel == null || excel.getExcelFileList().isEmpty()) {
+            throw new CustomException(PROJECT_EMPTY_DATA);
+        }
+        RequestProjectDTO.Project project = chatService.convertExcelProject(excel.getExcelFileList().get(0).getFileUrl());
+        project.setProjectIdx(projectIdx);
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, project.getProjectIdx());
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(project.getProjectIdx(), partnershipMemberVO.getIdx());
+
+        if(projectVO.getDeleteDate() == null) {
+            int nodeCount = 0;
+            int edgeCount = 0;
+            if (project.getProjectNodeList() != null) {
+                for (RequestProjectDTO.ProjectNode projectNode : project.getProjectNodeList()) {
+                    MatchOperation match = Aggregation.match(Criteria.where("_id").is(project.getProjectIdx()));
+                    UnwindOperation unwind = Aggregation.unwind("excelSheetList");
+                    MatchOperation sheetMatch = Aggregation.match(
+                            Criteria.where("excelSheetList.excelSheetName").is(projectNode.getNodeType())
+                    );
+                    GroupOperation group = Aggregation.group("_id")
+                            .sum("excelSheetList.totalRowCnt").as("nodeCount");
+
+                    Aggregation aggregation = Aggregation.newAggregation(match, unwind, sheetMatch, group);
+                    AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel", Document.class);
+
+                    int count = Optional.ofNullable(results.getUniqueMappedResult())
+                            .map(doc -> doc.getInteger("nodeCount"))
+                            .orElse(0);
+                    nodeCount += count;
+                }
+            }
+
+            if (project.getProjectEdgeList() != null) {
+                for (RequestProjectDTO.ProjectEdge projectEdge : project.getProjectEdgeList()) {
+                    MatchOperation match = Aggregation.match(Criteria.where("_id").is(project.getProjectIdx()));
+                    UnwindOperation unwind = Aggregation.unwind("excelSheetList");
+                    MatchOperation sheetMatch = Aggregation.match(
+                            Criteria.where("excelSheetList.excelSheetName").is(projectEdge.getEdgeType())
+                    );
+                    GroupOperation group = Aggregation.group("_id")
+                            .sum("excelSheetList.totalRowCnt").as("edgeCount");
+
+                    Aggregation aggregation = Aggregation.newAggregation(match, unwind, sheetMatch, group);
+                    AggregationResults<Document> results = mongoTemplate.aggregate(aggregation, "excel", Document.class);
+
+                    int count = Optional.ofNullable(results.getUniqueMappedResult())
+                            .map(doc -> doc.getInteger("edgeCount"))
+                            .orElse(0);
+                    edgeCount += count;
+                }
+            }
+            projectVO.setTitle(project.getTitle());
+            projectVO.setDescription(project.getDescription());
+            projectVO.setNodeCnt(nodeCount);
+            projectVO.setEdgeCnt(edgeCount);
+            // 기존 이미지 있는 경우 삭제
+            if (projectVO.getImagePath() != null && !projectVO.getImagePath().isEmpty()) {
+                if (!projectVO.getImagePath().equals(project.getImagePath()) && !projectVO.getImageUrl().equals(project.getImageUrl())) {
+                    // 기존 이미지 삭제
+                    awsS3Component.delete(projectVO.getImagePath());
+                }
+            }
+            projectVO.setImagePath(project.getImagePath());
+            projectVO.setImageUrl(project.getImageUrl());
+            // 프로젝트 상태 변경
+            projectVO.setStatusCd(projectComponent.getProjectStatusCd(project, projectVO));
+            projectVO.setUpdateDate(ZonedDateTime.now());
+            // 프로젝트 업데이트
+            int updateCnt = projectMapper.updateByProjectVO(projectVO);
+
+            if (updateCnt > 0) {
+                // 프로젝트 데이터 조회
+                Project targetProject = mongoTemplate.findById(project.getProjectIdx(), Project.class);
+                if (targetProject == null) {
+                    throw new CustomException(ErrorCode.COMMON_EMPTY);
+                }
+                // 데이터 맵핑
+                Project replaceProject = modelMapper.map(project, Project.class);
+                replaceProject.setUpdateDate(LocalDateTime.now());
+                replaceProject.setCreateDate(targetProject.getCreateDate());
+
+                // 데이터 덮어쓰기
+                UpdateResult result = mongoTemplate.replace(Query.query(Criteria.where("_id").is(project.getProjectIdx())), replaceProject);
+
+                return CustomResponse.builder()
+                        .data(projectComponent.createResponseProject(projectVO.getIdx()))
+                        .build();
+            }
+            throw new CustomException(ErrorCode.COMMON_INTERNAL_SERVER_ERROR);
+        }
+
+        // 프로젝트 삭제 예외 응답
+        throw new CustomException(ErrorCode.PROJECT_DELETED);
     }
 
 }

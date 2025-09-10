@@ -16,10 +16,17 @@ import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
+import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
+import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -42,6 +49,8 @@ public class ChatService {
     private final ChatNodeMapper chatNodeMapper;
     private final ChatLinkMapper chatLinkMapper;
     private final ObjectMapper om;
+    @Value("${ai.url}") String aiGptBase;
+    private final WebClient webClient;
 
     public int resolveChatRoom(int partnershipMemberIdx, String title) {
         ChatRoomVO room = new ChatRoomVO();
@@ -396,5 +405,32 @@ public class ChatService {
     private Map<String,Object> parseProps(String json) {
         try { return json == null ? Map.of() : om.readValue(json, new TypeReference<Map<String,Object>>(){}); }
         catch (Exception e) { return Map.of(); }
+    }
+
+    public RequestProjectDTO.Project convertExcelProject(String s3Url) {
+        final String graphUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
+                .path("/v2/api/convert-excel-graph").toUriString();
+        // 1) 전체 응답(Map) 받기
+        Map<String, Object> respMap = webClient.post().uri(graphUrl)
+                .bodyValue(Map.of("url", s3Url))
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .block();
+
+        if (respMap == null) throw new IllegalStateException("Null response from convert-excel-graph API");
+
+        // (옵션) status 확인
+        Object status = respMap.get("status");
+
+        // 2) results 래퍼 꺼내기
+        Object resultsObj = respMap.get("results");
+        if (resultsObj == null) {
+            throw new IllegalStateException("No 'results' field in response");
+        }
+
+        // 2-1) JsonNode로 구조/키 미리 확인(디버깅 편함)
+        com.fasterxml.jackson.databind.JsonNode resultsNode = om.valueToTree(resultsObj);
+
+        return om.convertValue(resultsObj, RequestProjectDTO.Project.class);
     }
 }

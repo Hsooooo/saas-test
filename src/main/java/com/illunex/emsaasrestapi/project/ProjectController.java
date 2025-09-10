@@ -80,6 +80,14 @@ public class ProjectController {
         return projectService.replaceProject(memberVO, project, DraftContext.from(req));
     }
 
+    @PutMapping("ai")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> replaceProjectByAi(@CurrentMember MemberVO memberVO,
+                                            @RequestParam(value = "projectIdx", required = false) Integer projectIdx,
+                                            HttpServletRequest req) throws CustomException {
+        return projectService.replaceProjectByAi(memberVO, projectIdx, DraftContext.from(req));
+    }
+
     /**
      * 프로젝트 최종 저장(관계망 데이터 정제 처리)
      * @param memberVO
