@@ -185,7 +185,7 @@ public class ProjectProcessingService {
 
                 if (nodeDef != null) { // Node
                     Object key = props.get(nodeDef.getUniqueCellName());
-                    if (key != null) {
+                    if (key != null && !(key instanceof String && ((String) key).trim().isEmpty())) {
                         nodeBatch.add(Node.builder()
                                 .nodeId(new NodeId(projectIdx, sheetName, key))
                                 .id(key)
