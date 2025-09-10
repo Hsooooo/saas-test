@@ -64,6 +64,8 @@ public class AwsSESComponent {
                 .put("email", email)
                 .put("expire", ZonedDateTime.now().plusDays(1).toString());
 
+        String certJoinUrl = "http://220.118.147.58:20044/auth/join/email-certification";
+
         // 이메일 인증을 위한 암호화 - AES256 -> Base64
         String certData = Utils.AES256.encrypt(encryptKey, certJson.toString());
 
@@ -71,7 +73,7 @@ public class AwsSESComponent {
                 .senderAddress(managerEmail)
                 .receiverAddress(email)
                 .subject(EmailType.join.getSubject())
-//                .certUrl(certJoinUrl)
+                .certUrl(certJoinUrl)
                 .certData(certData)
                 .build();
 
