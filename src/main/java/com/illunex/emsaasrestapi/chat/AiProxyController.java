@@ -1,8 +1,9 @@
 package com.illunex.emsaasrestapi.chat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.illunex.emsaasrestapi.chat.dto.ResponseAIDTO;
 import com.illunex.emsaasrestapi.chat.mapper.ChatFileMapper;
 import com.illunex.emsaasrestapi.chat.mapper.ChatFileSlideMapper;
@@ -12,7 +13,6 @@ import com.illunex.emsaasrestapi.chat.vo.ChatFileSlideVO;
 import com.illunex.emsaasrestapi.chat.vo.ChatFileVO;
 import com.illunex.emsaasrestapi.chat.vo.ChatHistoryVO;
 import com.illunex.emsaasrestapi.common.CurrentMember;
-import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
 import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
@@ -28,15 +28,13 @@ import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.apache.poi.util.StringUtil.isBlank;
 
 @RestController
 @RequiredArgsConstructor
@@ -54,6 +52,21 @@ public class AiProxyController {
     private final WebClient webClient;
     private final AwsS3Component awsS3Component;
     private final ChatFileMapper chatFileMapper;
+    private final ConcurrentHashMap<String, ObjectNode> toolBuffer = new ConcurrentHashMap<>();
+
+    @PostMapping(value = "ai/gpt/v2/api/convert-excel-graph")
+    public ResponseEntity<?> convertExcelGraph(@CurrentMember MemberVO memberVO,
+                                        @RequestParam("partnershipMemberIdx") Integer pmIdx,
+                                        @RequestParam("chatHistoryIdx") Integer chatHistoryIdx) throws Exception {
+        ChatHistoryVO history =  chatService.getChatHistory(memberVO, pmIdx, chatHistoryIdx);
+        final String graphUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
+                .path("/v2/api/convert-excel-graph").toUriString();
+        String graphResp = webClient.post().uri(graphUrl)
+                .bodyValue(Map.of("md_text", history.getMessage()))
+                .retrieve().bodyToMono(String.class).block();
+        chatService.saveGraph(history, graphResp);
+        return ResponseEntity.ok(om.readValue(chatService.normalizeGraphJson(graphResp, om), ResponseAIDTO.Graph.class));
+    }
 
     @PostMapping(value = "ai/gpt/v2/api/generate-graph")
     public ResponseEntity<?> graphProxy(@CurrentMember MemberVO memberVO,
@@ -140,28 +153,39 @@ public class AiProxyController {
 
         // 4-2) 즉시 처리 파이프: “tool” 필드 포함된 이벤트 → tool_result upsert
         Disposable dTool = stream.subscribe(chunk -> {
-            // 청크 누적 → 완전 프레임의 data JSON들만 얻음
-            java.util.List<String> jsons = drainSseDataJsons(sseBuf.get(), chunk);
+            List<String> jsons = drainSseDataJsons(sseBuf.get(), chunk);
             if (jsons.isEmpty()) return;
 
             for (String js : jsons) {
                 try {
                     JsonNode n = om.readTree(js);
 
-                    // a) tool 이벤트 즉시 저장
-                    if (n.hasNonNull("tool")) {
-                        java.util.List<Long> ids = toolSvc.upsertToolPayload(n.toString());
-                        if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
-                    }
-
-                    // b) 마지막 assistant content 후보
+                    // 보조 플래그/텍스트 추출(있으면 갱신)
                     String content = extractAssistantText(n);
                     if (content != null && !content.isBlank()) lastAssistant.set(content);
-
-                    // c) 분류/플래그류
                     if (n.hasNonNull("category")) lastCategory.set(n.get("category").asText());
-                    if (n.hasNonNull("pptx")) lastPptxFlag.set(n.get("pptx").asText());
-                    if (n.hasNonNull("docx")) lastDocxFlag.set(n.get("docx").asText());
+                    if (n.hasNonNull("pptx"))     lastPptxFlag.set(n.get("pptx").asText());
+                    if (n.hasNonNull("docx"))     lastDocxFlag.set(n.get("docx").asText());
+
+                    // 툴 이벤트 버퍼링 → 완료시 upsert
+                    if (n.hasNonNull("tool")) {
+                        String key = resolveToolCallId(n); // traceId/callId 최고, 없으면 fallback
+                        toolBuffer.compute(key, (k, prev) -> {
+                            ObjectNode acc = (prev != null) ? prev : om.createObjectNode();
+                            ObjectNode cur = (n instanceof ObjectNode) ? (ObjectNode) n : (ObjectNode) om.valueToTree(n);
+                            return mergeObjectNodes(om, acc, cur);
+                        });
+
+                        if (isTerminalForSearch(n)) { // ← 아래 함수
+                            ObjectNode completed = toolBuffer.remove(key);
+                            if (completed == null)
+                                completed = (ObjectNode) (n instanceof ObjectNode ? n : om.valueToTree(n));
+
+                            normalizeForPersist(completed, om); // 결과 슬림화/타임스탬프
+                            List<Long> ids = toolSvc.upsertToolPayload(completed.toString());
+                            if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
+                        }
+                    }
                 } catch (Exception ex) {
                     log.warn("tool/assistant parse fail: {}", ex.toString());
                 }
@@ -594,38 +618,6 @@ public class AiProxyController {
         catch (IllegalArgumentException ex) { return EnumCode.ChatHistory.CategoryType.GENERAL.getCode(); }
     }
 
-    // 청크들을 누적하다가 \n\n 로 끝나는 "완전한 SSE 프레임"만 뽑아, 각 프레임의 data: 라인을 합쳐 JSON 문자열 리스트로 반환
-    private static java.util.List<String> drainSseDataJsons(StringBuilder buf, String incoming) {
-        if (incoming != null) buf.append(incoming);
-        final String SEP = "\n\n";
-        java.util.List<String> out = new java.util.ArrayList<>();
-        int from = 0, cut;
-        String all = buf.toString();
-        while ((cut = all.indexOf(SEP, from)) >= 0) {
-            String frame = all.substring(from, cut);
-            from = cut + SEP.length();
-
-            // 프레임에서 data: 라인만 추출해 합치기
-            StringBuilder data = new StringBuilder();
-            for (String line : frame.split("\n")) {
-                if (line.startsWith(":")) continue;            // 주석
-                if (line.startsWith("data:")) {
-                    if (data.length() > 0) data.append('\n');  // 여러 data: 라인 합치기
-                    data.append(line.substring(5).trim());
-                }
-            }
-            String s = data.toString().trim();
-            // 유효 JSON일 때만 반환
-            if (!s.isEmpty() && s.charAt(0) == '{' && s.charAt(s.length()-1) == '}') {
-                out.add(s);
-            }
-        }
-        // 남은 꼬리 버퍼 보존
-        buf.setLength(0);
-        buf.append(all.substring(from));
-        return out;
-    }
-
     // tee(전체 SSE 텍스트)를 \n\n 프레임 단위로 쪼개서,
 // 각 프레임의 data: 라인을 합쳐 JSON을 만들고,
 // pptx/docs의 "마지막으로 관측된 값"을 반환한다.
@@ -773,5 +765,102 @@ public class AiProxyController {
         var t = v.asText("");
         if (t.isBlank()) return null;
         return t; // "yes"/"no" 그대로
+    }
+
+    private boolean isTerminalForSearch(JsonNode n) {
+        if (!"get_search_result_by_query_tool".equals(n.path("tool").asText())) return false;
+        JsonNode results = n.get("results");
+        return results != null && results.isArray() && results.size() > 0;
+    }
+
+    private void normalizeForPersist(ObjectNode obj, ObjectMapper om) {
+        if ("get_search_result_by_query_tool".equals(obj.path("tool").asText())) {
+            ArrayNode src = (ArrayNode) obj.path("results");
+            ArrayNode arr = om.createArrayNode();
+            int limit = Math.min(src.size(), 10);
+            for (int i = 0; i < limit; i++) {
+                JsonNode it = src.get(i);
+                ObjectNode slim = om.createObjectNode();
+                slim.put("title", it.path("title").asText(null));
+                slim.put("url",   it.path("url").asText(null));
+                arr.add(slim);
+            }
+            obj.set("results", arr);
+        }
+        obj.put("@upsert_at", java.time.OffsetDateTime.now().toString());
+    }
+
+    private String resolveToolCallId(JsonNode n) {
+        // 1) 표준 필드 우선
+        if (n.hasNonNull("tool_call_id")) return n.get("tool_call_id").asText();
+        if (n.hasNonNull("callId")) return n.get("callId").asText();
+        if (n.hasNonNull("id")) return n.get("id").asText();
+        // 2) 최후의 수단: tool 이름+args 해시(가능하면 쓰지 말자)
+        String seed = (n.hasNonNull("tool") ? n.get("tool").toString() : "") +
+                (n.hasNonNull("arguments") ? n.get("arguments").toString() : "");
+        return Integer.toHexString(seed.hashCode());
+    }
+
+    private ObjectNode mergeObjectNodes(ObjectMapper om, ObjectNode base, JsonNode add) {
+        // 얕은 병합: 같은 키는 add가 덮어씀. 필요시 깊은 병합 구현
+        add.fields().forEachRemaining(e -> base.set(e.getKey(), e.getValue()));
+        return base;
+    }
+
+    public static List<String> drainSseDataJsons(StringBuilder buf, String chunk) {
+        if (chunk == null || chunk.isEmpty()) return java.util.Collections.emptyList();
+        // SSE "data:" 라인 형태로 올 수 있으면 여기서 전처리(선택)
+        // chunk = normalizeSseDataLines(chunk);
+
+        buf.append(chunk);
+
+        List<String> out = new java.util.ArrayList<>();
+        int n = buf.length();
+        int depth = 0;
+        boolean inString = false;
+        boolean escape = false;
+        int start = -1; // 루트 JSON 시작 인덱스
+
+        for (int i = 0; i < n; i++) {
+            char c = buf.charAt(i);
+
+            // 문자열 상태 처리
+            if (inString) {
+                if (escape) { escape = false; continue; }
+                if (c == '\\') { escape = true; continue; }
+                if (c == '"')  { inString = false; }
+                continue; // 문자열 안에서는 중첩 카운팅 안 함
+            } else {
+                // 문자열 시작
+                if (c == '"') { inString = true; continue; }
+                // 루트 시작을 처음 만나는 '{' or '['에서 기록
+                if (c == '{' || c == '[') {
+                    if (depth == 0) start = i;
+                    depth++;
+                } else if (c == '}' || c == ']') {
+                    depth--;
+                    if (depth == 0 && start >= 0) {
+                        // 완전한 하나의 루트 JSON 확보
+                        String json = buf.substring(start, i + 1);
+                        out.add(json);
+                        start = -1; // 다음 루트를 위해 리셋
+                    }
+                } else {
+                    // 공백/개행/쉼표 등은 무시; 루트값 사이에 있을 수 있음
+                }
+            }
+        }
+
+        // 처리된 부분 잘라내고, 미완성 꼬리만 남김
+        if (!out.isEmpty()) {
+            int lastEnd = buf.lastIndexOf(out.get(out.size() - 1)) + out.get(out.size() - 1).length();
+            buf.delete(0, lastEnd);
+        } else {
+            // 아무것도 못 뽑았는데 버퍼가 너무 크면(예: 쓰레기/로그) 컷
+            final int MAX_BUF = 1 << 20; // 1MB
+            if (buf.length() > MAX_BUF) buf.setLength(0);
+        }
+
+        return out;
     }
 }
