@@ -1172,6 +1172,13 @@ public class ProjectService {
         }
         RequestProjectDTO.Project project = chatService.convertExcelProject(excel.getExcelFileList().get(0).getFileUrl());
         project.setProjectIdx(projectIdx);
+        project.setTitle(projectVO.getTitle());
+        project.setDescription(projectVO.getDescription());
+        project.setImagePath(projectVO.getImagePath());
+        project.setImageUrl(projectVO.getImageUrl());
+        project.setPartnershipIdx(projectVO.getPartnershipIdx());
+        project.setProjectCategoryIdx(projectVO.getProjectCategoryIdx());
+
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, project.getProjectIdx());
         // 프로젝트 구성원 여부 체크
