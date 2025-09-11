@@ -80,6 +80,14 @@ public class ProjectController {
         return projectService.replaceProject(memberVO, project, DraftContext.from(req));
     }
 
+    @GetMapping("session")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getSession(@CurrentMember MemberVO memberVO,
+                                        @RequestParam("projectIdx") Integer projectIdx,
+                                        HttpServletRequest req) throws CustomException {
+        return projectService.getSeesion(memberVO, projectIdx, DraftContext.from(req));
+    }
+
     @PutMapping("ai")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> replaceProjectByAi(@CurrentMember MemberVO memberVO,
