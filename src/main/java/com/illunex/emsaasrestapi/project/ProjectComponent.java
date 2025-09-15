@@ -453,6 +453,8 @@ public class ProjectComponent {
         Excel excel = draft.getExcelMeta();
         if (excel != null) {
             base.setProjectExcel(modelMapper.map(excel, ResponseProjectDTO.Excel.class));
+            base.setProjectFileList(modelMapper.map(excel.getExcelFileList(), new TypeToken<List<ResponseProjectDTO.ProjectFile>>() {
+            }.getType()));
         }
         return base;
     }
