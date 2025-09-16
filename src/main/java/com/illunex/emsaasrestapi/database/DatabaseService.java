@@ -23,11 +23,15 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.bson.Document;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -219,17 +223,15 @@ public class DatabaseService {
      * @return 데이터베이스 목록을 포함한 CustomResponse 객체
      */
     public CustomResponse<?> getDatabaseList(Integer projectIdx, String searchString) {
-        // 프로젝트 정보 조회
-        Project project = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(projectIdx)), Project.class);
+        // --- 1) RDB에서 프로젝트 요약 + 카테고리 한 번에 확보 (Mongo Project 불필요하면 제거) ---
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
                 .orElseThrow(() -> new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx));
-        // 프로젝트 카테고리 정보 조회
-        Optional<ProjectCategoryVO> projectCategoryVOOpt = projectCategoryMapper.selectByIdx(projectVO.getProjectCategoryIdx());
-        if (project == null) {
-            throw new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx);
-        }
+
+        Optional<ProjectCategoryVO> projectCategoryVOOpt =
+                projectCategoryMapper.selectByIdx(projectVO.getProjectCategoryIdx());
+
         ResponseDatabaseDTO.DatabaseList response = new ResponseDatabaseDTO.DatabaseList();
-        // 프로젝트 정보 매핑
+
         response.setProject(new ResponseDatabaseDTO.DatabaseProjectSummary(
                 projectVO.getIdx(),
                 projectVO.getPartnershipIdx(),
@@ -238,43 +240,83 @@ public class DatabaseService {
                 projectVO.getCreateDate(),
                 projectVO.getUpdateDate()
         ));
-        // 프로젝트 카테고리 이름 설정
         response.setProjectCategoryName(projectCategoryVOOpt.map(ProjectCategoryVO::getName).orElse("미분류"));
-        List<ProjectTableVO> projectTableList = new ArrayList<>();
-        if (searchString != null && !searchString.isEmpty()) {
-            // 검색어가 있는 경우, 프로젝트 테이블 정보에서 검색
-            projectTableList = projectTableMapper.selectAllByProjectIdxAndTitle(projectIdx, searchString);
-        } else {
-            projectTableList = projectTableMapper.selectAllByProjectIdx(projectIdx);
-        }
 
+        // --- 2) 테이블 목록 조회 (검색어 유무) ---
+        final boolean hasSearch = StringUtils.hasText(searchString);
+        List<ProjectTableVO> projectTableList = hasSearch
+                ? projectTableMapper.selectAllByProjectIdxAndTitle(projectIdx, searchString)
+                : projectTableMapper.selectAllByProjectIdx(projectIdx);
+
+        // 제목 리스트 분리
+        List<String> nodeTitles = projectTableList.stream()
+                .filter(t -> EnumCode.ProjectTable.TypeCd.Node.getCode().equals(t.getTypeCd()))
+                .map(ProjectTableVO::getTitle)
+                .collect(Collectors.toList());
+
+        List<String> edgeTitles = projectTableList.stream()
+                .filter(t -> EnumCode.ProjectTable.TypeCd.Edge.getCode().equals(t.getTypeCd()))
+                .map(ProjectTableVO::getTitle)
+                .collect(Collectors.toList());
+
+        // --- 3) 한 방 집계: Nodes / Edges 각각 1회 왕복 ---
+        Map<String, Long> nodeCounts = aggregateCountsByType(projectIdx, nodeTitles, Node.class);
+        Map<String, Long> edgeCounts = aggregateCountsByType(projectIdx, edgeTitles, Edge.class);
+
+        // --- 4) DTO 매핑 ---
         List<ResponseDatabaseDTO.TableData> nodeTableList = new ArrayList<>();
         List<ResponseDatabaseDTO.TableData> edgeTableList = new ArrayList<>();
-        // 프로젝트 테이블 정보에 따라 노드와 엣지 테이블 데이터 생성
-        for (ProjectTableVO projectTable : projectTableList) {
-            ResponseDatabaseDTO.TableData tableData = new ResponseDatabaseDTO.TableData();
-            // 테이블 데이터 설정
-            tableData.setTitle(projectTable.getTitle());
-            tableData.setTypeCd(projectTable.getTypeCd());
-            if (projectTable.getTypeCd().equals(EnumCode.ProjectTable.TypeCd.Node.getCode())) {
-                // 데이터 개수 조회
-                tableData.setDataCount(mongoTemplate.count(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                        .and("_id.type").is(projectTable.getTitle())), Node.class));
-                tableData.setTypeCdDesc(EnumCode.ProjectTable.TypeCd.Node.getValue());
-                nodeTableList.add(tableData);
+
+        for (ProjectTableVO t : projectTableList) {
+            ResponseDatabaseDTO.TableData td = new ResponseDatabaseDTO.TableData();
+            td.setTitle(t.getTitle());
+            td.setTypeCd(t.getTypeCd());
+
+            if (EnumCode.ProjectTable.TypeCd.Node.getCode().equals(t.getTypeCd())) {
+                td.setDataCount(nodeCounts.getOrDefault(t.getTitle(), 0L));
+                td.setTypeCdDesc(EnumCode.ProjectTable.TypeCd.Node.getValue());
+                nodeTableList.add(td);
             } else {
-                tableData.setDataCount(mongoTemplate.count(Query.query(Criteria.where("_id.projectIdx").is(projectIdx)
-                        .and("_id.type").is(projectTable.getTitle())), Edge.class));
-                tableData.setTypeCdDesc(EnumCode.ProjectTable.TypeCd.Edge.getValue());
-                edgeTableList.add(tableData);
+                td.setDataCount(edgeCounts.getOrDefault(t.getTitle(), 0L));
+                td.setTypeCdDesc(EnumCode.ProjectTable.TypeCd.Edge.getValue());
+                edgeTableList.add(td);
             }
         }
+
         response.setNodeTableList(nodeTableList);
         response.setEdgeTableList(edgeTableList);
 
         return CustomResponse.builder()
                 .data(response)
                 .build();
+    }
+    private Map<String, Long> aggregateCountsByType(Integer projectIdx, List<String> titles, Class<?> collectionClass) {
+        Map<String, Long> map = new HashMap<>();
+        if (titles == null || titles.isEmpty()) return map;
+
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("_id.projectIdx").is(projectIdx).and("_id.type").in(titles)),
+                // _id에 type이 그대로 들어가므로, 읽을 때는 "_id"에서 꺼냄
+                Aggregation.group("_id.type").count().as("cnt")
+        );
+
+        AggregationResults<org.bson.Document> results =
+                mongoTemplate.aggregate(agg, collectionClass, org.bson.Document.class);
+
+        for (org.bson.Document d : results.getMappedResults()) {
+            // type 읽기 (group("_id.type")이므로 _id가 곧 type 값)
+            Object id = d.get("_id");
+            String type = (id == null) ? null : String.valueOf(id);
+
+            // cnt는 Integer 또는 Long로 올 수 있음 → Number로 받아서 longValue()
+            Number n = (Number) d.get("cnt");
+            long cnt = (n == null) ? 0L : n.longValue();
+
+            if (type != null) {
+                map.put(type, cnt);
+            }
+        }
+        return map;
     }
 
     /**
