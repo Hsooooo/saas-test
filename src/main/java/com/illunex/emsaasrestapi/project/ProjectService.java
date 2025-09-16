@@ -398,12 +398,12 @@ public class ProjectService {
                         .build();
             }
         }
+        // --- 여기부터는 세션 존재: 일반 드래프트 업데이트 ---
         dc.require();
+        var sid = dc.getSessionId();
 
-        // 1) 드래프트 projectDoc 갱신
-        var projDoc = modelMapper.map(project, com.illunex.emsaasrestapi.project.document.project.Project.class);
-        projDoc.setUpdateDate(java.time.LocalDateTime.now());
-        draftRepo.upsert(dc.getSessionId(), new Update().set("projectDoc", projDoc));
+        // 1) projectDoc + 얕은 필드 동시 반영
+        draftRepo.upsert(sid, buildDraftUpdateFromRequest(project));
 
         // 2) 노드/엣지 예상 카운트 (엑셀 메타 기반)
         var draft = draftRepo.get(dc.getSessionId());
@@ -1290,5 +1290,27 @@ public class ProjectService {
         return CustomResponse.builder()
                 .data(projectComponent.createResponseProject(null, draftRepo.get(sid)))
                 .build();
+    }
+
+    private Update buildDraftUpdateFromRequest(RequestProjectDTO.Project req) {
+        Update u = new Update().set("updatedAt", new Date());
+
+        // 1) projectDoc 반영 (널이면 skip)
+        if (req != null) {
+            // req -> Project 문서 매핑
+            var projDoc = modelMapper.map(req, com.illunex.emsaasrestapi.project.document.project.Project.class);
+            projDoc.setUpdateDate(java.time.LocalDateTime.now());
+            u.set("projectDoc", projDoc);
+        }
+
+        // 2) 얕은 필드(메타) 조건부 반영
+        if (req.getTitle() != null)                 u.set("title", req.getTitle());
+        if (req.getPartnershipIdx() != null)        u.set("partnershipIdx", req.getPartnershipIdx());
+        if (req.getProjectCategoryIdx() != null)    u.set("projectCategoryIdx", req.getProjectCategoryIdx());
+        if (req.getDescription() != null)           u.set("description", req.getDescription());
+        if (req.getImagePath() != null)             u.set("imagePath", req.getImagePath());
+        if (req.getImageUrl() != null)              u.set("imageUrl", req.getImageUrl());
+
+        return u;
     }
 }
