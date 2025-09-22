@@ -21,7 +21,6 @@ import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
-import com.mongodb.lang.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -433,11 +432,7 @@ public class ProjectComponent {
     }
 
     // ✅ 신규 오버로드: 드래프트 값 오버레이
-    public ResponseProjectDTO.Project createResponseProject(Integer projectIdx, ProjectDraft draft) throws CustomException {
-//        // 0) 기본 응답: 영구 데이터
-// = createResponseProject(projectIdx);
-//
-//        if (draft == null) return base;
+    public ResponseProjectDTO.Project createResponseProject(ProjectDraft draft) throws CustomException {
 
         // 1) 드래프트 오버레이: 단순 필드
         ResponseProjectDTO.Project base = new ResponseProjectDTO.Project();
@@ -459,80 +454,9 @@ public class ProjectComponent {
         return base;
     }
 
-    /**
-     * // RDB 조회
-     *         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
-     *                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
-     *
-     *         if(projectVO.getDeleteDate() == null) {
-     *             ResponseProjectDTO.Project response = modelMapper.map(projectVO, ResponseProjectDTO.Project.class);
-     *
-     *             // MongoDB 조회
-     *             Project project = mongoTemplate.findOne(
-     *                     Query.query(
-     *                             Criteria.where("_id").is(projectIdx)
-     *                     ),
-     *                     Project.class
-     *             );
-     *
-     *                 if(project == null) {
-     *                     throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
-     *                 }
-     *
-     *                 modelMapper.map(project, response);
-     *
-     *                 // 프로젝트 파일 업로드 맵핑
-     *                 List<ProjectFileVO> projectFileList = projectFileMapper.selectAllByProjectIdx(projectIdx);
-     *                 if(projectFileList.size() > 0) {
-     *                     response.setProjectFileList(modelMapper.map(projectFileList, new TypeToken<List<ResponseProjectDTO.ProjectFile>>(){}.getType()));
-     *             } else {
-     *                 response.setProjectFileList(new ArrayList<>());
-     *             }
-     *
-     *             // 저장된 엑셀 데이터 정보 조회
-     *             Excel selectExcel = mongoTemplate.findOne(
-     *                     Query.query(
-     *                             Criteria.where("_id").is(projectIdx)
-     *                     ),
-     *                     Excel.class
-     *             );
-     *             // 엑셀 데이터가 있을 경우 맵핑
-     *             if(selectExcel != null) {
-     *                 response.setProjectExcel(modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class));
-     *             }
-     *
-     *             return response;
-     *         }
-     *
-     *         // 프로젝트 삭제 예외 응답
-     *         throw new CustomException(ErrorCode.PROJECT_DELETED);
-     * @param a
-     * @param fallback
-     * @return
-     */
-
-    // ====== 헬퍼 ======
-
-    private static String firstNonBlank(String a, String fallback) {
-        return safeHasText(a) ? a : fallback;
-    }
 
     private static boolean safeHasText(String s) {
         return s != null && !s.isBlank();
-    }
-
-    private static <T> List<T> safeList(List<T> in) {
-        return in == null ? List.of() : in;
-    }
-
-    private static int sizeOrZero(List<?> list) {
-        return list == null ? 0 : list.size();
-    }
-
-    private static <T> void replaceIfNonEmpty(List<T> candidate, java.util.function.Consumer<List<T>> setter) {
-        if (candidate != null && !candidate.isEmpty()) {
-            setter.accept(candidate);
-        }
     }
 
 }

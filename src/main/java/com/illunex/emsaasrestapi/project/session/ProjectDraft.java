@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @Document("project_drafts")
@@ -31,6 +32,9 @@ public class ProjectDraft {
 
     /** ✅ Excel 메타(=시트명/row수/헤더 & S3 path)만 저장 (로우 데이터는 S3에서 읽음) */
     private Excel excelMeta;
+
+    /** 이 드래프트가 생성/복사/업데이트한 S3 오브젝트 키들 */
+    private List<String> s3Keys;
 
     @Indexed(expireAfterSeconds = 0)
     private Date expiresAt;           // TTL

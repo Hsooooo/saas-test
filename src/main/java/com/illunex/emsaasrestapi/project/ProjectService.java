@@ -34,7 +34,6 @@ import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import jakarta.servlet.http.HttpServletRequest;
-import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -166,7 +165,7 @@ public class ProjectService {
 
         // 3) 응답으로 sessionId 내려줌 → 프론트는 이후 헤더에 실어 재호출
         return CustomResponse.builder().data(
-                projectComponent.createResponseProject(null, d)
+                projectComponent.createResponseProject(d)
         ).build();
     }
 
@@ -242,21 +241,31 @@ public class ProjectService {
         if (!dc.isDraft()) return uploadSingleExcelFile(me, projectIdx, excelFile); // 기존
         dc.require();
 
-        // S3 업로드 (기존처럼)
-        var res = com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO.builder()
+        var sid = dc.getSessionId();
+
+        // detailPath 통일(예: "draft/{sid}")
+        String detailPath = awsS3Component.buildDraftPrefix(sid);
+
+        // S3 업로드
+        var res = AwsS3ResourceDTO.builder()
                 .fileName(excelFile.getOriginalFilename())
-                .s3Resource(awsS3Component.upload(excelFile, AwsS3Component.FolderType.ProjectFile, "draft/" + dc.getSessionId()))
+                .s3Resource(awsS3Component.upload(excelFile, AwsS3Component.FolderType.ProjectFile, detailPath))
                 .build();
 
-        // 시트 메타만 추출
+        // 시트 메타 추출 (업로드된 "최종" key/url로)
         Excel excelMeta = excelMetaUtil.buildExcelMeta(res.getOrgFileName(), res.getPath(), res.getUrl(), res.getSize());
 
-        draftRepo.upsert(dc.getSessionId(), new Update()
-                .set("excelMeta", excelMeta)
+        // ✅ 옵션 B 핵심: 이번에 생성한 키를 세션에 기록(중복 방지용 addToSet로 구현해둔 메서드)
+        draftRepo.addS3Keys(sid, List.of(res.getPath()));
+
+        // 드래프트 갱신
+        draftRepo.upsert(sid, new Update()
+                .set("excelMeta", excelMeta)     // 한 파일 기준이면 전체 교체로 충분
+                .set("updatedAt", new Date())
         );
 
-        return CustomResponse.builder().data(java.util.Map.of(
-                "sessionId", dc.getSessionId().toHexString(),
+        return CustomResponse.builder().data(Map.of(
+                "sessionId", sid.toHexString(),
                 "step", 3,
                 "sheets", excelMeta.getExcelSheetList()
         )).build();
@@ -390,11 +399,11 @@ public class ProjectService {
 
                 // 세션 발급 + 드래프트 오픈
                 var sid = draftRepo.openFromExistingProject(project.getProjectIdx(),
-                        memberVO.getIdx().longValue(), pvo, projDoc, excelMeta);
+                        memberVO.getIdx().longValue(), pvo, projDoc, excelMeta, null);
 
                 // 프론트는 이 sessionId 저장 후, 같은 replace를 다시 호출하면 정상 진행됨
                 return CustomResponse.builder()
-                        .data(projectComponent.createResponseProject(null, draftRepo.get(sid)))
+                        .data(projectComponent.createResponseProject(draftRepo.get(sid)))
                         .build();
             }
         }
@@ -427,7 +436,7 @@ public class ProjectService {
         }
 
         return CustomResponse.builder().data(
-                projectComponent.createResponseProject(null, draft)
+                projectComponent.createResponseProject(draft)
         ).build();
     }
 
@@ -570,8 +579,9 @@ public class ProjectService {
 
         ProjectDraft d = draftRepo.get(dc.getSessionId()); // 존재 여부 체크용
 
+        if (d == null) throw new CustomException(ErrorCode.COMMON_EMPTY);
         return CustomResponse.builder()
-                .data(projectComponent.createResponseProject(null, d))
+                .data(projectComponent.createResponseProject(d))
                 .build();
     }
 
@@ -1121,11 +1131,11 @@ public class ProjectService {
 
                 // 세션 발급 + 드래프트 오픈
                 var sid = draftRepo.openFromExistingProject(project.getProjectIdx(),
-                        memberVO.getIdx().longValue(), pvo, projDoc, excelMeta);
+                        memberVO.getIdx().longValue(), pvo, projDoc, excelMeta, null);
 
                 // 프론트는 이 sessionId 저장 후, 같은 replace를 다시 호출하면 정상 진행됨
                 return CustomResponse.builder()
-                        .data(projectComponent.createResponseProject(null, draftRepo.get(sid)))
+                        .data(projectComponent.createResponseProject(draftRepo.get(sid)))
                         .build();
             }
         }
@@ -1158,7 +1168,7 @@ public class ProjectService {
         }
 
         return CustomResponse.builder().data(
-                projectComponent.createResponseProject(null, draft)
+                projectComponent.createResponseProject(draft)
         ).build();
     }
 
@@ -1282,13 +1292,22 @@ public class ProjectService {
                 com.illunex.emsaasrestapi.project.document.project.Project.class); // null 허용
         var excelMeta = mongoTemplate.findById(projectIdx, Excel.class); // null 허용
 
+        // 3) 세션 발급(우선 sid 생성)
+        var sid = new org.bson.types.ObjectId();
+
+        // 4) 엑셀 메타가 있으면 S3 → draft/{sid}/ 로 복제 후, 경로 치환본 생성
+        com.illunex.emsaasrestapi.project.document.excel.Excel draftExcel = null;
+        if (excelMeta != null) {
+            draftExcel = awsS3Component.copyExcelMetaToDraftPrefix(excelMeta, sid); // ⬅️ 신규 헬퍼
+        }
+
         // 세션 발급 + 드래프트 오픈
-        var sid = draftRepo.openFromExistingProject(pvo.getIdx(),
-                memberVO.getIdx().longValue(), pvo, projDoc, excelMeta);
+        var openSid = draftRepo.openFromExistingProject(pvo.getIdx(),
+                memberVO.getIdx().longValue(), pvo, projDoc, draftExcel, sid);
 
         // 프론트는 이 sessionId 저장 후, 같은 replace를 다시 호출하면 정상 진행됨
         return CustomResponse.builder()
-                .data(projectComponent.createResponseProject(null, draftRepo.get(sid)))
+                .data(projectComponent.createResponseProject(draftRepo.get(openSid)))
                 .build();
     }
 
