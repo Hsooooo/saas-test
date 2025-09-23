@@ -69,5 +69,13 @@ INSERT INTO em_saas.code (code, first_code, second_code, third_code, code_value,
 ('CHT0001', 'CHT', '00', '01', 'SIMPLE', 1),
 ('CHT0002', 'CHT', '00', '02', 'GENERAL', 2),
 ('CHT0003', 'CHT', '00', '03', 'PROFESSIONAL', 3),
-('CHT0004', 'CHT', '00', '04', 'USER', 3)
+('CHT0004', 'CHT', '00', '04', 'USER', 3),
+
+('PPC0000', 'PPC', '00', '00', '- 제품 코드', 0),
+('PPC0001', 'PPC', '00', '01', 'Network Analysis', 1),
+('PPC0002', 'PPC', '00', '02', 'Graph Knowledge', 2),
+
+('PPG0000', 'PPG', '00', '00', '- 제품 권한 코드', 0),
+('PPG0001', 'PPG', '00', '01', 'EDITOR', 1),
+('PPG0002', 'PPG', '00', '02', 'VIEWER', 2)
 ;

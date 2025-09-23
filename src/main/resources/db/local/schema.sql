@@ -212,6 +212,21 @@ create table if not exists em_saas.partnership_member
     )
     comment '파트너쉽 회원정보';
 
+CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_member_product_grant` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너십 회원 제품 권한 번호',
+     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원 번호',
+     `product_code` VARCHAR(7) NULL DEFAULT NULL COMMENT '제품 코드' COLLATE 'utf8mb4_general_ci',
+     `permission_code` VARCHAR(7) NULL DEFAULT NULL COMMENT '제품 권한 코드' COLLATE 'utf8mb4_general_ci',
+     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_partnership_member_product_grant_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
+     CONSTRAINT `fk_partnership_member_product_grant_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='파트너십 회원 제품 권한'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
 create table if not exists em_saas.partnership_invited_member
 (
     idx                               int auto_increment
