@@ -32,8 +32,8 @@ public class AwsSESComponent {
 
     @AllArgsConstructor
     public enum EmailType {
-        join("join", "[Em-Stock] 회원가입 메일", "templates/CertificationTemplate.html"),
-        findPassword("password", "[Em-Stock] 비밀번호 변경 메일", "templates/FindPWMailTemplate.html"),
+        join("join", "[Em-SAAS] 회원가입 메일", "templates/CertificationTemplate.html"),
+        findPassword("password", "[Em-SAAS] 비밀번호 변경 메일", "templates/FindPWMailTemplate.html"),
         invite("invite", "[Em-SAAS] 초대 메일", "templates/Invite.html"),
         inviteProject("inviteProject", "[Em-SAAS] 초대 메일", "templates/InviteProject.html");
 
