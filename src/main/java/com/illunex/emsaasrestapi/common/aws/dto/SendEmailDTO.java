@@ -41,6 +41,7 @@ public class SendEmailDTO {
         ClassPathResource templateResource = new ClassPathResource(emailType.getTemplatePath());
         String bodyHtml = StreamUtils.copyToString(templateResource.getInputStream(), Charset.defaultCharset())
                 .replace("${TO}", receiverAddress)
+                .replace("${NAME}", name != null ? name : "")
                 .replace("${URL}", certUrl + "?certData=" + URLEncoder.encode(certData, StandardCharsets.UTF_8));
 
         Destination destination = Destination.builder()

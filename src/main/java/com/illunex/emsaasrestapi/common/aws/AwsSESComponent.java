@@ -2,6 +2,8 @@ package com.illunex.emsaasrestapi.common.aws;
 
 import com.illunex.emsaasrestapi.common.Utils;
 import com.illunex.emsaasrestapi.common.aws.dto.SendEmailDTO;
+import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
+import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import java.time.ZonedDateTime;
 @RequiredArgsConstructor
 public class AwsSESComponent {
     private final SesV2Client sesV2Client;
+    private final MemberMapper memberMapper;
     // AES256 암호화 키
     @Value("${server.encrypt-key}")
     private String encryptKey;
@@ -59,6 +62,8 @@ public class AwsSESComponent {
      * @throws Exception
      */
     public String sendJoinEmail(AwsSESListener listener, String email) throws Exception {
+        MemberVO member = memberMapper.selectByEmail(email)
+                .orElseThrow(() -> new Exception("존재하지 않는 회원입니다."));
         JSONObject certJson = new JSONObject()
                 .put("type", EmailType.join.getValue())
                 .put("email", email)
@@ -73,6 +78,7 @@ public class AwsSESComponent {
                 .senderAddress(managerEmail)
                 .receiverAddress(email)
                 .subject(EmailType.join.getSubject())
+                .name(member.getName())
                 .certUrl(certJoinUrl)
                 .certData(certData)
                 .build();
