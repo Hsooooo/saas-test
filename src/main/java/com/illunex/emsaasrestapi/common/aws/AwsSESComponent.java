@@ -4,10 +4,16 @@ import com.illunex.emsaasrestapi.common.Utils;
 import com.illunex.emsaasrestapi.common.aws.dto.SendEmailDTO;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -16,6 +22,7 @@ import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
 import software.amazon.awssdk.services.sesv2.model.SendEmailResponse;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -23,6 +30,8 @@ import java.time.ZonedDateTime;
 public class AwsSESComponent {
     private final SesV2Client sesV2Client;
     private final MemberMapper memberMapper;
+    private final PartnershipMemberMapper partnershipMemberMapper;
+    private final PartnershipMapper partnershipMapper;
     // AES256 암호화 키
     @Value("${server.encrypt-key}")
     private String encryptKey;
@@ -129,27 +138,45 @@ public class AwsSESComponent {
     /**
      * 회원 초대 메일 발송
      * @param listener
-     * @param email
-     * @param partnershipMemberIdx
-     * @param memberIdx
+     * @param receiverEmail 초대받는 회원 이메일
+     * @param partnershipMemberIdx 초대한 파트너십 회원 IDX
+     * @param memberIdx 초대한 회원 idx
+     * @param products 초대받는 회원이 사용할 수 있는 제품 권한 리스트
      * @return
      * @throws Exception
      */
-    public String sendInviteMemberEmail(AwsSESListener listener, String email, Integer partnershipMemberIdx, Integer memberIdx) throws Exception {
+    public String sendInviteMemberEmail(AwsSESListener listener, String receiverEmail, Integer partnershipMemberIdx, Integer memberIdx, List<RequestPartnershipDTO.InviteMemberProduct> products) throws Exception {
+        MemberVO member = memberMapper.selectByIdx(memberIdx)
+                .orElseThrow(() -> new Exception("존재하지 않는 회원입니다."));
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByIdx(partnershipMemberIdx)
+                .orElseThrow(() -> new Exception("존재하지 않는 파트너쉽 회원입니다."));
+        PartnershipVO partnershipVO = partnershipMapper.selectByIdx(partnershipMemberVO.getPartnershipIdx())
+                .orElseThrow(() -> new Exception("존재하지 않는 파트너쉽입니다."));
+        JSONArray productArray = new JSONArray();
+        for (RequestPartnershipDTO.InviteMemberProduct product : products) {
+            JSONObject productJson = new JSONObject()
+                    .put("productCode", product.getProductCode())
+                    .put("auth", product.getAuth());
+            productArray.put(productJson);
+        }
         JSONObject certJson = new JSONObject()
                 .put("type", EmailType.invite.getValue())
                 .put("partnershipMemberIdx", partnershipMemberIdx)
                 .put("memberIdx", memberIdx)
-                .put("expire", ZonedDateTime.now().plusHours(1).toString()); // 1시간?
+                .put("expire", ZonedDateTime.now().plusHours(1).toString())  // 1시간?
+                .put("products", productArray);
 
         // 이메일 인증을 위한 암호화 - AES256 -> Base64
         String certData = Utils.AES256.encrypt(encryptKey, certJson.toString());
 
         final SendEmailDTO senderDto = SendEmailDTO.builder()
                 .senderAddress(managerEmail)
-                .receiverAddress(email)
+                .receiverAddress(receiverEmail)
                 .subject(EmailType.invite.getSubject())
                 .certData(certData)
+                .profileImage(partnershipMemberVO.getProfileImageUrl())
+                .name(member.getName())
+                .partnershipName(partnershipVO.getName())
                 .build();
 
         SendEmailRequest sendEmailRequest = senderDto.createSendEmailRequest(EmailType.invite);
