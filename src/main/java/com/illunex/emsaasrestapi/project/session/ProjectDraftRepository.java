@@ -2,7 +2,6 @@ package com.illunex.emsaasrestapi.project.session;
 
 
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
-import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +10,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.*;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
 import java.util.Date;
 
 @Component
@@ -65,10 +63,9 @@ public class ProjectDraftRepository {
     // 새 세션 생성 + 기존 프로젝트 스냅샷 적재
     public ObjectId openFromExistingProject(int projectIdx, long memberId,
                                             ProjectVO pvo,
-                                            Project projDoc,
-                                            Excel excelMeta,
-                                            ObjectId sid) {
-        if (sid == null) sid = new ObjectId();
+                                            com.illunex.emsaasrestapi.project.document.project.Project projDoc,
+                                            Excel excelMeta) {
+        ObjectId sid = new ObjectId();
         Update u = new Update()
                 .setOnInsert("status", "OPEN")
                 .setOnInsert("ownerMemberId", memberId)
@@ -87,10 +84,7 @@ public class ProjectDraftRepository {
         return sid;
     }
 
-    public void addS3Keys(ObjectId sid, Collection<String> keys) {
-        if (keys == null || keys.isEmpty()) return;
-        Update u = new Update().addToSet("s3Keys").each(keys.toArray());
-        u.set("updatedAt", new Date());
-        mongo.upsert(Query.query(Criteria.where("_id").is(sid)), u, "project_drafts");
-    }
+    // 필요하면 락
+    public boolean tryLock(ObjectId sid, long memberId) { /* owner/ttl 체크 후 true/false */ return true; }
+    public void unlock(ObjectId sid, long memberId) { /* ... */ }
 }
