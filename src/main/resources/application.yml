@@ -59,7 +59,12 @@ spring:
       mode: always
   data:
     mongodb:
-      uri: ${mongo-url}
+#      uri: ${mongo-url}
+      host: 220.118.147.58
+      port: 27017
+      username: root
+      password: Illunex123!
+      database: em_saas
       authentication-database: admin
       auto-index-creation: true
 

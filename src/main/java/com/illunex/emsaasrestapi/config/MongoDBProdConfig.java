@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 @EnableMongoRepositories
 @RequiredArgsConstructor
-@Profile("prod")
+@Profile("!prod")
 public class MongoDBProdConfig {
 
     @Value("${spring.data.mongodb.uri}")
