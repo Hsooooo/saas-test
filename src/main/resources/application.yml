@@ -89,14 +89,14 @@ ai:
 #  front-end:
 #    cert-join-url: ${cert-join-url}                                       # 회원가입 인증 URL
 #    cert-password-url: ${cert-password-url}                               # 비밀번호 변경 URL
-#webhook:
-#  synology:
-#    url: ${synology-hook-url}
-#    api: ${synology-hook-api}
-#    method: ${synology-hook-method}
-#    version: ${synology-hook-version}
-#    scrap:
-#      token: ${synology-hook-scrap-token}
-#    use: true
+webhook:
+  synology:
+    url: ${synology-hook-url}
+    api: ${synology-hook-api}
+    method: ${synology-hook-method}
+    version: ${synology-hook-version}
+    scrap:
+      token: ${synology-hook-scrap-token}
+    use: false
 #debug:
 #  mode: ${debug_mode}

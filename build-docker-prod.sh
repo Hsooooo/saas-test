@@ -87,7 +87,7 @@ docker run -d -p ${PORT}:${PORT} \
 # 시놀로지 웹훅 배포 완료 알림
 curl -X POST 'https://illunex.synology.me:52582/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token='${SYNOLOGY_HOOK_TOKEN} \
 -H 'Content-Type: application/x-www-form-urlencoded' \
--d 'payload={"text":"@channel [EM-STOCK] ('${APP_NAME}') 배포 완료"}'
+-d 'payload={"text":"@channel [EM-SAAS] ('${APP_NAME}') 배포 완료"}'
 
 # docker logs show
 docker logs -f ${APP_NAME}
