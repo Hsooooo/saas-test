@@ -10,15 +10,10 @@ import com.illunex.emsaasrestapi.query.mapper.ProjectQueryCategoryMapper;
 import com.illunex.emsaasrestapi.query.mapper.ProjectQueryMapper;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryCategoryVO;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryVO;
-import com.mongodb.MongoException;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
-import org.bson.Document;
-import org.bson.json.JsonParseException;
 import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -26,7 +21,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +39,7 @@ public class QueryService {
      * @param executeQuery
      * @return
      */
-    public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteQuery executeQuery) {
+    public Object findQuery(MemberVO memberVO, RequestQueryDTO.FindQuery executeQuery) {
         QueryComponent.QueryResult queryResult = queryComponent.resolveQuery(executeQuery);
         List<Map> results = mongoTemplate.find(queryResult.query(), Map.class, queryResult.collection());
         long total = mongoTemplate.count(Query.of(queryResult.query()).limit(0).skip(0), queryResult.collection());
@@ -59,6 +53,12 @@ public class QueryService {
                 .limit(size)
                 .result(results)
                 .build());
+    }
+
+    public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteQuery executeQuery) {
+//        QueryComponent.QueryResult queryResult = queryComponent.resolveQuery(executeQuery);
+//        List<Map> results = mongoTemplate.find(queryResult.query(), Map.class, queryResult.collection());
+        return null;
     }
 
 

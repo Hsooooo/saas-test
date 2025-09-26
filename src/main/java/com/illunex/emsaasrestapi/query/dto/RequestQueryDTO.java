@@ -4,7 +4,7 @@ import lombok.Getter;
 
 public class RequestQueryDTO {
     @Getter
-    public static class ExecuteQuery {
+    public static class FindQuery {
         private Integer projectIdx;
         private String filter;
         private String projection;
@@ -26,5 +26,11 @@ public class RequestQueryDTO {
     public static class QueryCategory {
         private Integer queryCategoryIdx;
         private String categoryName;
+    }
+
+    @Getter
+    public static class ExecuteQuery {
+        private Integer projectIdx;
+        private String rawQuery;
     }
 }

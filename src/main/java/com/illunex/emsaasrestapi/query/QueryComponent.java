@@ -3,6 +3,10 @@ package com.illunex.emsaasrestapi.query;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
 import com.mongodb.MongoException;
 import lombok.RequiredArgsConstructor;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.Select;
 import org.bson.Document;
 import org.bson.json.JsonParseException;
 import org.springframework.data.domain.Sort;
@@ -13,12 +17,14 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
 public class QueryComponent {
     private final MongoTemplate mongoTemplate;
+//    private final SqlToMongoAdapter adapter;
 
     /**
      * MongoDB 쿼리 변환
@@ -26,7 +32,7 @@ public class QueryComponent {
      * @param req 쿼리 요청 DTO
      * @return QueryResult 객체, 쿼리와 컬렉션 정보 포함
      */
-    public QueryResult resolveQuery(RequestQueryDTO.ExecuteQuery req) {
+    public QueryResult resolveQuery(RequestQueryDTO.FindQuery req) {
         try {
             // 1. 필수 필드: projectIdx
             Integer projectIdx = req.getProjectIdx();
@@ -108,5 +114,59 @@ public class QueryComponent {
         }
     }
 
+//    public QueryResult resolveSql(RequestQueryDTO.ExecuteQuery req) {
+//        Integer projectIdx = Objects.requireNonNull(req.getProjectIdx(), "projectIdx는 필수입니다.");
+//        String sql = Optional.ofNullable(req.getRawQuery()).orElseThrow(() -> new IllegalArgumentException("sql은 필수입니다.")).trim();
+//        if (sql.isEmpty()) throw new IllegalArgumentException("sql은 비어있을 수 없습니다.");
+//
+//        // 1) 파싱
+//        Statement stmt;
+//        try {
+//            stmt = CCJSqlParserUtil.parse(sql);
+//        } catch (JSQLParserException e) {
+//            throw new IllegalArgumentException("SQL 파싱 실패: " + e.getMessage());
+//        }
+//
+//        // 2) SELECT 서브셋만 허용
+//        if (!(stmt instanceof Select select)) {
+//            throw new IllegalArgumentException("SELECT 쿼리만 허용됩니다.");
+//        }
+//
+//        // 3) AST → 내부 DSL
+//        SqlToDslConverter converter = new SqlToDslConverter(allowedTables(), allowedFunctions());
+//        QueryDsl dsl = converter.toDsl(select);
+//
+//        // 4) DSL → Mongo Query (node/edge 판별 및 properties.* 접두 추가)
+//        return dslToMongoQuery(dsl, projectIdx);
+//        return null;
+//    }
+
+//
+//    public ExecuteSqlResponse execute(Integer projectIdx, String sql) {
+//        long t0 = System.currentTimeMillis();
+//
+//
+//        // 2) SQL → (DSL) → Mongo Query/collection
+//        SqlToMongoAdapter.QueryResult qr = sqlToMongoAdapter.resolve(projectIdx, sql);
+//
+//        // 3) 실행 (타임아웃/제한)
+//        //   - Mongo Java Driver 수준에서 maxTimeMS 를 적용하려면 Query에 hint 불가 → Template 수준보단 Repository/Driver 옵션에서 설정 고려
+//        List<Document> docs = mongoTemplate.find(qr.query(), Document.class, qr.collection());
+//
+//        // 4) projection 결과 평탄화(properties.* → 1뎁스)
+//        List<Map<String, Object>> rows = projectionFlattener.flatten(docs);
+//
+//        // 5) (옵션) 총건수
+//        Long total = null; // 필요 시 카운트: mongoTemplate.count(qr.query().skip(0).limit(0), qr.collection())
+//
+//        long took = System.currentTimeMillis() - t0;
+//        auditLogger.log(projectIdx, sql, qr, docs.size(), took);  // 선택
+//
+//        return ExecuteSqlResponse.builder()
+//                .collection(qr.collection())
+//                .total(total)
+//                .rows(rows)
+//                .build();
+//    }
     public record QueryResult(Query query, String collection) {}
 }
