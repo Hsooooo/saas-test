@@ -61,3 +61,6 @@ webhook:
     scrap:
       token: ${synology-hook-scrap-token}
     use: true
+
+ai:
+  url: http://220.118.147.58:52201
