@@ -60,7 +60,7 @@ spring:
   data:
     mongodb:
       host: 220.118.147.58
-      port: 27017
+      port: 10444
       username: root
       password: Illunex123!
       database: em_saas
