@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,6 +26,7 @@ public class AwsS3Component {
     @Value("${spring.config.activate.on-profile}")
     private String folderName;
     private final S3Operations s3Operations;
+    private final S3Client s3Client;
 
     public enum FolderType {
         PartnershipMember,
@@ -66,15 +69,19 @@ public class AwsS3Component {
 
     /**
      * S3 파일 다운로드(InputStream)
-     * @param s3FileUrl
+     * @param s3FileKey
      * @return
      */
-    public InputStream downloadInputStream(String s3FileUrl) {
-        S3Resource s3Resource = s3Operations.download(bucket, s3FileUrl);
+    public InputStream downloadInputStream(String s3FileKey) {
         try {
-            return s3Resource.getInputStream();
-        } catch (IOException e) {
-            throw new RuntimeException("S3 파일 다운로드 실패: " + s3FileUrl, e);
+            GetObjectRequest req = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(s3FileKey)
+                    .build();
+            // ResponseInputStream<GetObjectResponse> 는 InputStream 구현체
+            return s3Client.getObject(req);
+        } catch (Exception e) {
+            throw new RuntimeException("S3 파일 다운로드 실패: " + s3FileKey, e);
         }
     }
 
