@@ -33,9 +33,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -174,6 +172,10 @@ public class ProjectProcessingService {
             projectTableVO.setTypeCd(typeCd.getCode());
             projectTableMapper.insertByProjectTableVO(projectTableVO);
 
+            Set<Object> seenKeys = new HashSet<>();
+            int skippedDup = 0;
+            int skippedInvalid = 0;
+
             for (int r = 1; r <= sheet.getTotalRowCnt(); r++) {
                 Row row = ws.getRow(r);
                 if (row == null || row.getLastCellNum() == -1) break;
@@ -185,14 +187,20 @@ public class ProjectProcessingService {
 
                 if (nodeDef != null) { // Node
                     Object key = props.get(nodeDef.getUniqueCellName());
-                    if (key != null && !(key instanceof String && ((String) key).trim().isEmpty())) {
-                        nodeBatch.add(Node.builder()
-                                .nodeId(new NodeId(projectIdx, sheetName, key))
-                                .id(key)
-                                .label(sheetName)
-                                .properties(props)
-                                .build());
+                    if (key == null) {
+                        skippedInvalid++;
+                        continue;
                     }
+                    if (!seenKeys.add(key)) { // 이미 본 키 → 스킵
+                        skippedDup++;
+                        continue;
+                    }
+                    nodeBatch.add(Node.builder()
+                            .nodeId(new NodeId(projectIdx, sheetName, key))
+                            .id(key)
+                            .label(sheetName)
+                            .properties(props)
+                            .build());
                 } else {               // Edge
                     Object src = props.get(edgeDef.getSrcEdgeCellName());
                     Object dst = props.get(edgeDef.getDestEdgeCellName());

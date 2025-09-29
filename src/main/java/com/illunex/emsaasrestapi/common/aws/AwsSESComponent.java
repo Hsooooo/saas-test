@@ -39,6 +39,9 @@ public class AwsSESComponent {
     @Value("${spring.cloud.aws.ses.manager-email}")
     private String managerEmail;
 
+    @Value("${front-end.url:https://em-graph.com}")
+    private String frontEndUrl;
+
     @AllArgsConstructor
     public enum EmailType {
         join("join", "[Em-SAAS] 회원가입 메일", "templates/CertificationTemplate.html"),
@@ -78,7 +81,7 @@ public class AwsSESComponent {
                 .put("email", email)
                 .put("expire", ZonedDateTime.now().plusDays(1).toString());
 
-        String certJoinUrl = "http://220.118.147.58:20044/auth/join/email-certification";
+        String certJoinUrl = frontEndUrl + "/auth/join/email-certification";
 
         // 이메일 인증을 위한 암호화 - AES256 -> Base64
         String certData = Utils.AES256.encrypt(encryptKey, certJson.toString());

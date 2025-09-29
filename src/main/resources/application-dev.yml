@@ -64,3 +64,7 @@ webhook:
 
 ai:
   url: http://220.118.147.58:52201
+
+front-end:
+  url: http://220.118.147.58:20044
+
