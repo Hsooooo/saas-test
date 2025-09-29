@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.project.dto;
 
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
+import com.illunex.emsaasrestapi.project.document.project.ProjectNodeCount;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -30,12 +31,17 @@ public class ResponseProjectDTO {
         private String imagePath;                                   // 프로젝트 이미지 경로
         private Integer nodeCnt;                                    // 노드 개수
         private Integer edgeCnt;                                    // 엣지 개수
+        private Integer maxNodeSize;                               // 최대 노드사이즈
+        private List<ProjectNodeCount> projectNodeCountList;    // 노드 타입별 카운트
+        private List<ProjectNodeCount> projectEdgeCountList;    // 엣지 타입별 카운트
         private List<ProjectNode> projectNodeList;                  // 노드정보
         private List<ProjectEdge> projectEdgeList;                  // 엣지정보
         private List<ProjectNodeSize> projectNodeSizeList;          // 노드사이즈정보
         private List<ProjectFilter> projectFilterList;              // 필터링정보
         private List<ProjectNodeContent> projectNodeContentList;    // 속성정보
         private List<ProjectFile> projectFileList;                  // 업로드 파일
+        private Integer totalDataCount;                           // 엑셀 총 데이터 수
+
         private Excel projectExcel;
         private ZonedDateTime updateDate;
         private ZonedDateTime createDate;

@@ -27,6 +27,14 @@ public class Project {
     private List<ProjectFilter> projectFilterList;
     @Comment("노드 속성 정보")
     private List<ProjectNodeContent> projectNodeContentList;
+    @Comment("노드 타입별 카운트")
+    private List<ProjectNodeCount> projectNodeCountList;
+    @Comment("엣지 타입별 카운트")
+    private List<ProjectEdgeCount> projectEdgeCountList;
+    @Comment("최대 노드 개수")
+    private Integer maxNodeSize;
+    @Comment("총 데이터 개수")
+    private Integer totalDataCount;
     @Comment("수정일")
     private LocalDateTime updateDate;
     @Comment("등록일")

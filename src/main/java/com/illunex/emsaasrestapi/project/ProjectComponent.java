@@ -293,16 +293,16 @@ public class ProjectComponent {
                     Project.class
             );
 
-                if(project == null) {
-                    throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
-                }
+            if(project == null) {
+                throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
+            }
 
-                modelMapper.map(project, response);
+            modelMapper.map(project, response);
 
-                // 프로젝트 파일 업로드 맵핑
-                List<ProjectFileVO> projectFileList = projectFileMapper.selectAllByProjectIdx(projectIdx);
-                if(projectFileList.size() > 0) {
-                    response.setProjectFileList(modelMapper.map(projectFileList, new TypeToken<List<ResponseProjectDTO.ProjectFile>>(){}.getType()));
+            // 프로젝트 파일 업로드 맵핑
+            List<ProjectFileVO> projectFileList = projectFileMapper.selectAllByProjectIdx(projectIdx);
+            if(projectFileList.size() > 0) {
+                response.setProjectFileList(modelMapper.map(projectFileList, new TypeToken<List<ResponseProjectDTO.ProjectFile>>(){}.getType()));
             } else {
                 response.setProjectFileList(new ArrayList<>());
             }
@@ -315,7 +315,13 @@ public class ProjectComponent {
                     Excel.class
             );
             // 엑셀 데이터가 있을 경우 맵핑
-            if(selectExcel != null) {
+            if (selectExcel != null) {
+                int totalDataCount = selectExcel.getExcelSheetList().stream()
+                        .filter(sheet -> sheet.getTotalRowCnt() > 0)
+                        .mapToInt(sheet -> sheet.getExcelCellList().size() * sheet.getTotalRowCnt())
+                        .sum();
+
+                response.setTotalDataCount(totalDataCount);
                 response.setProjectExcel(modelMapper.map(selectExcel, ResponseProjectDTO.Excel.class));
             }
 

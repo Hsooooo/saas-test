@@ -78,7 +78,7 @@ docker run -d -p ${PORT}:${PORT} \
     -e "spring.cloud.aws.region.static=${REGION}" \
     -e "spring.cloud.aws.ses.region=${REGION}" \
     -e "spring.cloud.aws.ses.manager-email=${MANAGER_EMAIL}" \
-    -e "spring.data.mongodb.uri=${MONGO_URL}" \
+    -e "SPRING_DATA_MONGODB_URI=${MONGO_URL}" \
     -e "ai.url=${AI_URL}" \
     -e "jwt.secret=${JWT_SECRET}" \
     -e "debug.mode=${DEBUG_MODE}" \

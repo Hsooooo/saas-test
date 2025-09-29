@@ -59,7 +59,6 @@ spring:
       mode: always
   data:
     mongodb:
-      uri: ${mongo-url}
       authentication-database: admin
       auto-index-creation: true
 

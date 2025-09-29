@@ -36,6 +36,7 @@ public class RequestProjectDTO {
         private String description;                                 // 프로젝트 내용
         private String imageUrl;                                    // 프로젝트 이미지 URL
         private String imagePath;                                   // 프로젝트 이미지 경로
+        private Integer maxNodeSize;                               // 최대 노드사이즈
         private List<ProjectNode> projectNodeList;                  // 노드정보
         private List<ProjectEdge> projectEdgeList;                  // 엣지정보
         private List<ProjectNodeSize> projectNodeSizeList;          // 노드사이즈정보
