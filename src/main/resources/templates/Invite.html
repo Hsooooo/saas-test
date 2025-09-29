@@ -1,14 +1,18 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!doctype html>
+<html lang="ko">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-    <title></title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100;0,200;0,300;1,100;1,200&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap"
+          rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100;0,200;0,300;1,100;1,200&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <title>초대장 전송</title>
 </head>
-<body style="height: auto; margin: 0; padding: 0; font-family: 'Noto Sans KR'">
-<!--배경 영역-->
-<table cellpadding="0" cellspacing="0" width="100%" bgcolor="f5f5f5">
+<body style="height: 100%; margin: 0; padding: 0; font-family: 'Noto Sans KR',sans-serif;">
+<table cellpadding="0" cellspacing="0" width="100%"  bgcolor="#ffffff">
     <tr>
         <!--카드 내부 영역-->
         <td>
@@ -16,57 +20,86 @@
                     align="center"
                     cellpadding="0"
                     cellspacing="0"
-                    width="640"
+                    width="800"
                     bgcolor="#ffffff"
-                    style="border-collapse: collapse; margin: 40px auto"
+                    style="margin: 200px auto; overflow: hidden;"
             >
                 <!--header-->
-                <tr style="display:block; margin:0 32px;">
-                    <td style="display:block; padding: 27px 0;">
-                        <img src="https://em-stock.s3.ap-northeast-2.amazonaws.com/logo.png"
-                             alt="로고이미지" width="140" height="26" style="display: block"/>
+                <tr>
+                    <td align="center" style="display: block; padding-bottom: 12px; padding-top: 40px">
+                        <img src="https://illunex-em-saas.s3.ap-northeast-2.amazonaws.com/em-long-logo.png"
+                             alt="로고이미지" width="218" height="45" style="display: block"/>
+                    </td>
+                    <td align="center" style="display: block; color: #666666; font-size: 14px; font-weight: 400; letter-spacing: -0.42px; line-height:140%; padding-bottom: 52px; ">
+                        Effect Mall은 복잡한 데이터를 쉽고 빠르게 그래프로 분석할 수 있는<br/> 인공지능 기반 솔루션입니다.
                     </td>
                 </tr>
                 <!--contents-->
-                <tr style="display: block; padding: 0 40px">
-                    <td>
+                <tr>
+                    <td style="display: block; padding: 40px 0; margin: 0 auto; background:#F8F8F8;">
                         <table
                                 align="center"
                                 cellpadding="0"
                                 cellspacing="0"
-                                width="560"
                                 style="border-collapse: collapse;"
                         >
                             <tr>
-                                <td align="center" style="margin: 40px 0; display: block;">
-                                    <img src="https://em-stock.s3.ap-northeast-2.amazonaws.com/password-icon.png"
-                                         alt="비밀번호찾기" width="200" height="200"/>
+                                <td align="center">
+                                    <img src="${PROFILE_IMAGE}"
+                                         alt="프로필 이미지"
+                                         width="48" height="48"
+                                         style="display:block; width:48px; height:48px; border-radius:50%; overflow: hidden" />
                                 </td>
                             </tr>
                             <tr>
-                                <td align="center"
-                                    style="font-size: 32px; font-weight: 700; letter-spacing: -0.96px; line-height:140%; margin-bottom:16px; display: block">
-                                    비밀번호 변경하기
+                                <td align="center" style="line-height:140%; padding: 20px 0 4px 0; display: block;">
+                                     <span style="font-size: 20px; font-weight: 700; letter-spacing: -0.6px;">
+                                        ${NAME}
+                                     </span>
+                                    <span style="font-size: 20px; font-weight: 400; letter-spacing: -0.6px;">
+                                        이
+                                    </span>
                                 </td>
                             </tr>
                             <tr>
-                                <td align="center" style="letter-spacing: -0.54px; color: #66666e; font-size:18px; font-weight:400; line-height:140%;">
-                               안녕하세요. EM-Stock 입니다. <br/>
-                               <span style="color:#000; font-weight:700;">${TO}</span> 고객님, 비밀번호 변경 요청을  <br/>
-                               확인했습니다. 안전한 계정 관리를 위해 아래 버튼을 클릭하여  <br/>
-                               비밀번호를 재설정해 주세요.
+                                <td align="center" style="line-height:140%; display: block;">
+                                     <span style="font-size: 20px; font-weight: 700; letter-spacing: -0.6px;">
+                                        ${PARTNERSHIP}
+                                     </span>
+                                    <span style="font-size: 20px; font-weight: 400; letter-spacing: -0.6px;">
+                                        그룹에 귀하를 초대하였습니다.
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td colspan="2" align="center" style="padding: 20px 0 24px;">
+                                    <span style="display: inline-block; padding: 8px 12px; background: #E1E4FF; border-radius: 8px; font-size: 16px; font-weight: 400; letter-spacing: -0.48px; vertical-align: middle;">
+                                        Network Analysis
+                                        <span style=" display:inline-block; margin-left:10px; width:24px; height:24px; line-height: 23px; text-align:center; background:#4555D5; border-radius:50%;">
+                                            <img src="https://illunex-em-saas.s3.ap-northeast-2.amazonaws.com/check.png" alt="체크" width="20" height="20" style="vertical-align: sub;"/>
+                                        </span>
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" align="center" style="padding: 20px 40px; border-radius: 8px;">
+                                    <a href="mailto:${EMAIL}"
+                                       style="font-size: 16px; font-weight: 400; color:#10209E; text-decoration:none;">
+                                        로그인 이메일 : ${EMAIL}
+                                    </a>
+                                </td>
+                            </tr>
+                            <!--footer-->
+                            <tr>
+                                <td align="center" style="margin: 0 auto">
+                                    <p style="width: 130px; height: 40px; line-height: 40px; background: #000; border-radius: 4px; margin: 0; display: block">
+                                        <a href="${URL}"
+                                           style="text-decoration: none; color: #ffffff; font-size: 16px; font-weight: 400;">초대수락</a>
+                                    </p>
                                 </td>
                             </tr>
                         </table>
-                    </td>
-                </tr>
-                <!--footer-->
-                <tr>
-                    <td align="center" style="padding: 40px 40px 60px">
-                        <p style="width: 160px; height: 50px; line-height: 50px; background: #3F3E44; border-radius: 4px; margin: 0; display: block">
-                            <a href="${URL}"
-                               style="text-decoration: none; color: #ffffff; font-size: 16px; font-weight: 400;"> 비밀번호 변경하기</a>
-                        </p>
                     </td>
                 </tr>
             </table>

@@ -7,8 +7,8 @@ ACTIVE="prod"
 PORT="80"
 DOCKER_FILE="Dockerfile-prod"
 source ./yaml.sh
-source ../documents/em-saas-rest-api/em-stock-key
-source ../documents/em-saas-rest-api/em-stock-environments
+source ../documents/em-saas-rest-api/em-saas-key
+source ../documents/em-saas-rest-api/em-saas-environments
 
 # 시놀로지 웹훅 배포 시작 알림
 curl -X POST 'https://illunex.synology.me:52582/webapi/entry.cgi?api=SYNO.Chat.External&method=incoming&version=2&token='${SYNOLOGY_HOOK_TOKEN} \
@@ -78,6 +78,8 @@ docker run -d -p ${PORT}:${PORT} \
     -e "spring.cloud.aws.region.static=${REGION}" \
     -e "spring.cloud.aws.ses.region=${REGION}" \
     -e "spring.cloud.aws.ses.manager-email=${MANAGER_EMAIL}" \
+    -e "SPRING_DATA_MONGODB_URI=${MONGO_URL}" \
+    -e "ai.url=${AI_URL}" \
     -e "jwt.secret=${JWT_SECRET}" \
     -e "debug.mode=${DEBUG_MODE}" \
     --restart unless-stopped \

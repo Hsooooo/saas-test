@@ -223,6 +223,7 @@ public class NetworkComponent {
         List<ResponseNetworkDTO.NodeInfo> newNodes = new ArrayList<>(response.getNodes());
         newNodes.addAll(nodeInfoList);
         // 메인 노드 컨텐츠 기준 정렬 + 1만개 제한
+        int maxNodeSize = projectDoc.getMaxNodeSize() != null ? projectDoc.getMaxNodeSize() : 10000;
         newNodes = newNodes.stream()
                 .distinct()
                 .sorted(Comparator.comparing(
@@ -235,7 +236,7 @@ public class NetworkComponent {
                         },
                         Comparator.nullsLast(Comparator.naturalOrder())
                 ))
-                .limit(10000).toList();
+                .limit(maxNodeSize).toList();
         response.setNodes(newNodes);
 
         log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());

@@ -20,6 +20,8 @@ import com.illunex.emsaasrestapi.project.document.network.EdgeId;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.network.NodeId;
 import com.illunex.emsaasrestapi.project.document.project.Project;
+import com.illunex.emsaasrestapi.project.document.project.ProjectEdgeCount;
+import com.illunex.emsaasrestapi.project.document.project.ProjectNodeCount;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
@@ -277,11 +279,15 @@ public class ProjectService {
         ProjectVO projectVO = projectMapper.selectByIdx(project.getProjectIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
+        List<ProjectNodeCount> nodeCountList = new ArrayList<>();
+        List<ProjectEdgeCount> edgeCountList = new ArrayList<>();
         if(projectVO.getDeleteDate() == null) {
             int nodeCount = 0;
             int edgeCount = 0;
             if (project.getProjectNodeList() != null) {
                 for (RequestProjectDTO.ProjectNode projectNode : project.getProjectNodeList()) {
+                    ProjectNodeCount pnc = new ProjectNodeCount();
+
                     MatchOperation match = Aggregation.match(Criteria.where("_id").is(project.getProjectIdx()));
                     UnwindOperation unwind = Aggregation.unwind("excelSheetList");
                     MatchOperation sheetMatch = Aggregation.match(
@@ -296,12 +302,16 @@ public class ProjectService {
                     int count = Optional.ofNullable(results.getUniqueMappedResult())
                             .map(doc -> doc.getInteger("nodeCount"))
                             .orElse(0);
+                    pnc.setType(projectNode.getNodeType());
+                    pnc.setCount(count);
                     nodeCount += count;
+                    nodeCountList.add(pnc);
                 }
             }
 
             if (project.getProjectEdgeList() != null) {
                 for (RequestProjectDTO.ProjectEdge projectEdge : project.getProjectEdgeList()) {
+                    ProjectEdgeCount pec = new ProjectEdgeCount();
                     MatchOperation match = Aggregation.match(Criteria.where("_id").is(project.getProjectIdx()));
                     UnwindOperation unwind = Aggregation.unwind("excelSheetList");
                     MatchOperation sheetMatch = Aggregation.match(
@@ -316,7 +326,10 @@ public class ProjectService {
                     int count = Optional.ofNullable(results.getUniqueMappedResult())
                             .map(doc -> doc.getInteger("edgeCount"))
                             .orElse(0);
+                    pec.setType(projectEdge.getEdgeType());
+                    pec.setCount(count);
                     edgeCount += count;
+                    edgeCountList.add(pec);
                 }
             }
             projectVO.setTitle(project.getTitle());
@@ -348,6 +361,9 @@ public class ProjectService {
                 Project replaceProject = modelMapper.map(project, Project.class);
                 replaceProject.setUpdateDate(LocalDateTime.now());
                 replaceProject.setCreateDate(targetProject.getCreateDate());
+                replaceProject.setProjectNodeCountList(nodeCountList);
+                replaceProject.setProjectEdgeCountList(edgeCountList);
+                replaceProject.setMaxNodeSize(project.getMaxNodeSize());
 
                 // 데이터 덮어쓰기
                 UpdateResult result = mongoTemplate.replace(Query.query(Criteria.where("_id").is(project.getProjectIdx())), replaceProject);
@@ -408,23 +424,50 @@ public class ProjectService {
         // 2) 노드/엣지 예상 카운트 (엑셀 메타 기반)
         var draft = draftRepo.get(dc.getSessionId());
         int nodeCount = 0, edgeCount = 0;
+        List<ProjectNodeCount> nodeCountList = new ArrayList<>();
+        List<ProjectEdgeCount> edgeCountList = new ArrayList<>();
         if (draft != null && draft.getExcelMeta() != null) {
             var sheets = draft.getExcelMeta().getExcelSheetList();
             if (project.getProjectNodeList() != null) {
                 for (var n : project.getProjectNodeList()) {
-                    nodeCount += sheets.stream()
+                    int count = sheets.stream()
                             .filter(s -> s.getExcelSheetName().equals(n.getNodeType()))
                             .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+                    ProjectNodeCount pnc = new ProjectNodeCount();
+                    pnc.setType(n.getNodeType());
+                    pnc.setCount(count);
+                    nodeCount += count;
+                    nodeCountList.add(pnc);
                 }
             }
             if (project.getProjectEdgeList() != null) {
                 for (var e : project.getProjectEdgeList()) {
-                    edgeCount += sheets.stream()
+                    int count = sheets.stream()
                             .filter(s -> s.getExcelSheetName().equals(e.getEdgeType()))
                             .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+                    ProjectEdgeCount pec = new ProjectEdgeCount();
+                    pec.setType(e.getEdgeType());
+                    pec.setCount(count);
+                    edgeCount += count;
+                    edgeCountList.add(pec);
                 }
             }
         }
+        var projectDoc = Objects.requireNonNull(draft).getProjectDoc();
+        projectDoc.setProjectNodeCountList(nodeCountList);
+        projectDoc.setProjectEdgeCountList(edgeCountList);
+        projectDoc.setMaxNodeSize(project.getMaxNodeSize());
+        Excel excel = draft.getExcelMeta();
+        int totalDataCount = excel.getExcelSheetList().stream()
+                .filter(sheet -> sheet.getTotalRowCnt() > 0)
+                .mapToInt(sheet -> sheet.getExcelCellList().size() * sheet.getTotalRowCnt())
+                .sum();
+        projectDoc.setTotalDataCount(totalDataCount);
+        draft.setProjectDoc(projectDoc);
+
+        draftRepo.upsert(sid, new Update().set("projectDoc", projectDoc));
+
+        draft = draftRepo.get(dc.getSessionId());
 
         return CustomResponse.builder().data(
                 projectComponent.createResponseProject(null, draft)

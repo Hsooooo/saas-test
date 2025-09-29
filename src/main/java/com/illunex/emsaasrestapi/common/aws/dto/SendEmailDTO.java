@@ -31,6 +31,11 @@ public class SendEmailDTO {
     private final String content;
     // 이름
     private final String name;
+    // 파트너십 이름
+    private final String partnershipName;
+    // 프로필 이미지
+    private final String profileImage;
+
 
     /**
      * 메일 템플릿 생성
@@ -42,7 +47,11 @@ public class SendEmailDTO {
         String bodyHtml = StreamUtils.copyToString(templateResource.getInputStream(), Charset.defaultCharset())
                 .replace("${TO}", receiverAddress)
                 .replace("${NAME}", name != null ? name : "")
-                .replace("${URL}", certUrl + "?certData=" + URLEncoder.encode(certData, StandardCharsets.UTF_8));
+                .replace("${URL}", certUrl + "?certData=" + URLEncoder.encode(certData, StandardCharsets.UTF_8))
+                .replace("${PARTNERSHIP}", partnershipName != null ? partnershipName : "")
+                .replace("${PROFILE_IMAGE}", profileImage != null ? profileImage : "https://illunex-em-saas.s3.ap-northeast-2.amazonaws.com/profile-default.png")
+                .replace("${EMAIL}", receiverAddress)
+                ;
 
         Destination destination = Destination.builder()
                 .toAddresses(receiverAddress)

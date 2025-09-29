@@ -319,4 +319,35 @@ public class EnumCode {
             private final String value;
         }
     }
+
+    /**
+     * 제품 관련 코드
+     */
+    public static class Product {
+        /**
+         * 제품 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum ProductCd implements BaseCodeEnum {
+            NetworkAnalysis("PPC0001", "Network Analysis"),
+            GraphKnowledge("PPC0002", "Graph Knowledge");
+
+            private final String code;
+            private final String value;
+        }
+
+        /**
+         * 제품 권한 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum ProductAuthCd implements BaseCodeEnum {
+            EDITOR("PPG0001", "EDITOR"),
+            VIEWER("PPG0002", "VIEWER");
+
+            private final String code;
+            private final String value;
+        }
+    }
 }

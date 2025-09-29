@@ -15,7 +15,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @Configuration
 @EnableMongoRepositories
 @RequiredArgsConstructor
-@Profile("dev")
+@Profile("!prod")
 public class MongoDBConfig {
 
     @Bean

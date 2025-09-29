@@ -17,7 +17,7 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%c{0}.%method] : [%marker] %msg%n"
   file:
-    path: /data/logs/em-stock-rest-api
+    path: /data/logs/em-saas-rest-api
   logback:
     rolling policy:
       max-file-size: 50MB
@@ -59,11 +59,6 @@ spring:
       mode: always
   data:
     mongodb:
-      host: ${mongo-host}
-      port: ${mongo-port}
-      username: ${mongo-user}
-      password: ${mongo-pass}
-      database: ${mongo-db}
       authentication-database: admin
       auto-index-creation: true
 
@@ -81,7 +76,7 @@ mybatis:
   type-aliases-package: com.illunex.emsaasrestapi
 
 ai:
-  url: http://220.118.147.58:52201
+  url: ${ai-url}
 
 #hts:
 #  scrap-host: ${hts-scrap-domain}
@@ -89,14 +84,14 @@ ai:
 #  front-end:
 #    cert-join-url: ${cert-join-url}                                       # 회원가입 인증 URL
 #    cert-password-url: ${cert-password-url}                               # 비밀번호 변경 URL
-#webhook:
-#  synology:
-#    url: ${synology-hook-url}
-#    api: ${synology-hook-api}
-#    method: ${synology-hook-method}
-#    version: ${synology-hook-version}
-#    scrap:
-#      token: ${synology-hook-scrap-token}
-#    use: true
+webhook:
+  synology:
+    url: ${synology-hook-url}
+    api: ${synology-hook-api}
+    method: ${synology-hook-method}
+    version: ${synology-hook-version}
+    scrap:
+      token: ${synology-hook-scrap-token}
+    use: false
 #debug:
 #  mode: ${debug_mode}

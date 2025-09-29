@@ -105,8 +105,11 @@ public class PartnershipService {
     @Transactional(rollbackFor = Exception.class)
     public ResponsePartnershipDTO.InviteMember invitePartnershipMember(Integer partnershipIdx, Integer memberIdx, RequestPartnershipDTO.InviteMember inviteMember) throws CustomException {
         // 파트너쉽 관리자 여부 확인
-        Optional<PartnershipMemberVO> partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberIdx);
-        if (partnershipMemberVO.isEmpty() || !partnershipMemberVO.get().getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
+        PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
+                .selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+
+        if (!loginPartnershipMemberVO.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
             throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
         }
 
@@ -123,7 +126,7 @@ public class PartnershipService {
                 }
 
                 // 2. 이미 가입된 사용자 여부
-                MemberVO member = memberMapper.selectByEmail(email)
+                MemberVO inviteTargetMember = memberMapper.selectByEmail(email)
                         .orElseGet(() -> {
                             MemberVO memberVO = new MemberVO();
                             memberVO.setEmail(email);
@@ -132,11 +135,11 @@ public class PartnershipService {
                             return memberVO;
                         });
 
-                if (member.getStateCd().equals(EnumCode.Member.StateCd.Suspend.getCode())) {
+                if (inviteTargetMember.getStateCd().equals(EnumCode.Member.StateCd.Suspend.getCode())) {
                     throw new CustomException(ErrorCode.MEMBER_STATE_SUSPEND);
                 }
 
-                if (member.getStateCd().equals(EnumCode.Member.StateCd.Withdrawal.getCode())) {
+                if (inviteTargetMember.getStateCd().equals(EnumCode.Member.StateCd.Withdrawal.getCode())) {
                     throw new CustomException(ErrorCode.MEMBER_STATE_WITHDRAWAL);
                 }
 
@@ -144,25 +147,25 @@ public class PartnershipService {
                 PartnershipInvitedMemberVO invitedMemberVO = new PartnershipInvitedMemberVO();
                 invitedMemberVO.setEmail(email);
                 invitedMemberVO.setPartnershipIdx(partnershipIdx);
-                invitedMemberVO.setInvitedByPartnershipMemberIdx(partnershipMemberVO.get().getIdx());
-                invitedMemberVO.setMemberIdx(member.getIdx());
+                invitedMemberVO.setInvitedByPartnershipMemberIdx(loginPartnershipMemberVO.getIdx());
+                invitedMemberVO.setMemberIdx(inviteTargetMember.getIdx());
 
                 // 4. partnership_member 생성
-                PartnershipMemberVO partnershipMember = new PartnershipMemberVO();
-                partnershipMember.setMemberIdx(member.getIdx());
-                partnershipMember.setPartnershipIdx(partnershipIdx);
-                partnershipMember.setManagerCd(info.getAuth());
-                partnershipMember.setStateCd(EnumCode.PartnershipMember.StateCd.Wait.getCode());
-                partnershipMemberMapper.insertByPartnershipMember(partnershipMember);
+                PartnershipMemberVO invitePartnershipMemberVO = new PartnershipMemberVO();
+                invitePartnershipMemberVO.setMemberIdx(inviteTargetMember.getIdx());
+                invitePartnershipMemberVO.setPartnershipIdx(partnershipIdx);
+                invitePartnershipMemberVO.setManagerCd(info.getAuth());
+                invitePartnershipMemberVO.setStateCd(EnumCode.PartnershipMember.StateCd.Wait.getCode());
+                partnershipMemberMapper.insertByPartnershipMember(invitePartnershipMemberVO);
 
-                invitedMemberVO.setPartnershipMemberIdx(partnershipMember.getIdx());
+                invitedMemberVO.setPartnershipMemberIdx(invitePartnershipMemberVO.getIdx());
 
                 partnershipMemberMapper.insertInvitedMember(invitedMemberVO);
                 // 메일 발송
-                String certData = sesComponent.sendInviteMemberEmail(null, email, partnershipMember.getIdx(), member.getIdx());
+                String certData = sesComponent.sendInviteMemberEmail(null, email, loginPartnershipMemberVO.getIdx(), memberIdx, info.getProducts());
 
                 MemberEmailHistoryVO emailHistoryVO = new MemberEmailHistoryVO();
-                emailHistoryVO.setMemberIdx(member.getIdx());
+                emailHistoryVO.setMemberIdx(inviteTargetMember.getIdx());
                 emailHistoryVO.setCertData(certData);
                 emailHistoryVO.setUsed(false);
                 emailHistoryVO.setEmailType(EnumCode.Email.TypeCd.InvitePartnership.getCode());
