@@ -15,7 +15,16 @@ public class QueryController {
 
     @PostMapping("/find")
     public CustomResponse<?> queryFind(@CurrentMember MemberVO memberVO,
-                                       @RequestBody RequestQueryDTO.ExecuteQuery executeQuery) {
+                                       @RequestBody RequestQueryDTO.FindQuery executeQuery) {
+        return CustomResponse.builder()
+                .data(queryService.findQuery(memberVO, executeQuery))
+                .message("Query executed successfully")
+                .build();
+    }
+
+    @PostMapping("/execute")
+    public CustomResponse<?> queryExecute(@CurrentMember MemberVO memberVO,
+                                          @RequestBody RequestQueryDTO.ExecuteQuery executeQuery) {
         return CustomResponse.builder()
                 .data(queryService.executeQuery(memberVO, executeQuery))
                 .message("Query executed successfully")

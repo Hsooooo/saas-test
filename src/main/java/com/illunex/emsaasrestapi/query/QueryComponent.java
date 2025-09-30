@@ -1,5 +1,8 @@
 package com.illunex.emsaasrestapi.query;
 
+import com.illunex.emsaasrestapi.common.code.EnumCode;
+import com.illunex.emsaasrestapi.project.mapper.ProjectTableMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectTableVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
 import com.mongodb.MongoException;
 import lombok.RequiredArgsConstructor;
@@ -11,14 +14,14 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 public class QueryComponent {
     private final MongoTemplate mongoTemplate;
+    private final ProjectTableMapper projectTableMapper;
 
     /**
      * MongoDB 쿼리 변환
@@ -26,7 +29,7 @@ public class QueryComponent {
      * @param req 쿼리 요청 DTO
      * @return QueryResult 객체, 쿼리와 컬렉션 정보 포함
      */
-    public QueryResult resolveQuery(RequestQueryDTO.ExecuteQuery req) {
+    public QueryResult resolveQuery(RequestQueryDTO.FindQuery req) {
         try {
             // 1. 필수 필드: projectIdx
             Integer projectIdx = req.getProjectIdx();
@@ -107,6 +110,31 @@ public class QueryComponent {
             throw new RuntimeException("Mongo 쿼리 변환 오류: " + e.getMessage());
         }
     }
+    /**
+     * SQL 쿼리 변환
+     *
+     * @param req 쿼리 요청 DTO
+     * @return QueryResult 객체, 쿼리와 컬렉션 정보 포함
+     */
+    public QueryResult resolveSql(RequestQueryDTO.ExecuteQuery req) {
+        Integer projectIdx = Objects.requireNonNull(req.getProjectIdx(), "projectIdx는 필수입니다.");
+        List<ProjectTableVO> tables = projectTableMapper.selectAllByProjectIdx(projectIdx);
+        Set<String> allowedTables = tables.stream().map(ProjectTableVO::getTitle).collect(Collectors.toSet());
+        Set<String> nodeTables = tables.stream()
+                .filter(t -> EnumCode.ProjectTable.TypeCd.Node.getCode().equals(t.getTypeCd()))
+                .map(ProjectTableVO::getTitle).collect(Collectors.toSet());
+        Set<String> edgeTables = tables.stream()
+                .filter(t -> EnumCode.ProjectTable.TypeCd.Edge.getCode().equals(t.getTypeCd()))
+                .map(ProjectTableVO::getTitle).collect(Collectors.toSet());
 
-    public record QueryResult(Query query, String collection) {}
+        String sql = Optional.ofNullable(req.getRawQuery())
+                .orElseThrow(() -> new IllegalArgumentException("sql은 필수입니다.")).trim();
+        if (sql.isEmpty()) throw new IllegalArgumentException("sql은 비어있을 수 없습니다.");
+
+        SqlToMongoAdapter adapter = new SqlToMongoAdapter(allowedTables, nodeTables, edgeTables, 5000, req.getLimit());
+
+        // SQL이 우선, SQL에 없을 때만 UI skip/limit 사용
+        return adapter.resolve(projectIdx, sql, req.getSkip(), req.getLimit());
+    }
+
 }

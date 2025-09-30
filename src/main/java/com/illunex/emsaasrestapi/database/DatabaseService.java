@@ -248,7 +248,7 @@ public class DatabaseService {
                 ? projectTableMapper.selectAllByProjectIdxAndTitle(projectIdx, searchString)
                 : projectTableMapper.selectAllByProjectIdx(projectIdx);
 
-        // 제목 리스트 분리
+//        // 제목 리스트 분리
         List<String> nodeTitles = projectTableList.stream()
                 .filter(t -> EnumCode.ProjectTable.TypeCd.Node.getCode().equals(t.getTypeCd()))
                 .map(ProjectTableVO::getTitle)
@@ -282,6 +282,20 @@ public class DatabaseService {
                 edgeTableList.add(td);
             }
         }
+//
+//        List<ResponseDatabaseDTO.TableData> nodeTableList = new ArrayList<>();
+//        List<ResponseDatabaseDTO.TableData> edgeTableList = new ArrayList<>();
+//        for (ProjectTableVO tableVO : projectTableList) {
+//            if (EnumCode.ProjectTable.TypeCd.Node.getCode().equals(tableVO.getTypeCd())) {
+//                ResponseDatabaseDTO.TableData td = modelMapper.map(tableVO, ResponseDatabaseDTO.TableData.class);
+//                td.setTypeCdDesc(EnumCode.ProjectTable.TypeCd.Node.getValue());
+//                nodeTableList.add(td);
+//            } else {
+//                ResponseDatabaseDTO.TableData td = modelMapper.map(tableVO, ResponseDatabaseDTO.TableData.class);
+//                td.setTypeCdDesc(EnumCode.ProjectTable.TypeCd.Edge.getValue());
+//                edgeTableList.add(td);
+//            }
+//        }
 
         response.setNodeTableList(nodeTableList);
         response.setEdgeTableList(edgeTableList);

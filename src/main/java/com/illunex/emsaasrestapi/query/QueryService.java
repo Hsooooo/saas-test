@@ -2,23 +2,22 @@ package com.illunex.emsaasrestapi.query;
 
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
 import com.illunex.emsaasrestapi.query.dto.ResponseQueryDTO;
 import com.illunex.emsaasrestapi.query.mapper.ProjectQueryCategoryMapper;
 import com.illunex.emsaasrestapi.query.mapper.ProjectQueryMapper;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryCategoryVO;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryVO;
-import com.mongodb.MongoException;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
-import org.bson.Document;
-import org.bson.json.JsonParseException;
 import org.modelmapper.ModelMapper;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +34,8 @@ public class QueryService {
     private final ProjectQueryMapper projectQueryMapper;
     private final ProjectQueryCategoryMapper projectQueryCategoryMapper;
     private final PartnershipMemberMapper partnershipMemberMapper;
+    private final ProjectMapper projectMapper;
+    private final PartnershipMapper partnershipMapper;
 
     private final ModelMapper modelMapper;
 
@@ -45,8 +45,8 @@ public class QueryService {
      * @param executeQuery
      * @return
      */
-    public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteQuery executeQuery) {
-        QueryComponent.QueryResult queryResult = queryComponent.resolveQuery(executeQuery);
+    public Object findQuery(MemberVO memberVO, RequestQueryDTO.FindQuery executeQuery) {
+        QueryResult queryResult = queryComponent.resolveQuery(executeQuery);
         List<Map> results = mongoTemplate.find(queryResult.query(), Map.class, queryResult.collection());
         long total = mongoTemplate.count(Query.of(queryResult.query()).limit(0).skip(0), queryResult.collection());
         int page = (executeQuery.getSkip() / executeQuery.getLimit()) + 1;
@@ -56,6 +56,44 @@ public class QueryService {
                 .page(page)
                 .size(size)
                 .skip(executeQuery.getSkip())
+                .limit(size)
+                .result(results)
+                .build());
+    }
+
+    /**
+     * 쿼리 실행 (MYSQL, PostgreSQL 등 관계형 DB용)
+     * @param memberVO 현재 멤버 정보
+     * @param req 쿼리 요청 DTO
+     * @return
+     */
+    public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteQuery req) {
+        ProjectVO projectVO = projectMapper.selectByIdx(req.getProjectIdx())
+                .orElseThrow(() -> new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다."));
+        PartnershipVO partnershipVO = partnershipMapper.selectByIdx(projectVO.getPartnershipIdx())
+                .orElseThrow(() -> new IllegalArgumentException("해당 파트너십이 존재하지 않습니다."));
+        PartnershipMemberVO pm = partnershipMemberMapper
+                .selectByPartnershipIdxAndMemberIdx(partnershipVO.getIdx(), memberVO.getIdx())
+                .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
+
+        QueryResult qr = queryComponent.resolveSql(req);
+
+        // 실제 적용된 limit/skip
+        int appliedLimit = qr.query().getLimit();
+        int appliedSkip  = (int) qr.query().getSkip();
+
+        Long total = mongoTemplate.count(Query.of(qr.query()).limit(0).skip(0), qr.collection());
+
+        int page = (appliedLimit > 0) ? (appliedSkip / appliedLimit) + 1 : 1;
+        int size = appliedLimit;
+
+        List<Map> results = mongoTemplate.find(qr.query(), Map.class, qr.collection());
+
+        return ResponseEntity.ok(ResponseQueryDTO.ExecuteFind.builder()
+                .total(total)
+                .page(page)
+                .size(size)
+                .skip(appliedSkip)
                 .limit(size)
                 .result(results)
                 .build());

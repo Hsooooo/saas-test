@@ -68,6 +68,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.apache.poi:poi-ooxml:5.2.3'
+    implementation 'com.github.jsqlparser:jsqlparser:4.3'
 }
 
 test {
