@@ -604,6 +604,9 @@ public class ProjectService {
      * @return
      */
     public CustomResponse<?> getProjectDetail(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException {
+        if (projectIdx != null) {
+            return getProjectDetail(memberVO, projectIdx);
+        }
         dc.require();
 
         ProjectDraft d = draftRepo.get(dc.getSessionId()); // 존재 여부 체크용
