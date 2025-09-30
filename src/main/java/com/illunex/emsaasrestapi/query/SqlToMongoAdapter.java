@@ -28,12 +28,76 @@ public class SqlToMongoAdapter {
     /**
      * SQL 문자열을 받아 Mongo Query로 변환
      */
-    public QueryResult resolve(Integer projectIdx, String sql) {
+    public QueryResult resolve(Integer projectIdx, String sql, Integer uiSkip, Integer uiLimit) {
         if (projectIdx == null) throw new IllegalArgumentException("projectIdx는 필수입니다.");
         if (sql == null || sql.isBlank()) throw new IllegalArgumentException("sql은 비어있을 수 없습니다.");
 
         QueryDsl dsl = this.parseToDsl(sql);
-        return dslToMongoQuery(dsl, projectIdx);
+
+        // 우선순위: SQL > UI
+        int resolvedLimit = mergeLimit(dsl.getLimit(), uiLimit);
+        int resolvedOffset = mergeOffset(dsl.getOffset(), uiSkip);
+
+        return dslToMongoQuery(dsl, projectIdx, resolvedLimit, resolvedOffset);
+    }
+
+    private int mergeLimit(Integer sqlLimit, Integer uiLimit) {
+        Integer base = (sqlLimit != null) ? sqlLimit : uiLimit;
+        if (base == null || base <= 0) base = limitDefault;
+        return Math.min(base, limitMax);
+    }
+
+    private int mergeOffset(Integer sqlOffset, Integer uiSkip) {
+        Integer base = (sqlOffset != null) ? sqlOffset : uiSkip;
+        if (base == null || base < 0) base = 0;
+        return base;
+    }
+
+    private QueryResult dslToMongoQuery(QueryDsl dsl, Integer projectIdx, int limit, int offset) {
+        String table = dsl.getTable();
+        String collection;
+        String tableField;
+        if (nodeTables.contains(table)) {
+            collection = "node";
+            tableField = "label";
+        } else if (edgeTables.contains(table)) {
+            collection = "edge";
+            tableField = "type";
+        } else {
+            throw new IllegalArgumentException("알 수 없는 테이블: " + table);
+        }
+
+        Query query = new Query();
+        query.addCriteria(Criteria.where("_id.projectIdx").is(projectIdx));
+        query.addCriteria(Criteria.where(tableField).is(table));
+
+        // WHERE
+        Criteria where = toCriteria(dsl.getWhere());
+        if (where != null) query.addCriteria(where);
+
+        // Projection
+        if (dsl.getColumns() != null && !dsl.getColumns().isEmpty()) {
+            for (String c : dsl.getColumns()) {
+                query.fields().include("properties." + c);
+            }
+        }
+
+        // Sort (없으면 _id ASC)
+        if (dsl.getOrderBy() != null && !dsl.getOrderBy().isEmpty()) {
+            List<Sort.Order> orders = dsl.getOrderBy().stream()
+                    .map(o -> new Sort.Order(o.isAsc() ? Sort.Direction.ASC : Sort.Direction.DESC,
+                            "properties." + o.getCol()))
+                    .toList();
+            query.with(Sort.by(orders));
+        } else {
+            query.with(Sort.by(Sort.Direction.ASC, "_id"));
+        }
+
+        // Paging
+        query.limit(limit);
+        query.skip(offset);
+
+        return new QueryResult(query, collection);
     }
 
     private QueryResult dslToMongoQuery(QueryDsl dsl, Integer projectIdx) {
