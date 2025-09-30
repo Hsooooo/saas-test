@@ -455,11 +455,13 @@ public class ProjectService {
         projectDoc.setProjectEdgeCountList(edgeCountList);
         projectDoc.setMaxNodeSize(project.getMaxNodeSize());
         Excel excel = draft.getExcelMeta();
-        int totalDataCount = excel.getExcelSheetList().stream()
-                .filter(sheet -> sheet.getTotalRowCnt() > 0)
-                .mapToInt(sheet -> sheet.getExcelCellList().size() * sheet.getTotalRowCnt())
-                .sum();
-        projectDoc.setTotalDataCount(totalDataCount);
+        if (excel != null) {
+            int totalDataCount = excel.getExcelSheetList().stream()
+                    .filter(sheet -> sheet.getTotalRowCnt() > 0)
+                    .mapToInt(sheet -> sheet.getExcelCellList().size() * sheet.getTotalRowCnt())
+                    .sum();
+            projectDoc.setTotalDataCount(totalDataCount);
+        }
         draft.setProjectDoc(projectDoc);
 
         draftRepo.upsert(sid, new Update().set("projectDoc", projectDoc));
