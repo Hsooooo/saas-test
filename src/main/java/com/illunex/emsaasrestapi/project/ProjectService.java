@@ -421,20 +421,32 @@ public class ProjectService {
         // 2) 노드/엣지 예상 카운트 (엑셀 메타 기반)
         var draft = draftRepo.get(dc.getSessionId());
         int nodeCount = 0, edgeCount = 0;
+        List<ProjectNodeCount> nodeCountList = new ArrayList<>();
+        List<ProjectEdgeCount> edgeCountList = new ArrayList<>();
         if (draft != null && draft.getExcelMeta() != null) {
             var sheets = draft.getExcelMeta().getExcelSheetList();
             if (project.getProjectNodeList() != null) {
                 for (var n : project.getProjectNodeList()) {
-                    nodeCount += sheets.stream()
+                    int count = sheets.stream()
                             .filter(s -> s.getExcelSheetName().equals(n.getNodeType()))
                             .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+                    ProjectNodeCount pnc = new ProjectNodeCount();
+                    pnc.setType(n.getNodeType());
+                    pnc.setCount(count);
+                    nodeCount += count;
+                    nodeCountList.add(pnc);
                 }
             }
             if (project.getProjectEdgeList() != null) {
                 for (var e : project.getProjectEdgeList()) {
-                    edgeCount += sheets.stream()
+                    int count = sheets.stream()
                             .filter(s -> s.getExcelSheetName().equals(e.getEdgeType()))
                             .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+                    ProjectEdgeCount pec = new ProjectEdgeCount();
+                    pec.setType(e.getEdgeType());
+                    pec.setCount(count);
+                    edgeCount += count;
+                    edgeCountList.add(pec);
                 }
             }
         }
@@ -481,7 +493,7 @@ public class ProjectService {
     }
 
     @Transactional
-    public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException, IOException {
+    public CustomResponse<?> completeProject(MemberVO memberVO, Object projectIdx, DraftContext dc) throws CustomException, IOException {
         dc.require();
 
         var d = draftRepo.get(dc.getSessionId());
@@ -598,7 +610,7 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+//        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
         return CustomResponse.builder()
                 .data(projectComponent.createResponseProject(projectIdx))
