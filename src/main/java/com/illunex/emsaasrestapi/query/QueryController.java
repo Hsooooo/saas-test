@@ -24,9 +24,9 @@ public class QueryController {
 
     @PostMapping("/execute")
     public CustomResponse<?> queryExecute(@CurrentMember MemberVO memberVO,
-                                          @RequestBody RequestQueryDTO.FindQuery executeQuery) {
+                                          @RequestBody RequestQueryDTO.ExecuteQuery executeQuery) {
         return CustomResponse.builder()
-                .data(queryService.findQuery(memberVO, executeQuery))
+                .data(queryService.executeQuery(memberVO, executeQuery))
                 .message("Query executed successfully")
                 .build();
     }

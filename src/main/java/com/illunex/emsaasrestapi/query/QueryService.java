@@ -40,7 +40,7 @@ public class QueryService {
      * @return
      */
     public Object findQuery(MemberVO memberVO, RequestQueryDTO.FindQuery executeQuery) {
-        QueryComponent.QueryResult queryResult = queryComponent.resolveQuery(executeQuery);
+        QueryResult queryResult = queryComponent.resolveQuery(executeQuery);
         List<Map> results = mongoTemplate.find(queryResult.query(), Map.class, queryResult.collection());
         long total = mongoTemplate.count(Query.of(queryResult.query()).limit(0).skip(0), queryResult.collection());
         int page = (executeQuery.getSkip() / executeQuery.getLimit()) + 1;
@@ -56,9 +56,21 @@ public class QueryService {
     }
 
     public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteQuery executeQuery) {
-//        QueryComponent.QueryResult queryResult = queryComponent.resolveQuery(executeQuery);
-//        List<Map> results = mongoTemplate.find(queryResult.query(), Map.class, queryResult.collection());
-        return null;
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(executeQuery.getProjectIdx(), memberVO.getIdx())
+                .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
+        QueryResult queryResult = queryComponent.resolveSql(executeQuery);
+        long total = mongoTemplate.count(Query.of(queryResult.query()).limit(0).skip(0), queryResult.collection());
+        int page = (executeQuery.getSkip() / executeQuery.getLimit()) + 1;
+        int size = executeQuery.getLimit();
+        List<Map> results = mongoTemplate.find(queryResult.query(), Map.class, queryResult.collection());
+        return ResponseEntity.ok(ResponseQueryDTO.ExecuteFind.builder()
+                .total(total)
+                .page(page)
+                .size(size)
+                .skip(executeQuery.getSkip())
+                .limit(size)
+                .result(results)
+                .build());
     }
 
 

@@ -1,6 +1,10 @@
 package com.illunex.emsaasrestapi.query;
 
+import com.illunex.emsaasrestapi.common.code.EnumCode;
+import com.illunex.emsaasrestapi.project.mapper.ProjectTableMapper;
+import com.illunex.emsaasrestapi.project.vo.ProjectTableVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
+import com.illunex.emsaasrestapi.query.dto.ResponseQueryDTO;
 import com.mongodb.MongoException;
 import lombok.RequiredArgsConstructor;
 import net.sf.jsqlparser.JSQLParserException;
@@ -13,18 +17,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
 public class QueryComponent {
     private final MongoTemplate mongoTemplate;
-//    private final SqlToMongoAdapter adapter;
+    private final ProjectTableMapper projectTableMapper;
 
     /**
      * MongoDB 쿼리 변환
@@ -114,10 +117,46 @@ public class QueryComponent {
         }
     }
 
-//    public QueryResult resolveSql(RequestQueryDTO.ExecuteQuery req) {
-//        Integer projectIdx = Objects.requireNonNull(req.getProjectIdx(), "projectIdx는 필수입니다.");
-//        String sql = Optional.ofNullable(req.getRawQuery()).orElseThrow(() -> new IllegalArgumentException("sql은 필수입니다.")).trim();
-//        if (sql.isEmpty()) throw new IllegalArgumentException("sql은 비어있을 수 없습니다.");
+    public QueryResult executeQuery(RequestQueryDTO.FindQuery req) {
+        QueryResult queryResult = resolveQuery(req);
+
+        return queryResult;
+    }
+
+    public QueryResult resolveSql(RequestQueryDTO.ExecuteQuery req) {
+        Integer projectIdx = Objects.requireNonNull(req.getProjectIdx(), "projectIdx는 필수입니다.");
+        List<ProjectTableVO> tables = projectTableMapper.selectAllByProjectIdx(projectIdx);
+        Set<String> allowedTables = tables.stream()
+                .map(ProjectTableVO::getTitle)
+                .collect(Collectors.toSet());
+        Set<String> nodeTables = tables.stream()
+                .filter(t -> EnumCode.ProjectTable.TypeCd.Node.getCode().equals(t.getTypeCd())) // Node
+                .map(ProjectTableVO::getTitle)
+                .collect(Collectors.toSet());
+        Set<String> edgeTables = tables.stream()
+                .filter(t -> EnumCode.ProjectTable.TypeCd.Edge.getCode().equals(t.getTypeCd())) // Edge
+                .map(ProjectTableVO::getTitle)
+                .collect(Collectors.toSet());
+
+        String sql = Optional.ofNullable(req.getRawQuery()).orElseThrow(() -> new IllegalArgumentException("sql은 필수입니다.")).trim();
+        if (sql.isEmpty()) throw new IllegalArgumentException("sql은 비어있을 수 없습니다.");
+        SqlToMongoAdapter converter = new SqlToMongoAdapter(allowedTables, nodeTables, edgeTables, 5000, 50);
+
+        return converter.resolve(projectIdx, sql);
+
+//        List<Map> results = mongoTemplate.find(queryResult.query(), Map.class, queryResult.collection());
+//        return null;
+//        long total = mongoTemplate.count(Query.of(queryResult.query()).limit(0).skip(0), queryResult.collection());
+//        int page = (executeQuery.getSkip() / executeQuery.getLimit()) + 1;
+//        int size = executeQuery.getLimit();
+//        return ResponseEntity.ok(ResponseQueryDTO.ExecuteFind.builder()
+//                .total(total)
+//                .page(page)
+//                .size(size)
+//                .skip(executeQuery.getSkip())
+//                .limit(size)
+//                .result(results)
+//                .build());
 //
 //        // 1) 파싱
 //        Statement stmt;
@@ -133,18 +172,17 @@ public class QueryComponent {
 //        }
 //
 //        // 3) AST → 내부 DSL
-//        SqlToDslConverter converter = new SqlToDslConverter(allowedTables(), allowedFunctions());
+////        SqlToDslConverter converter = new SqlToDslConverter(allowedTables(), allowedFunctions());
 //        QueryDsl dsl = converter.toDsl(select);
 //
 //        // 4) DSL → Mongo Query (node/edge 판별 및 properties.* 접두 추가)
 //        return dslToMongoQuery(dsl, projectIdx);
 //        return null;
-//    }
+    }
 
-//
+
 //    public ExecuteSqlResponse execute(Integer projectIdx, String sql) {
 //        long t0 = System.currentTimeMillis();
-//
 //
 //        // 2) SQL → (DSL) → Mongo Query/collection
 //        SqlToMongoAdapter.QueryResult qr = sqlToMongoAdapter.resolve(projectIdx, sql);
@@ -168,5 +206,4 @@ public class QueryComponent {
 //                .rows(rows)
 //                .build();
 //    }
-    public record QueryResult(Query query, String collection) {}
 }

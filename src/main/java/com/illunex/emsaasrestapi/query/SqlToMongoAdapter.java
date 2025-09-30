@@ -1,26 +1,29 @@
 package com.illunex.emsaasrestapi.query;
 
 import lombok.RequiredArgsConstructor;
-import org.bson.Document;
+import net.sf.jsqlparser.expression.*;
+import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
+import net.sf.jsqlparser.expression.operators.relational.*;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.select.*;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class SqlToMongoAdapter {
 
-    public record QueryResult(Query query, String collection) { }
-
-    public interface TableCatalog {
-        boolean isNodeTable(String table);
-        boolean isEdgeTable(String table);
-    }
-
-    private final TableCatalog catalog;
-    private final SqlToDslConverter converter;
+    private final Set<String> allowedTables;
+    private final Set<String> nodeTables;
+    private final Set<String> edgeTables;
+    private final int limitMax;     // 예: 2000
+    private final int limitDefault; // 예: 50
 
     /**
      * SQL 문자열을 받아 Mongo Query로 변환
@@ -29,7 +32,7 @@ public class SqlToMongoAdapter {
         if (projectIdx == null) throw new IllegalArgumentException("projectIdx는 필수입니다.");
         if (sql == null || sql.isBlank()) throw new IllegalArgumentException("sql은 비어있을 수 없습니다.");
 
-        QueryDsl dsl = converter.parseToDsl(sql);
+        QueryDsl dsl = this.parseToDsl(sql);
         return dslToMongoQuery(dsl, projectIdx);
     }
 
@@ -37,10 +40,10 @@ public class SqlToMongoAdapter {
         String table = dsl.getTable();
         String collection;
         String tableField;
-        if (catalog.isNodeTable(table)) {
+        if (nodeTables.contains(table)) {
             collection = "node";
             tableField = "label";
-        } else if (catalog.isEdgeTable(table)) {
+        } else if (edgeTables.contains(table)) {
             collection = "edge";
             tableField = "type";
         } else {
@@ -148,5 +151,168 @@ public class SqlToMongoAdapter {
             };
         }
         throw new IllegalArgumentException("알 수 없는 WHERE 노드");
+    }
+
+
+
+    public QueryDsl parseToDsl(String sql) {
+        Statement stmt;
+        try {
+            stmt = CCJSqlParserUtil.parse(sql);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("SQL 파싱 실패: " + e.getMessage(), e);
+        }
+        if (!(stmt instanceof Select select)) {
+            throw new IllegalArgumentException("SELECT 쿼리만 허용됩니다.");
+        }
+        return toDsl(select);
+    }
+
+    private QueryDsl toDsl(Select select) {
+        if (!(select.getSelectBody() instanceof PlainSelect ps)) {
+            throw new IllegalArgumentException("지원하지 않는 SELECT 형태입니다.");
+        }
+
+        // FROM
+        if (!(ps.getFromItem() instanceof Table t)) {
+            throw new IllegalArgumentException("FROM에는 테이블만 허용됩니다.");
+        }
+        String table = normalizeName(t.getName());
+        if (!allowedTables.contains(table)) {
+            throw new IllegalArgumentException("허용되지 않은 테이블: " + table);
+        }
+        if (ps.getJoins() != null && !ps.getJoins().isEmpty()) {
+            throw new IllegalArgumentException("JOIN은 현재 허용되지 않습니다.");
+        }
+
+        // SELECT 컬럼
+        List<String> columns;
+        // 1) select * 또는 t.* 만 단독으로 오는 경우 → 전체 반환(프로젝션 X)
+        if (ps.getSelectItems().size() == 1 &&
+                (ps.getSelectItems().get(0) instanceof AllColumns
+                        || ps.getSelectItems().get(0) instanceof AllTableColumns)) {
+            columns = List.of(); // ← 빈 리스트면 어댑터에서 projection 미적용(전체 필드)
+        } else {
+            // 2) 명시 컬럼 나열
+            columns = ps.getSelectItems().stream().map(si -> {
+                if (si instanceof AllColumns || si instanceof AllTableColumns) {
+                    // 혼합 사용: id, *, name 같은 케이스는 허용하지 않음(정책상 금지)
+                    throw new IllegalArgumentException("SELECT * 는 단독으로만 허용됩니다.");
+                }
+                if (si instanceof SelectExpressionItem sei) {
+                    Expression e = sei.getExpression();
+                    // (함수 제한 필요 시 여기서 체크)
+                    return normalizeName(e.toString());
+                }
+                throw new IllegalArgumentException("지원하지 않는 SELECT 항목: " + si);
+            }).collect(Collectors.toList());
+        }
+
+        // WHERE
+        QueryDsl.FilterExpr where = (ps.getWhere() == null)
+                ? new QueryDsl.TrueExpr()
+                : toFilterExpr(ps.getWhere());
+
+        // ORDER BY
+        List<QueryDsl.Order> order = Optional.ofNullable(ps.getOrderByElements()).orElse(List.of()).stream()
+                .map(o -> QueryDsl.Order.builder()
+                        .col(normalizeName(o.getExpression().toString()))
+                        .asc(Boolean.TRUE.equals(o.isAsc()))
+                        .build())
+                .toList();
+
+        // LIMIT / OFFSET / FETCH
+        Integer limit = null;
+        Integer offset = 0;
+        if (ps.getLimit() != null) {
+            Limit l = ps.getLimit();
+            if (l.getRowCount() != null) limit = Integer.parseInt(l.getRowCount().toString());
+            if (l.getOffset() != null) offset = Integer.parseInt(l.getOffset().toString());
+        }
+        if (limit == null && ps.getFetch() != null) { // e.g., FETCH FIRST 100 ROWS ONLY
+            limit = (int) ps.getFetch().getRowCount();
+        }
+        if (limit == null) limit = limitDefault;
+        limit = Math.min(limit, limitMax);
+
+        return QueryDsl.builder()
+                .table(table)
+                .columns(columns)  // ← 비어 있으면 전체 반환
+                .where(where)
+                .orderBy(order)
+                .limit(limit)
+                .offset(offset)
+                .build();
+    }
+
+    private String normalizeName(String s) {
+        // 컬럼/테이블 토큰을 단순 정규화(백틱/따옴표 제거, 별칭 미사용 권장)
+        if (s == null) return null;
+        return s.replace("`","").replace("\"","").trim();
+    }
+
+    private QueryDsl.FilterExpr toFilterExpr(Expression e) {
+        // 논리식
+        if (e instanceof AndExpression a) {
+            return QueryDsl.Bin.builder().op("AND")
+                    .left(toFilterExpr(a.getLeftExpression()))
+                    .right(toFilterExpr(a.getRightExpression()))
+                    .build();
+        }
+        if (e instanceof OrExpression o) {
+            return QueryDsl.Bin.builder().op("OR")
+                    .left(toFilterExpr(o.getLeftExpression()))
+                    .right(toFilterExpr(o.getRightExpression()))
+                    .build();
+        }
+        if (e instanceof Parenthesis p) {
+            return QueryDsl.Group.builder().expr(toFilterExpr(p.getExpression())).build();
+        }
+        if (e instanceof NotExpression n) {
+            return QueryDsl.Unary.builder().op("NOT").expr(toFilterExpr(n.getExpression())).build();
+        }
+
+        // 비교/IN/BETWEEN/LIKE/IS NULL
+        if (e instanceof ComparisonOperator cmp) {
+            String op = cmp.getStringExpression();
+            String col = normalizeName(cmp.getLeftExpression().toString());
+            Object val = literalValueOf(cmp.getRightExpression());
+            return QueryDsl.Predicate.builder().col(col).op(op).val(val).build();
+        }
+        if (e instanceof InExpression in) {
+            String col = normalizeName(in.getLeftExpression().toString());
+            List<Object> vals = ((ExpressionList) in.getRightItemsList()).getExpressions()
+                    .stream().map(this::literalValueOf).toList();
+            return QueryDsl.Predicate.builder().col(col).op("IN").val(vals).build();
+        }
+        if (e instanceof Between between) {
+            String col = normalizeName(between.getLeftExpression().toString());
+            Object from = literalValueOf(between.getBetweenExpressionStart());
+            Object to = literalValueOf(between.getBetweenExpressionEnd());
+            return QueryDsl.Predicate.builder().col(col).op("BETWEEN").val(List.of(from, to)).build();
+        }
+        if (e instanceof LikeExpression like) {
+            String col = normalizeName(like.getLeftExpression().toString());
+            Object pat = literalValueOf(like.getRightExpression());
+            return QueryDsl.Predicate.builder().col(col).op("LIKE").val(pat).build();
+        }
+        if (e instanceof IsNullExpression isnull) {
+            String col = normalizeName(isnull.getLeftExpression().toString());
+            return QueryDsl.Predicate.builder().col(col)
+                    .op(isnull.isNot() ? "IS NOT NULL" : "IS NULL").build();
+        }
+
+        throw new IllegalArgumentException("지원하지 않는 WHERE 표현식: " + e);
+    }
+
+    private Object literalValueOf(Expression e) {
+        if (e instanceof StringValue sv) return sv.getValue();
+        if (e instanceof LongValue lv) return lv.getValue();
+        if (e instanceof DoubleValue dv) return dv.getValue();
+        if (e instanceof DateValue dv) return dv.getValue();
+        if (e instanceof TimeValue tv) return tv.getValue();
+        if (e instanceof TimestampValue ts) return ts.getValue();
+        // 심볼/식/컬럼 비교의 오른쪽이 또 컬럼이면 금지
+        throw new IllegalArgumentException("리터럴만 허용됩니다: " + e);
     }
 }

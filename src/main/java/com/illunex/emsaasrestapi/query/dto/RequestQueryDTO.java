@@ -32,5 +32,7 @@ public class RequestQueryDTO {
     public static class ExecuteQuery {
         private Integer projectIdx;
         private String rawQuery;
+        private Integer skip = 0;
+        private Integer limit = 100;
     }
 }
