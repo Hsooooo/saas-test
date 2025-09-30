@@ -416,55 +416,58 @@ public class ProjectService {
         var sid = dc.getSessionId();
 
         // 1) projectDoc + 얕은 필드 동시 반영
-        draftRepo.upsert(sid, buildDraftUpdateFromRequest(project));
+
 
         // 2) 노드/엣지 예상 카운트 (엑셀 메타 기반)
         var draft = draftRepo.get(dc.getSessionId());
-        int nodeCount = 0, edgeCount = 0;
-        List<ProjectNodeCount> nodeCountList = new ArrayList<>();
-        List<ProjectEdgeCount> edgeCountList = new ArrayList<>();
-        if (draft != null && draft.getExcelMeta() != null) {
-            var sheets = draft.getExcelMeta().getExcelSheetList();
-            if (project.getProjectNodeList() != null) {
-                for (var n : project.getProjectNodeList()) {
-                    int count = sheets.stream()
-                            .filter(s -> s.getExcelSheetName().equals(n.getNodeType()))
-                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
-                    ProjectNodeCount pnc = new ProjectNodeCount();
-                    pnc.setType(n.getNodeType());
-                    pnc.setCount(count);
-                    nodeCount += count;
-                    nodeCountList.add(pnc);
-                }
-            }
-            if (project.getProjectEdgeList() != null) {
-                for (var e : project.getProjectEdgeList()) {
-                    int count = sheets.stream()
-                            .filter(s -> s.getExcelSheetName().equals(e.getEdgeType()))
-                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
-                    ProjectEdgeCount pec = new ProjectEdgeCount();
-                    pec.setType(e.getEdgeType());
-                    pec.setCount(count);
-                    edgeCount += count;
-                    edgeCountList.add(pec);
-                }
-            }
-        }
-        var projectDoc = Objects.requireNonNull(draft).getProjectDoc();
-        projectDoc.setProjectNodeCountList(nodeCountList);
-        projectDoc.setProjectEdgeCountList(edgeCountList);
-        projectDoc.setMaxNodeSize(project.getMaxNodeSize());
-        Excel excel = draft.getExcelMeta();
-        if (excel != null) {
-            int totalDataCount = excel.getExcelSheetList().stream()
-                    .filter(sheet -> sheet.getTotalRowCnt() > 0)
-                    .mapToInt(sheet -> sheet.getExcelCellList().size() * sheet.getTotalRowCnt())
-                    .sum();
-            projectDoc.setTotalDataCount(totalDataCount);
-        }
-        draft.setProjectDoc(projectDoc);
+//        int nodeCount = 0, edgeCount = 0;
+//        List<ProjectNodeCount> nodeCountList = new ArrayList<>();
+//        List<ProjectEdgeCount> edgeCountList = new ArrayList<>();
+//        if (draft != null && draft.getExcelMeta() != null) {
+//            var sheets = draft.getExcelMeta().getExcelSheetList();
+//            if (project.getProjectNodeList() != null) {
+//                for (var n : project.getProjectNodeList()) {
+//                    int count = sheets.stream()
+//                            .filter(s -> s.getExcelSheetName().equals(n.getNodeType()))
+//                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+//                    ProjectNodeCount pnc = new ProjectNodeCount();
+//                    pnc.setType(n.getNodeType());
+//                    pnc.setCount(count);
+//                    nodeCount += count;
+//                    nodeCountList.add(pnc);
+//                }
+//            }
+//            if (project.getProjectEdgeList() != null) {
+//                for (var e : project.getProjectEdgeList()) {
+//                    int count = sheets.stream()
+//                            .filter(s -> s.getExcelSheetName().equals(e.getEdgeType()))
+//                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
+//                    ProjectEdgeCount pec = new ProjectEdgeCount();
+//                    pec.setType(e.getEdgeType());
+//                    pec.setCount(count);
+//                    edgeCount += count;
+//                    edgeCountList.add(pec);
+//                }
+//            }
+//        }
+//        var projectDoc = Objects.requireNonNull(draft).getProjectDoc();
+//        projectDoc.setProjectNodeCountList(nodeCountList);
+//        projectDoc.setProjectEdgeCountList(edgeCountList);
+//        projectDoc.setMaxNodeSize(project.getMaxNodeSize());
+//        projectDoc.setProjectNodeContentList();
+//        Excel excel = draft.getExcelMeta();
+//        if (excel != null) {
+//            int totalDataCount = excel.getExcelSheetList().stream()
+//                    .filter(sheet -> sheet.getTotalRowCnt() > 0)
+//                    .mapToInt(sheet -> sheet.getExcelCellList().size() * sheet.getTotalRowCnt())
+//                    .sum();
+//            projectDoc.setTotalDataCount(totalDataCount);
+//        }
+//        draft.setProjectDoc(projectDoc);
+//
+//        draftRepo.upsert(sid, new Update().set("projectDoc", projectDoc));
 
-        draftRepo.upsert(sid, new Update().set("projectDoc", projectDoc));
+        draftRepo.upsert(sid, buildDraftUpdateFromRequest(project));
 
         draft = draftRepo.get(dc.getSessionId());
 
