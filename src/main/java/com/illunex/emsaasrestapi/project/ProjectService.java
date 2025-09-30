@@ -153,7 +153,6 @@ public class ProjectService {
     @Transactional
     public CustomResponse<?> createProject(MemberVO me, RequestProjectDTO.Project project,
                                            DraftContext dc) throws CustomException {
-        if (!dc.isDraft()) return createProject(me, project); // 기존
         // 1) 세션 없으면 여기서 생성
         ObjectId sid = (dc.getSessionId() != null)
                 ? dc.getSessionId()
@@ -241,7 +240,6 @@ public class ProjectService {
     @Transactional
     public CustomResponse<?> uploadSingleExcelFile(MemberVO me, Integer projectIdx, MultipartFile excelFile,
                                                    DraftContext dc) throws CustomException, java.io.IOException {
-        if (!dc.isDraft()) return uploadSingleExcelFile(me, projectIdx, excelFile); // 기존
         dc.require();
 
         // S3 업로드 (기존처럼)
@@ -389,7 +387,6 @@ public class ProjectService {
      */
     public CustomResponse<?> replaceProject(MemberVO memberVO, RequestProjectDTO.Project project,
                                             DraftContext dc) throws CustomException {
-        if (!dc.isDraft()) return replaceProject(memberVO, project); // 기존
         if (!dc.hasSession()) {
             // === 세션 없음: 여기서 자동 발급 & 스냅샷 적재 후 sessionId만 리턴 ===
             if (!dc.hasSession()) {
@@ -512,7 +509,6 @@ public class ProjectService {
 
     @Transactional
     public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException, IOException {
-        if (!dc.isDraft()) return completeProject(memberVO, projectIdx); // 기존
         dc.require();
 
         var d = draftRepo.get(dc.getSessionId());
@@ -608,7 +604,6 @@ public class ProjectService {
      * @return
      */
     public CustomResponse<?> getProjectDetail(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException {
-        if (!dc.isDraft()) return getProjectDetail(memberVO, projectIdx); // 기존
         dc.require();
 
         ProjectDraft d = draftRepo.get(dc.getSessionId()); // 존재 여부 체크용
@@ -916,10 +911,6 @@ public class ProjectService {
     public CustomResponse<?> getExcelValueRange(MemberVO me, RequestProjectDTO.ProjectExcelSummary search,
                                                 HttpServletRequest req) throws CustomException, IOException {
         var dc = DraftContext.from(req);
-        if (!dc.isDraft()) {
-            // === 기존 그대로 ===
-            return getExcelValueRange(me, search);
-        }
 
         dc.require();
         var d = draftRepo.get(dc.getSessionId());
@@ -1040,10 +1031,6 @@ public class ProjectService {
                                                    RequestProjectDTO.ProjectExcelSummary search,
                                                    HttpServletRequest req) throws CustomException, IOException {
         var dc = DraftContext.from(req);
-        if (!dc.isDraft()) {
-            // === 기존 그대로 ===
-            return getExcelValueDistinct(memberVO, search);
-        }
 
         // === Draft 모드 ===
         dc.require();
@@ -1138,7 +1125,6 @@ public class ProjectService {
      * @return
      */
     public CustomResponse<?> replaceProjectByAi(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException {
-        if (!dc.isDraft()) return replaceProjectByAi(memberVO, projectIdx); // 기존
         dc.require();
 
         var d = draftRepo.get(dc.getSessionId());

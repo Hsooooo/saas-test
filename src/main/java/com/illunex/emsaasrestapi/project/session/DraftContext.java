@@ -6,25 +6,21 @@ import org.bson.types.ObjectId;
 
 @Getter
 public class DraftContext {
-    private final boolean draft;
     private final ObjectId sessionId;
 
-    private DraftContext(boolean draft, ObjectId sessionId) {
-        this.draft = draft;
+    private DraftContext(ObjectId sessionId) {
         this.sessionId = sessionId;
     }
 
     public static DraftContext from(HttpServletRequest req) {
-        String m = req.getHeader("X-Draft-Mode");
-        boolean draft = "1".equals(m) || "true".equalsIgnoreCase(m);
         String sid = req.getHeader("X-Session-Id");
         ObjectId sessionId = (sid != null && ObjectId.isValid(sid)) ? new ObjectId(sid) : null;
-        return new DraftContext(draft, sessionId);
+        return new DraftContext(sessionId);
     }
 
     public void require() {
-        if (!draft || sessionId == null) throw new IllegalArgumentException("Draft mode requires X-Draft-Mode & X-Session-Id");
+        if (sessionId == null) throw new IllegalArgumentException("Draft mode requires X-Draft-Mode & X-Session-Id");
     }
 
-    public boolean hasSession() { return draft && sessionId != null; }
+    public boolean hasSession() { return sessionId != null; }
 }
