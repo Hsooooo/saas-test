@@ -456,6 +456,7 @@ public class ProjectComponent {
         base.setDescription(draft.getDescription());
         base.setImagePath(draft.getImagePath());
         base.setImageUrl(draft.getImageUrl());
+        base.setProjectIdx(draft.getProjectIdx());
         Excel excel = draft.getExcelMeta();
         if (excel != null) {
             base.setProjectExcel(modelMapper.map(excel, ResponseProjectDTO.Excel.class));
