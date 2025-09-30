@@ -545,6 +545,15 @@ public class ProjectService {
 
             // 5) 단일 upsert로 끝
             mongoTemplate.upsert(q, u, com.illunex.emsaasrestapi.project.document.project.Project.class);
+            // 파트너쉽 회원 여부 체크
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, pvo.getIdx());
+
+            // 프로젝트 생성자를 관리자로 프로젝트 구성원에 추가
+            ProjectMemberVO projectMemberVO = new ProjectMemberVO();
+            projectMemberVO.setProjectIdx(pvo.getIdx());
+            projectMemberVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Manager.getCode());
+            projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
         } else {
             // 수정: 권한 체크만 하고 본 Project 도큐 덮어쓰기
             var pm = partnershipComponent.checkPartnershipMemberAndProject(memberVO, pid);
@@ -610,7 +619,7 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-//        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
         return CustomResponse.builder()
                 .data(projectComponent.createResponseProject(projectIdx))
