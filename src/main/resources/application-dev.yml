@@ -63,8 +63,8 @@ webhook:
     use: true
 
 ai:
-  url: http://220.118.147.58:52201
+  url: ${ai-url}
 
 front-end:
-  url: http://220.118.147.58:20044
+  url: ${front-url}
 

@@ -75,6 +75,8 @@ docker run -d -p ${PORT}:${PORT} \
     -e "spring.cloud.aws.region.static=${REGION}" \
     -e "spring.cloud.aws.ses.region=${REGION}" \
     -e "spring.cloud.aws.ses.manager-email=${MANAGER_EMAIL}" \
+    -e "ai.url=${AI_URL}" \
+    -e "front-end.url=${FRONT_URL}" \
     -e "debug.mode=${DEBUG_MODE}" \
     --restart unless-stopped \
     --network ${NETWORK} \
