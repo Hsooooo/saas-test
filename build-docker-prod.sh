@@ -80,6 +80,7 @@ docker run -d -p ${PORT}:${PORT} \
     -e "spring.cloud.aws.ses.manager-email=${MANAGER_EMAIL}" \
     -e "SPRING_DATA_MONGODB_URI=${MONGO_URL}" \
     -e "ai.url=${AI_URL}" \
+    -e "front-end.url=${FRONT_URL}" \
     -e "jwt.secret=${JWT_SECRET}" \
     -e "debug.mode=${DEBUG_MODE}" \
     --restart unless-stopped \

@@ -77,6 +77,8 @@ mybatis:
 
 ai:
   url: ${ai-url}
+front-end:
+  url: ${front-url}
 
 #hts:
 #  scrap-host: ${hts-scrap-domain}
