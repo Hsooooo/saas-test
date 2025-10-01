@@ -4,6 +4,8 @@ import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
+import com.illunex.emsaasrestapi.project.document.database.Column;
+import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelFile;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
@@ -138,6 +140,7 @@ public class ProjectProcessingService {
         Query byProject = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
         mongoTemplate.remove(byProject, Node.class);
         mongoTemplate.remove(byProject, Edge.class);
+        mongoTemplate.remove(byProject, Column.class);
         projectTableMapper.deleteAllByProjectIdx(projectIdx);
 
         for (ExcelSheet sheet : sheets) {
@@ -173,6 +176,26 @@ public class ProjectProcessingService {
             EnumCode.ProjectTable.TypeCd typeCd = nodeDef != null ? EnumCode.ProjectTable.TypeCd.Node : EnumCode.ProjectTable.TypeCd.Edge;
             projectTableVO.setTypeCd(typeCd.getCode());
             projectTableMapper.insertByProjectTableVO(projectTableVO);
+
+            // 2) Column 문서 저장: 시트 단위 1개, 첫 행 헤더만 반영
+            if (columns != null && !columns.isEmpty()) {
+                List<ColumnDetail> detailList = new ArrayList<>(columns.size());
+                for (int c = 0; c < columns.size(); c++) {
+                    String header = columns.get(c);
+                    ColumnDetail detail = new ColumnDetail();
+                    detail.setColumnName(header);   // 엑셀 헤더
+                    detail.setAlias(header);        // 기본 alias=컬럼명
+                    detail.setOrder(c);             // 헤더 순서
+                    detail.setVisible(true);        // 기본 표시
+                    detailList.add(detail);
+                }
+
+                Column columnDoc = new Column();
+                columnDoc.setProjectIdx(projectIdx);
+                columnDoc.setType(sheetName);               // 시트명
+                columnDoc.setColumnDetailList(detailList);  // 헤더 기반 컬럼 목록
+                mongoTemplate.insert(columnDoc);
+            }
 
             Set<Object> seenKeys = new HashSet<>();
             int skippedDup = 0;
