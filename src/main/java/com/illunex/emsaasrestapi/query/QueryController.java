@@ -31,6 +31,15 @@ public class QueryController {
                 .build();
     }
 
+    @PostMapping("/ai")
+    public CustomResponse<?> queryAI(@CurrentMember MemberVO memberVO,
+                                     @RequestBody RequestQueryDTO.AIQuery aiQuery) {
+        return CustomResponse.builder()
+                .data(queryService.aiQuery(memberVO, aiQuery))
+                .message("AI Query executed successfully")
+                .build();
+    }
+
     @PostMapping("/save")
     public CustomResponse<?> querySave(@CurrentMember MemberVO memberVO,
                                        @RequestBody RequestQueryDTO.SaveQuery saveQuery) {

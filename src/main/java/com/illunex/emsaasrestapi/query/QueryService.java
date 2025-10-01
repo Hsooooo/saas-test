@@ -1,11 +1,14 @@
 package com.illunex.emsaasrestapi.query;
 
 import com.illunex.emsaasrestapi.common.code.EnumCode;
+import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
+import com.illunex.emsaasrestapi.project.document.database.Column;
+import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
@@ -17,14 +20,20 @@ import com.illunex.emsaasrestapi.query.vo.ProjectQueryVO;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,7 +46,9 @@ public class QueryService {
     private final ProjectMapper projectMapper;
     private final PartnershipMapper partnershipMapper;
 
-    private final ModelMapper modelMapper;
+    @Value("${ai.url}") String aiGptBase;
+
+    private final WebClient webClient;
 
     /**
      * 쿼리 실행
@@ -205,4 +216,39 @@ public class QueryService {
         projectQueryMapper.insertByProjectQueryVO(projectQueryVO);
     }
 
+    public Object aiQuery(MemberVO memberVO, RequestQueryDTO.AIQuery aiQuery) {
+        // 컬럼 정보 조회
+        Query query = Query.query(Criteria.where("projectIdx").is(aiQuery.getProjectIdx()));
+        List<Column> columns = mongoTemplate.find(query, Column.class);
+
+        List<Map<String, Object>> columnList = columns.stream()
+                .map(column -> Map.of(
+                        "type", column.getType(),
+                        "columns", column.getColumnDetailList().stream()
+                                .map(detail -> {
+                                    Map<String, Object> m = new HashMap<String, Object>();
+                                    m.put("columnName", detail.getColumnName());
+                                    m.put("alias", detail.getAlias());
+                                    m.put("visible", detail.isVisible());
+                                    m.put("order", detail.getOrder());
+                                    return m;
+                                })
+                                .toList()
+                ))
+                .toList();
+
+        // AI 요청
+        RequestQueryDTO.AIQueryRequest req = new RequestQueryDTO.AIQueryRequest();
+        req.setQuery(aiQuery.getQueryPrompt());
+        req.setExcel_info(columnList);
+
+        final String graphUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
+                .path("/v3/text_to_sql").toUriString();
+        Map graphResp = webClient.post().uri(graphUrl)
+                .bodyValue(req)
+                .retrieve().bodyToMono(Map.class).block();
+
+        return graphResp;
+
+    }
 }

@@ -493,7 +493,7 @@ public class ProjectService {
     }
 
     @Transactional
-    public CustomResponse<?> completeProject(MemberVO memberVO, Object projectIdx, DraftContext dc) throws CustomException, IOException {
+    public CustomResponse<?> completeProject(MemberVO memberVO, Integer projectIdx, DraftContext dc) throws CustomException, IOException {
         dc.require();
 
         var d = draftRepo.get(dc.getSessionId());
