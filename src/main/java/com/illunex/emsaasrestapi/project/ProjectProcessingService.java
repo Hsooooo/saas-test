@@ -125,6 +125,8 @@ public class ProjectProcessingService {
             wipeAndBuildAll(projectIdx, wb, excelMeta.getExcelSheetList(), project);
 
             vo.setStatusCd(EnumCode.Project.StatusCd.Complete.getCode());
+            vo.setNodeCnt(draft.getNodeCnt());
+            vo.setEdgeCnt(draft.getEdgeCnt());
             projectMapper.updateByProjectVO(vo);
             log.info("[THREAD-SUCCESS] Draft 프로젝트 정제 완료 projectIdx={} {}ms", projectIdx, System.currentTimeMillis()-start);
         }
