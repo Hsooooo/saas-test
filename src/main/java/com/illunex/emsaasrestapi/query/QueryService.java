@@ -247,6 +247,7 @@ public class QueryService {
         Map graphResp = webClient.post().uri(graphUrl)
                 .bodyValue(req)
                 .retrieve().bodyToMono(Map.class).block();
+        graphResp.put("excelInfo", columnList);
 
         return graphResp;
 
