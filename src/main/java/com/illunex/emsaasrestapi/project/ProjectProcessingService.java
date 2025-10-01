@@ -138,9 +138,10 @@ public class ProjectProcessingService {
     private void wipeAndBuildAll(int projectIdx, Workbook wb, List<ExcelSheet> sheets, Project project) throws CustomException {
         // 기존 Node·Edge 삭제 + 테이블 메타 삭제
         Query byProject = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
+        Query byProjectColumn = Query.query(Criteria.where("projectIdx").is(projectIdx));
         mongoTemplate.remove(byProject, Node.class);
         mongoTemplate.remove(byProject, Edge.class);
-        mongoTemplate.remove(byProject, Column.class);
+        mongoTemplate.remove(byProjectColumn, Column.class);
         projectTableMapper.deleteAllByProjectIdx(projectIdx);
 
         for (ExcelSheet sheet : sheets) {
