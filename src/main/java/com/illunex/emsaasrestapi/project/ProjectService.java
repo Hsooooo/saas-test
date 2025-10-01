@@ -450,6 +450,25 @@ public class ProjectService {
                 }
             }
         }
+        Excel excel = draft.getExcelMeta();
+        int totalDataCount = 0;
+        if (excel != null && excel.getExcelSheetList() != null) {
+            totalDataCount = excel.getExcelSheetList().stream()
+                    .filter(sheet -> sheet != null && sheet.getTotalRowCnt() > 0
+                            && sheet.getExcelCellList() != null)
+                    .mapToInt(sheet -> sheet.getExcelCellList().size() * sheet.getTotalRowCnt())
+                    .sum();
+        }
+        Update u = buildDraftUpdateFromRequest(project);
+        u.set("projectDoc.projectNodeCountList", nodeCountList);
+        u.set("projectDoc.projectEdgeCountList", edgeCountList);
+        u.set("projectDoc.totalDataCount", totalDataCount);
+        u.set("nodeCnt", nodeCount);
+        u.set("edgeCnt", edgeCount);
+        if (project.getMaxNodeSize() != null) u.set("projectDoc.maxNodeSize", project.getMaxNodeSize());
+        draftRepo.upsert(sid, u);
+
+        draft = draftRepo.get(dc.getSessionId());
 
         return CustomResponse.builder().data(
                 projectComponent.createResponseProject(null, draft)
