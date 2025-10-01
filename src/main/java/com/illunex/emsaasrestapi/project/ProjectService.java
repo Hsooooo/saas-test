@@ -42,6 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.data.domain.PageImpl;
@@ -415,64 +416,77 @@ public class ProjectService {
         dc.require();
         var sid = dc.getSessionId();
 
-        // 1) projectDoc + 얕은 필드 동시 반영
-        draftRepo.upsert(sid, buildDraftUpdateFromRequest(project));
+        // 0) draft 조회/널 가드
+        var draft = Objects.requireNonNull(draftRepo.get(dc.getSessionId()), "draft not found");
 
-        // 2) 노드/엣지 예상 카운트 (엑셀 메타 기반)
-        var draft = draftRepo.get(dc.getSessionId());
-        int nodeCount = 0, edgeCount = 0;
+// 1) 시트별 row 집계 -> 카운트 계산
+        Map<String, Integer> rowCountBySheet = new HashMap<>();
+        var sheets = Optional.ofNullable(draft.getExcelMeta())
+                .map(Excel::getExcelSheetList).orElse(List.of());
+        for (var s : sheets) {
+            if (s == null) continue;
+            String name = s.getExcelSheetName();
+            int rows = Math.max(0, s.getTotalRowCnt());
+            rowCountBySheet.merge(name, rows, Integer::sum);
+        }
+        int nodeCount = 0; int edgeCount = 0;
         List<ProjectNodeCount> nodeCountList = new ArrayList<>();
+        if (project.getProjectNodeList() != null) {
+            for (var n : project.getProjectNodeList()) {
+                int c = rowCountBySheet.getOrDefault(n.getNodeType(), 0);
+                var pnc = new ProjectNodeCount(); pnc.setType(n.getNodeType()); pnc.setCount(c);
+                nodeCountList.add(pnc);
+                nodeCount += c;
+            }
+        }
         List<ProjectEdgeCount> edgeCountList = new ArrayList<>();
-        if (draft != null && draft.getExcelMeta() != null) {
-            var sheets = draft.getExcelMeta().getExcelSheetList();
-            if (project.getProjectNodeList() != null) {
-                for (var n : project.getProjectNodeList()) {
-                    int count = sheets.stream()
-                            .filter(s -> s.getExcelSheetName().equals(n.getNodeType()))
-                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
-                    ProjectNodeCount pnc = new ProjectNodeCount();
-                    pnc.setType(n.getNodeType());
-                    pnc.setCount(count);
-                    nodeCount += count;
-                    nodeCountList.add(pnc);
-                }
-            }
-            if (project.getProjectEdgeList() != null) {
-                for (var e : project.getProjectEdgeList()) {
-                    int count = sheets.stream()
-                            .filter(s -> s.getExcelSheetName().equals(e.getEdgeType()))
-                            .mapToInt(ExcelSheet::getTotalRowCnt).sum();
-                    ProjectEdgeCount pec = new ProjectEdgeCount();
-                    pec.setType(e.getEdgeType());
-                    pec.setCount(count);
-                    edgeCount += count;
-                    edgeCountList.add(pec);
-                }
+        if (project.getProjectEdgeList() != null) {
+            for (var e : project.getProjectEdgeList()) {
+                int c = rowCountBySheet.getOrDefault(e.getEdgeType(), 0);
+                var pec = new ProjectEdgeCount(); pec.setType(e.getEdgeType()); pec.setCount(c);
+                edgeCountList.add(pec);
+                edgeCount += c;
             }
         }
-        Excel excel = draft.getExcelMeta();
+// totalDataCount 계산 (long으로 보호)
         int totalDataCount = 0;
-        if (excel != null && excel.getExcelSheetList() != null) {
-            totalDataCount = excel.getExcelSheetList().stream()
-                    .filter(sheet -> sheet != null && sheet.getTotalRowCnt() > 0
-                            && sheet.getExcelCellList() != null)
-                    .mapToInt(sheet -> sheet.getExcelCellList().size() * sheet.getTotalRowCnt())
-                    .sum();
+        if (!sheets.isEmpty()) {
+            long total = 0L;
+            for (var sh : sheets) {
+                if (sh == null || sh.getTotalRowCnt() <= 0 || sh.getExcelCellList() == null) continue;
+                total += (long) sh.getExcelCellList().size() * (long) sh.getTotalRowCnt();
+            }
+            totalDataCount = (total > Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) total;
         }
-        Update u = buildDraftUpdateFromRequest(project);
-        u.set("projectDoc.projectNodeCountList", nodeCountList);
-        u.set("projectDoc.projectEdgeCountList", edgeCountList);
-        u.set("projectDoc.totalDataCount", totalDataCount);
+
+// 2) req -> projDoc 병합(널 스킵) + 카운트/메타 주입
+        var existing = Optional.ofNullable(draft.getProjectDoc())
+                .orElseGet(com.illunex.emsaasrestapi.project.document.project.Project::new);
+        modelMapper.getConfiguration().setPropertyCondition(Conditions.isNotNull());
+        modelMapper.map(project, existing); // 널 필드는 보존
+        existing.setProjectNodeCountList(nodeCountList);
+        existing.setProjectEdgeCountList(edgeCountList);
+        existing.setTotalDataCount(totalDataCount);
+        if (project.getMaxNodeSize() != null) existing.setMaxNodeSize(project.getMaxNodeSize());
+        existing.setUpdateDate(java.time.LocalDateTime.now());
+
+        Update u = new Update().set("updatedAt", new Date())
+                .set("projectDoc", existing);
         u.set("nodeCnt", nodeCount);
         u.set("edgeCnt", edgeCount);
-        if (project.getMaxNodeSize() != null) u.set("projectDoc.maxNodeSize", project.getMaxNodeSize());
+        if (project.getMaxNodeSize() != null)       u.set("maxNodeSize", project.getMaxNodeSize());
+        if (project.getTitle() != null)              u.set("title", project.getTitle());
+        if (project.getPartnershipIdx() != null)     u.set("partnershipIdx", project.getPartnershipIdx());
+        if (project.getProjectCategoryIdx() != null) u.set("projectCategoryIdx", project.getProjectCategoryIdx());
+        if (project.getDescription() != null)        u.set("description", project.getDescription());
+        if (project.getImagePath() != null)          u.set("imagePath", project.getImagePath());
+        if (project.getImageUrl() != null)           u.set("imageUrl", project.getImageUrl());
+
         draftRepo.upsert(sid, u);
-
-        draft = draftRepo.get(dc.getSessionId());
-
-        return CustomResponse.builder().data(
-                projectComponent.createResponseProject(null, draft)
-        ).build();
+        var refreshed = draftRepo.get(sid);
+        return CustomResponse.builder()
+                .data(projectComponent.createResponseProject(null, refreshed))
+                .build();
     }
 
     /**
@@ -565,7 +579,7 @@ public class ProjectService {
             // 5) 단일 upsert로 끝
             mongoTemplate.upsert(q, u, com.illunex.emsaasrestapi.project.document.project.Project.class);
             // 파트너쉽 회원 여부 체크
-            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, pvo.getIdx());
+            PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, d.getPartnershipIdx());
 
             // 프로젝트 생성자를 관리자로 프로젝트 구성원에 추가
             ProjectMemberVO projectMemberVO = new ProjectMemberVO();
