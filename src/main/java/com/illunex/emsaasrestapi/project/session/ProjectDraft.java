@@ -26,9 +26,6 @@ public class ProjectDraft {
     private String imagePath;      // 프로젝트 이미지 경로
     private String imageUrl;       // 프로젝트 이미지 URL
 
-    private Integer nodeCnt;
-    private Integer edgeCnt;
-
     /** ✅ 실제 저장할 Project 도큐 형태 그대로 보관 (네 예시 JSON 그대로) */
     private Project projectDoc;
 
