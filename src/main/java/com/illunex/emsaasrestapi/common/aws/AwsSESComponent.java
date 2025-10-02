@@ -164,11 +164,13 @@ public class AwsSESComponent {
         }
         JSONObject certJson = new JSONObject()
                 .put("type", EmailType.invite.getValue())
+                .put("receiverEmail", receiverEmail)
                 .put("partnershipMemberIdx", partnershipMemberIdx)
                 .put("memberIdx", memberIdx)
                 .put("expire", ZonedDateTime.now().plusHours(1).toString())  // 1시간?
                 .put("products", productArray);
 
+        // TODO URL정보 수정해야함
         // 이메일 인증을 위한 암호화 - AES256 -> Base64
         String certData = Utils.AES256.encrypt(encryptKey, certJson.toString());
 

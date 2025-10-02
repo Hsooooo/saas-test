@@ -14,10 +14,9 @@ public interface PartnershipMemberMapper {
     Boolean isMemberManagerOfPartnership(Integer partnershipIdx, Integer memberIdx);
     Boolean isDuplicateMemberByEmail(Integer partnershipIdx, String email);
     Optional<PartnershipMemberVO> selectByPartnershipIdxAndMemberIdx(Integer partnershipIdx, Integer memberIdx);
-    Boolean existsInvitedMember(Integer partnershipIdx, String email);
-    void insertInvitedMember(PartnershipInvitedMemberVO partnershipInvitedMemberVO);
     int updatePositionIdxAndPhoneByIdx(@Param("positionIdx") Integer positionIdx, @Param("phone") String phone, @Param("idx") Integer partnershipMemberIdx);
     void updateProfileImageByIdx(PartnershipMemberVO partnershipMember);
     Optional<PartnershipMemberVO> selectByIdx(int partnershipMemberIdx);
     void updatePartnershipMemberStateByIdx(Integer idx, String stateCd);
+    List<PartnershipMemberVO> selectAllByPartnershipIdx(Integer partnershipIdx);
 }

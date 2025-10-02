@@ -109,6 +109,14 @@ public class PartnershipController {
         return partnershipService.updateProfileImage(partnershipIdx, memberVO, file);
     }
 
+    @GetMapping("/{partnershipIdx}/members")
+    public CustomResponse<?> getPartnershipMembers(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                   @CurrentMember MemberVO memberVO) throws CustomException {
+        return CustomResponse.builder()
+                .data(partnershipService.getPartnershipMembers(partnershipIdx, memberVO))
+                .build();
+    }
+
     /**
      *
      * @param partnershipIdx

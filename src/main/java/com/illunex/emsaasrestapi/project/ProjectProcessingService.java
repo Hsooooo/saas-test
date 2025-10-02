@@ -134,7 +134,16 @@ public class ProjectProcessingService {
         }
     }
 
-    /** 공통 빌드 로직: 노드/엣지 초기화 → 시트 돌며 생성 → 저장 */
+    /**
+     * 노드/엣지 초기화 후, 시트별로 노드/엣지/컬럼 문서 생성
+     * * MongoDB : Node, Edge, Column
+     * * MariaDB : project_table
+     * @param projectIdx
+     * @param wb
+     * @param sheets
+     * @param project
+     * @throws CustomException
+     */
     private void wipeAndBuildAll(int projectIdx, Workbook wb, List<ExcelSheet> sheets, Project project) throws CustomException {
         // 기존 Node·Edge 삭제 + 테이블 메타 삭제
         Query byProject = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));

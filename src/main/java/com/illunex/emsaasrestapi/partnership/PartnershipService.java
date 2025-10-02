@@ -16,10 +16,7 @@ import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.dto.PartnershipCreateDTO;
 import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
-import com.illunex.emsaasrestapi.partnership.mapper.PartnershipAdditionalMapper;
-import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
-import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
-import com.illunex.emsaasrestapi.partnership.mapper.PartnershipPositionMapper;
+import com.illunex.emsaasrestapi.partnership.mapper.*;
 import com.illunex.emsaasrestapi.partnership.vo.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +46,8 @@ public class PartnershipService {
     private final MemberMapper memberMapper;
     private final MemberJoinMapper memberJoinMapper;
     private final AwsS3Component awsS3Component;
+    private final PartnershipInvitedMemberMapper partnershipInvitedMemberMapper;
+    private final PartnershipMemberProductGrantMapper partnershipMemberProductGrantMapper;
 
     private final AwsSESComponent sesComponent;
 
@@ -121,7 +120,7 @@ public class PartnershipService {
 
             try {
                 // 1. 이미 초대되었는지 확인
-                if (partnershipMemberMapper.existsInvitedMember(partnershipIdx, email)) {
+                if (partnershipInvitedMemberMapper.existsInvitedMember(partnershipIdx, email)) {
                     continue;
                 }
 
@@ -131,6 +130,7 @@ public class PartnershipService {
                             MemberVO memberVO = new MemberVO();
                             memberVO.setEmail(email);
                             memberVO.setStateCd(EnumCode.Member.StateCd.Wait.getCode());
+                            memberVO.setTypeCd(EnumCode.Member.TypeCd.Normal.getCode());
                             memberJoinMapper.insertByMemberJoin(memberVO);
                             return memberVO;
                         });
@@ -160,7 +160,7 @@ public class PartnershipService {
 
                 invitedMemberVO.setPartnershipMemberIdx(invitePartnershipMemberVO.getIdx());
 
-                partnershipMemberMapper.insertInvitedMember(invitedMemberVO);
+                partnershipInvitedMemberMapper.insertInvitedMember(invitedMemberVO);
                 // 메일 발송
                 String certData = sesComponent.sendInviteMemberEmail(null, email, loginPartnershipMemberVO.getIdx(), memberIdx, info.getProducts());
 
@@ -348,5 +348,36 @@ public class PartnershipService {
         }
 
         return CustomResponse.builder().build();
+    }
+
+    public Object getPartnershipMembers(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
+        // 파트너쉽 관리자 여부 확인
+        PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
+                .selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+        if (!loginPartnershipMemberVO.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
+            throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
+        }
+
+        List<PartnershipMemberVO> members = partnershipMemberMapper.selectAllByPartnershipIdx(partnershipIdx);
+        List<ResponsePartnershipDTO.PartnershipMember> result = new ArrayList<>();
+        for (PartnershipMemberVO member : members) {
+
+            MemberVO mv = memberMapper.selectByIdx(member.getMemberIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+
+            PartnershipInvitedMemberVO invitedMemberVO = partnershipInvitedMemberMapper.selectByPartnershipMemberIdx(member.getIdx()).orElse(null);
+            List<PartnershipMemberProductGrantVO> products = partnershipMemberProductGrantMapper.selectByPartnershipMemberIdx(member.getIdx());
+            result.add(
+                    ResponsePartnershipDTO.PartnershipMember.builder()
+                            .partnershipMemberIdx(member.getIdx())
+                            .email(mv.getEmail())
+                            .name(mv.getName())
+                            .profileImageUrl(member.getProfileImageUrl())
+                            .profileImagePath(member.getProfileImagePath())
+                            .build()
+            );
+        }
+        return result;
     }
 }

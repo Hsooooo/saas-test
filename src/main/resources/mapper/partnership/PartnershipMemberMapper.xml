@@ -69,36 +69,6 @@
            AND m.email = #{email}
     </select>
 
-    <select id="existsInvitedMember" resultType="boolean">
-        SELECT EXISTS (
-            SELECT 1
-            FROM partnership_invited_member
-            WHERE partnership_idx = #{partnershipIdx}
-              AND email = #{email}
-        )
-    </select>
-
-    <insert id="insertInvitedMember" parameterType="PartnershipInvitedMemberVO" useGeneratedKeys="true" keyProperty="idx">
-        INSERT INTO partnership_invited_member (
-            email,
-            partnership_idx,
-            invited_by_partnership_member_idx,
-            member_idx,
-            partnership_member_idx,
-            invited_date,
-            joined_date
-        )
-        VALUES (
-           #{email},
-           #{partnershipIdx},
-           #{invitedByPartnershipMemberIdx},
-           #{memberIdx},
-           #{partnershipMemberIdx},
-           now(),
-           #{joinedDate}
-       )
-    </insert>
-
     <update id="updatePositionIdxAndPhoneByIdx">
         UPDATE partnership_member
         <set>
@@ -149,5 +119,24 @@
         SET state_cd = #{stateCd}
         WHERE idx = #{idx}
     </update>
+
+    <select id="selectAllByPartnershipIdx" resultType="PartnershipMemberVO">
+        SELECT
+            idx,
+            partnership_idx,
+            partnership_team_idx,
+            member_idx,
+            partnership_position_idx,
+            manager_cd,
+            state_cd,
+            profile_image_url,
+            profile_image_path,
+            phone,
+            disable_functions,
+            update_date,
+            create_date
+        FROM partnership_member
+        WHERE partnership_idx = #{partnershipIdx}
+    </select>
 
 </mapper>

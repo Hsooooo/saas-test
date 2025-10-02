@@ -20,5 +20,6 @@ public class RequestCertDTO {
     public static class InviteSignup {
         private String certData;
         private String password;
+        private String name;
     }
 }

@@ -74,4 +74,17 @@ public class ResponsePartnershipDTO {
         private String imagePath;
         private String domain;
     }
+
+    @Builder
+    @Getter
+    public static class PartnershipMember {
+        private Integer partnershipMemberIdx;
+        private String name;
+        private String email;
+        private String stateCd; // INVITED | JOINED | LEFT
+        private PartnershipPositionInfo positionInfo;
+        private String profileImageUrl;
+        private String profileImagePath;
+    }
 }
+

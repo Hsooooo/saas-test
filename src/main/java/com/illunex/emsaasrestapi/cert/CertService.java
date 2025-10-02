@@ -11,8 +11,6 @@ import com.illunex.emsaasrestapi.member.mapper.EmailHistoryMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
 import com.illunex.emsaasrestapi.member.vo.MemberEmailHistoryVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
-import com.illunex.emsaasrestapi.partnership.PartnershipService;
-import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import lombok.RequiredArgsConstructor;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,13 +24,11 @@ import java.time.ZonedDateTime;
 @RequiredArgsConstructor
 public class CertService {
     private final MemberMapper memberMapper;
-    private final PartnershipMemberMapper partnershipMemberMapper;
     private final EmailHistoryMapper emailHistoryMapper;
 
     private final CertComponent certComponent;
 
     private final PasswordEncoder passwordEncoder;
-    private final PartnershipService partnershipService;
 
     @Value("${server.encrypt-key}")
     private String encryptKey;
@@ -149,19 +145,21 @@ public class CertService {
         String password = request.getPassword();
         String emailType = data.getString("type");
 
-        // 회원정보 조회
-        int memberIdx = data.getInt("memberIdx");
-        MemberVO memberVO = memberMapper.selectByIdx(memberIdx)
+        // 초대받은 회원정보 조회
+        String email = data.getString("receiverEmail");
+        MemberVO memberVO = memberMapper.selectByEmail(email)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
         // 대기 상태가 아닌 경우 예외
         if (!memberVO.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
             throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID);
         }
         // 회원정보 업데이트(상태, 패스워드)
-        memberMapper.updateStateAndPasswordByIdx(memberIdx, EnumCode.Member.StateCd.Approval.getCode(), passwordEncoder.encode(password));
+        memberMapper.updateNameByIdx(request.getName(), memberVO.getIdx());
+        memberMapper.updateStateAndPasswordByIdx(memberVO.getIdx(), EnumCode.Member.StateCd.Approval.getCode(), passwordEncoder.encode(password));
 
+        // 파트너쉽 초대 승인 로직
         if (emailType.equals(INVITE_MAIL_TYPE)) {
-            certComponent.approvePartnershipMember(data);
+            certComponent.approvePartnershipMember(data, memberVO);
         }
 
         // 프로젝트 초대 승인 로직
@@ -190,9 +188,9 @@ public class CertService {
         JSONObject data = certComponent.verifyCertData(certData);
         String emailType = data.getString("type");
 
-        if (emailType.equals(INVITE_MAIL_TYPE)) {
-            certComponent.approvePartnershipMember(data);
-        }
+//        if (emailType.equals(INVITE_MAIL_TYPE)) {
+//            certComponent.approvePartnershipMember(data);
+//        }
 
         // 프로젝트 초대 승인 로직
         if (emailType.equals(INVITE_PROJECT_MAIL_TYPE)) {

@@ -95,7 +95,7 @@ create table if not exists em_saas.member_login_history
 CREATE TABLE IF NOT EXISTS `em_saas`.`member_email_history` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '이메일전송이력번호',
     `member_idx` INT(11) NULL DEFAULT NULL COMMENT '회원번호',
-    `cert_data` VARCHAR(255) NULL DEFAULT NULL COMMENT '인증키' COLLATE 'utf8mb4_general_ci',
+    `cert_data` VARCHAR(500) NULL DEFAULT NULL COMMENT '인증키' COLLATE 'utf8mb4_general_ci',
     `used` BIT(1) NULL DEFAULT NULL COMMENT '인증여부(1:인증, 0:미인증)',
     `email_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '메일구분(code)' COLLATE 'utf8mb4_general_ci',
     `expire_date` DATETIME NULL DEFAULT NULL COMMENT '만료일',
