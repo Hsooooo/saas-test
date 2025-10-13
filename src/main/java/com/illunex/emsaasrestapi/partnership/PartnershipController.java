@@ -48,6 +48,21 @@ public class PartnershipController {
     }
 
     /**
+     * 파트너쉽 초대 링크 임시 생성
+     * @param partnershipIdx
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/{partnershipIdx}/invite-links")
+    public CustomResponse<?> createInviteLink(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                              @CurrentMember MemberVO memberVO) throws CustomException {
+        return CustomResponse.builder()
+                .data(partnershipService.createInviteLink(partnershipIdx, memberVO))
+                .build();
+    }
+
+    /**
      * 파트너쉽 회원 초대
      * @param partnershipIdx 파트너쉽번호
      * @param memberVO 로그인사용자정보
@@ -60,7 +75,7 @@ public class PartnershipController {
                                                      @CurrentMember MemberVO memberVO,
                                                      @RequestBody @Valid RequestPartnershipDTO.InviteMember request) throws CustomException {
         return CustomResponse.builder()
-                .data(partnershipService.invitePartnershipMember(partnershipIdx, memberVO.getIdx(), request))
+                .data(partnershipService.invitePartnershipMember(partnershipIdx, memberVO, request))
                 .build();
     }
 

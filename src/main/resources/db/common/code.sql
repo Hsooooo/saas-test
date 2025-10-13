@@ -77,5 +77,10 @@ INSERT INTO em_saas.code (code, first_code, second_code, third_code, code_value,
 
 ('PPG0000', 'PPG', '00', '00', '- 제품 권한 코드', 0),
 ('PPG0001', 'PPG', '00', '01', 'EDITOR', 1),
-('PPG0002', 'PPG', '00', '02', 'VIEWER', 2)
+('PPG0002', 'PPG', '00', '02', 'VIEWER', 2),
+
+('PIS0000', 'PIS', '00', '00', '- 초대링크 상태 코드', 0),
+('PIS0001', 'PIS', '00', '01', 'DRAFT', 1),
+('PIS0002', 'PIS', '00', '02', 'ACTIVE', 2),
+('PIS0003', 'PIS', '00', '03', 'EXPIRE', 3)
 ;

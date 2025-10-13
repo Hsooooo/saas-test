@@ -21,6 +21,8 @@ import com.illunex.emsaasrestapi.partnership.vo.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,9 +31,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+
+import static org.apache.commons.codec.digest.DigestUtils.sha256;
 
 @Service
 @RequiredArgsConstructor
@@ -48,10 +50,12 @@ public class PartnershipService {
     private final AwsS3Component awsS3Component;
     private final PartnershipInvitedMemberMapper partnershipInvitedMemberMapper;
     private final PartnershipMemberProductGrantMapper partnershipMemberProductGrantMapper;
+    private final PartnershipInviteLinkMapper partnershipInviteLinkMapper;
 
     private final AwsSESComponent sesComponent;
 
     private final ModelMapper modelMapper;
+    private final PartnershipComponent partnershipComponent;
 
     /**
      * 파트너십 생성 (기본 라이센스)
@@ -102,10 +106,10 @@ public class PartnershipService {
      * @throws CustomException
      */
     @Transactional(rollbackFor = Exception.class)
-    public ResponsePartnershipDTO.InviteMember invitePartnershipMember(Integer partnershipIdx, Integer memberIdx, RequestPartnershipDTO.InviteMember inviteMember) throws CustomException {
+    public ResponsePartnershipDTO.InviteMember invitePartnershipMember(Integer partnershipIdx, MemberVO memberVO, RequestPartnershipDTO.InviteMember inviteMember) throws CustomException {
         // 파트너쉽 관리자 여부 확인
         PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
-                .selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberIdx)
+                .selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
 
         if (!loginPartnershipMemberVO.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
@@ -115,24 +119,46 @@ public class PartnershipService {
         List<ResponsePartnershipDTO.InviteResult> validList = new ArrayList<>();
         List<ResponsePartnershipDTO.InviteResult> invalidList = new ArrayList<>();
 
-        for (RequestPartnershipDTO.InviteMemberInfo info : inviteMember.getInviteMembers()) {
-            String email = info.getEmail().toLowerCase().trim();
+        // 제품코드 유효성체크
+        for (String product : inviteMember.getProducts()) {
+            boolean isValid = Arrays.stream(EnumCode.Product.ProductCd.values())
+                    .anyMatch(p -> p.getCode().equals(product));
 
+            if (!isValid) {
+                throw new CustomException(ErrorCode.COMMON_INVALID);
+            }
+        }
+        // 초대 제품 및 권한 정보 세팅
+        JSONArray productArray = new JSONArray();
+        for (String product : inviteMember.getProducts()) {
+            JSONObject productJson = new JSONObject()
+                    .put("productCode", product)
+                    .put("auth", inviteMember.getAuth());   //TODO 권한 정보 확인 필ㄹ요 제품별 권한 설정이 없으면 빼도 될 듯
+            productArray.put(productJson);
+        }
+
+        for (String email : inviteMember.getEmails().split("[,;\\s]+")) {
             try {
                 // 1. 이미 초대되었는지 확인
                 if (partnershipInvitedMemberMapper.existsInvitedMember(partnershipIdx, email)) {
+                    invalidList.add(ResponsePartnershipDTO.InviteResult.builder()
+                            .email(email)
+                            .result("error")
+                            .reason("이미 초대된 회원입니다.")
+                            .build()
+                    );
                     continue;
                 }
 
                 // 2. 이미 가입된 사용자 여부
                 MemberVO inviteTargetMember = memberMapper.selectByEmail(email)
                         .orElseGet(() -> {
-                            MemberVO memberVO = new MemberVO();
-                            memberVO.setEmail(email);
-                            memberVO.setStateCd(EnumCode.Member.StateCd.Wait.getCode());
-                            memberVO.setTypeCd(EnumCode.Member.TypeCd.Normal.getCode());
-                            memberJoinMapper.insertByMemberJoin(memberVO);
-                            return memberVO;
+                            MemberVO newMemberVO = new MemberVO();
+                            newMemberVO.setEmail(email);
+                            newMemberVO.setStateCd(EnumCode.Member.StateCd.Wait.getCode());
+                            newMemberVO.setTypeCd(EnumCode.Member.TypeCd.Normal.getCode());
+                            memberJoinMapper.insertByMemberJoin(newMemberVO);
+                            return newMemberVO;
                         });
 
                 if (inviteTargetMember.getStateCd().equals(EnumCode.Member.StateCd.Suspend.getCode())) {
@@ -154,15 +180,16 @@ public class PartnershipService {
                 PartnershipMemberVO invitePartnershipMemberVO = new PartnershipMemberVO();
                 invitePartnershipMemberVO.setMemberIdx(inviteTargetMember.getIdx());
                 invitePartnershipMemberVO.setPartnershipIdx(partnershipIdx);
-                invitePartnershipMemberVO.setManagerCd(info.getAuth());
+                invitePartnershipMemberVO.setManagerCd(inviteMember.getAuth());
                 invitePartnershipMemberVO.setStateCd(EnumCode.PartnershipMember.StateCd.Wait.getCode());
                 partnershipMemberMapper.insertByPartnershipMember(invitePartnershipMemberVO);
 
                 invitedMemberVO.setPartnershipMemberIdx(invitePartnershipMemberVO.getIdx());
 
                 partnershipInvitedMemberMapper.insertInvitedMember(invitedMemberVO);
+
                 // 메일 발송
-                String certData = sesComponent.sendInviteMemberEmail(null, email, loginPartnershipMemberVO.getIdx(), memberIdx, info.getProducts());
+                String certData = sesComponent.sendInviteMemberEmail(null, email, loginPartnershipMemberVO.getIdx(), memberVO.getIdx(), productArray);
 
                 MemberEmailHistoryVO emailHistoryVO = new MemberEmailHistoryVO();
                 emailHistoryVO.setMemberIdx(inviteTargetMember.getIdx());
@@ -187,6 +214,18 @@ public class PartnershipService {
                 );
             }
         }
+        // 초대 링크 토큰
+        String invitedToken = inviteMember.getInviteToken().isBlank() ? this.createInviteLink(partnershipIdx, memberVO) : inviteMember.getInviteToken();
+
+        // 초대링크정보 조회
+        PartnershipInviteLinkVO linkVO = partnershipInviteLinkMapper.selectByInviteTokenHash(invitedToken)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+
+        // 초대링크 정보 수정
+        linkVO.setInviteInfoJson(productArray.toString());
+        linkVO.setStateCd(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode());
+        linkVO.setExpireDate(linkVO.getCreateDate().plusDays(7));
+        partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
 
         return ResponsePartnershipDTO.InviteMember.builder()
                 .valid(validList)
@@ -379,5 +418,31 @@ public class PartnershipService {
             );
         }
         return result;
+    }
+
+    /**
+     * 파트너쉽 초대링크 임시 생성
+     * @param partnershipIdx
+     * @param memberVO
+     * @return
+     */
+    public String createInviteLink(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
+        PartnershipMemberVO ownerMember = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
+        if (!ownerMember.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
+            throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
+        }
+
+        String uuid = new UUID(0L, System.currentTimeMillis()).toString();
+        byte[] hash = sha256(uuid);
+        String hashString = Base64.getEncoder().encodeToString(hash);
+
+        PartnershipInviteLinkVO linkVO = new PartnershipInviteLinkVO();
+        linkVO.setPartnershipIdx(partnershipIdx);
+        linkVO.setInviteTokenHash(hashString);
+        linkVO.setCreatedByPartnershipMemberIdx(ownerMember.getIdx());
+        linkVO.setStateCd( EnumCode.PartnershipInviteLink.StateCd.DRAFT.getCode());
+        partnershipInviteLinkMapper.insertByPartnershipInviteLinkVO(linkVO);
+
+        return hashString;
     }
 }

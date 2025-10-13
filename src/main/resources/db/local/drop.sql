@@ -23,6 +23,7 @@ DROP TABLE IF EXISTS `em_saas`.`chat_tool_result`;
 DROP TABLE IF EXISTS `em_saas`.`chat_history`;
 DROP TABLE IF EXISTS `em_saas`.`chat_room`;
 -- 파트너쉽 관련 테이블
+DROP TABLE IF EXISTS `em_saas`.`partnership_invite_link`;
 DROP TABLE IF EXISTS `em_saas`.`partnership_member_product_grant`;
 DROP TABLE IF EXISTS `em_saas`.`partnership_invited_member`;
 DROP TABLE IF EXISTS `em_saas`.`partnership_member`;

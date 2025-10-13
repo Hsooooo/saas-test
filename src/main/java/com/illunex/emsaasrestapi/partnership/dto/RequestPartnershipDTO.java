@@ -12,8 +12,13 @@ public class RequestPartnershipDTO {
 
     @Getter
     public static class InviteMember {
-        @Valid
-        List<InviteMemberInfo> inviteMembers;
+        @NotNull(message = "이메일은 필수 입력값입니다.")
+        private String emails;
+        @NotNull
+        private String inviteToken;
+        @ValidEnumCode(enumClass = EnumCode.PartnershipMember.ManagerCd.class, message = "유효하지 않은 권한 코드입니다.")
+        private String auth;
+        private List<String> products;
     }
 
     @Getter
@@ -21,16 +26,6 @@ public class RequestPartnershipDTO {
         private String name;
         private String position;
         private String phone;
-    }
-
-    @Valid
-    @Getter
-    public static class InviteMemberInfo {
-        @NotNull
-        private String email;
-        @ValidEnumCode(enumClass = EnumCode.PartnershipMember.ManagerCd.class, message = "유효하지 않은 권한 코드입니다.")
-        private String auth;
-        private List<InviteMemberProduct> products;
     }
 
     @Getter
@@ -49,13 +44,5 @@ public class RequestPartnershipDTO {
         private String focusTopic;
         // 유입경로 (마지막으로, 저희를 어떻게 알게 되었나요?)
         private String referrer;
-    }
-
-    @Getter
-    public static class InviteMemberProduct {
-        @ValidEnumCode(enumClass = EnumCode.Product.ProductCd.class, message = "유효하지 않은 권한 코드입니다.")
-        private String productCode;
-        @ValidEnumCode(enumClass = EnumCode.Product.ProductAuthCd.class, message = "유효하지 않은 권한 코드입니다.")
-        private String auth;
     }
 }

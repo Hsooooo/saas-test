@@ -212,6 +212,27 @@ create table if not exists em_saas.partnership_member
     )
     comment '파트너쉽 회원정보';
 
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_invite_link` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너십 초대 링크 번호',
+     `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 번호',
+     `created_by_partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '초대링크 생성자 파트너십 회원 번호',
+     `invite_token_hash` VARCHAR(255) NULL DEFAULT NULL COMMENT '링크 토큰' COLLATE 'utf8mb4_general_ci',
+     `used_count` INT(11) NULL DEFAULT 0 COMMENT '사용된 횟수',
+     `state_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '링크 상태 코드' COLLATE 'utf8mb4_general_ci',
+     `invite_info_json` JSON NULL DEFAULT NULL COMMENT '초대 정보 json' COLLATE 'utf8mb4_general_ci',
+     `expire_date` DATETIME NULL DEFAULT NULL COMMENT '링크 만료일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_partnership_invite_link_partnership_idx` (`partnership_idx`) USING BTREE,
+     INDEX `fk_partnership_invite_link_created_by_partnership_member_idx` (`created_by_partnership_member_idx`) USING BTREE,
+     CONSTRAINT `fk_partnership_invite_link_partnership_idx` FOREIGN KEY (`partnership_idx`) REFERENCES `partnership` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+     CONSTRAINT `fk_partnership_invite_link_created_by_partnership_member_idx` FOREIGN KEY (`created_by_partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='파트너쉽 초대 링크 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_member_product_grant` (
      `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너십 회원 제품 권한 번호',
      `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원 번호',

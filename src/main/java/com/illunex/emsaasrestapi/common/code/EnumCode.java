@@ -87,6 +87,22 @@ public class EnumCode {
         }
     }
 
+    public static class PartnershipInviteLink {
+        /**
+         * 파트너쉽 초대 링크 상태
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum StateCd implements BaseCodeEnum {
+            DRAFT("PIS0001", "임시"),
+            ACTIVE("PIS0002", "활성"),
+            EXPIRE("PIS0003", "만료");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
     /**
      * 파트너쉽
      */

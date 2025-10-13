@@ -144,24 +144,17 @@ public class AwsSESComponent {
      * @param receiverEmail 초대받는 회원 이메일
      * @param partnershipMemberIdx 초대한 파트너십 회원 IDX
      * @param memberIdx 초대한 회원 idx
-     * @param products 초대받는 회원이 사용할 수 있는 제품 권한 리스트
+     * @param productArray 제품 권한 정보
      * @return
      * @throws Exception
      */
-    public String sendInviteMemberEmail(AwsSESListener listener, String receiverEmail, Integer partnershipMemberIdx, Integer memberIdx, List<RequestPartnershipDTO.InviteMemberProduct> products) throws Exception {
+    public String sendInviteMemberEmail(AwsSESListener listener, String receiverEmail, Integer partnershipMemberIdx, Integer memberIdx, JSONArray productArray) throws Exception {
         MemberVO member = memberMapper.selectByIdx(memberIdx)
                 .orElseThrow(() -> new Exception("존재하지 않는 회원입니다."));
         PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByIdx(partnershipMemberIdx)
                 .orElseThrow(() -> new Exception("존재하지 않는 파트너쉽 회원입니다."));
         PartnershipVO partnershipVO = partnershipMapper.selectByIdx(partnershipMemberVO.getPartnershipIdx())
                 .orElseThrow(() -> new Exception("존재하지 않는 파트너쉽입니다."));
-        JSONArray productArray = new JSONArray();
-        for (RequestPartnershipDTO.InviteMemberProduct product : products) {
-            JSONObject productJson = new JSONObject()
-                    .put("productCode", product.getProductCode())
-                    .put("auth", product.getAuth());
-            productArray.put(productJson);
-        }
         JSONObject certJson = new JSONObject()
                 .put("type", EmailType.invite.getValue())
                 .put("receiverEmail", receiverEmail)
