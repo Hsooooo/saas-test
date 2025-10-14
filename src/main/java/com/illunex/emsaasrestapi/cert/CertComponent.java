@@ -86,7 +86,7 @@ public class CertComponent {
                 PartnershipMemberProductGrantVO productGrant = new PartnershipMemberProductGrantVO();
                 productGrant.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
                 productGrant.setProductCode(product.getString("productCode"));
-                productGrant.setPermissionCode(product.getString("auth"));
+                productGrant.setPermissionCode(product.getString("productAuth"));
 
                 partnershipMemberProductGrantMapper.insertByPartnershipMemberProductGrantVO(productGrant);
             }

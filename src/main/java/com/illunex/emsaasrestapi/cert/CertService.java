@@ -191,7 +191,8 @@ public class CertService {
 
             // 이메일 인증 완료 처리
             certComponent.markEmailHistoryAsUsed(request.getCertData());
-        // 초대 링크를 통한 가입
+
+        // [초대 링크를 통한 가입]
         } else {
             PartnershipInviteLinkVO linkVO = inviteLinkOpt.get();
             if (request.getEmail().isBlank()) {
@@ -207,20 +208,19 @@ public class CertService {
                 throw new CustomException(ErrorCode.COMMON_INVITE_LINK_EXPIRE);
             }
 
-            JSONArray products = new JSONArray(linkVO.getInviteInfoJson());
-            String auth = ""; //TODO 로직 점검
+            JSONObject inviteInfoJson = new JSONObject(linkVO.getInviteInfoJson());
+            JSONArray products = inviteInfoJson.getJSONArray("products");
             for (int i = 0; i < products.length(); i++) {
                 JSONObject product = products.getJSONObject(i);
                 boolean isValid = Arrays.stream(EnumCode.Product.ProductCd.values())
                         .anyMatch(p -> p.getCode().equals(product.getString("productCode")));
 
-                auth = product.getString("auth");
                 if (!isValid) {
                     throw new CustomException(ErrorCode.COMMON_INVALID);
                 }
             }
             // 초대된 파트너쉽 회원 정보
-            String finalAuth = auth;
+            String finalAuth = inviteInfoJson.getString("auth");
 
             PartnershipMemberVO invitePartnershipMember = partnershipMemberMapper.selectByIdx(linkVO.getCreatedByPartnershipMemberIdx())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
@@ -261,6 +261,9 @@ public class CertService {
             invitedMemberVO.setInvitedByPartnershipMemberIdx(linkVO.getCreatedByPartnershipMemberIdx());
             invitedMemberVO.setJoinedDate(ZonedDateTime.now());
             partnershipInvitedMemberMapper.insertInvitedMember(invitedMemberVO);
+
+            linkVO.setUsedCount(linkVO.getUsedCount() == null ? 1 : linkVO.getUsedCount() + 1);
+            partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
         }
 
 

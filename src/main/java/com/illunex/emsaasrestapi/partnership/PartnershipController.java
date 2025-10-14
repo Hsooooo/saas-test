@@ -30,8 +30,11 @@ public class PartnershipController {
      */
     @PostMapping("/invite-approve")
     public CustomResponse<?> approveInvite(@RequestBody RequestPartnershipDTO.ApproveInvite request,
+
                                            @CurrentMember MemberVO memberVO) throws CustomException {
-        return partnershipService.approveInvite(request, memberVO);
+        return CustomResponse.builder()
+                .data(partnershipService.approveInvite(request, memberVO))
+                .build();
     }
 
     /**
@@ -72,6 +75,23 @@ public class PartnershipController {
                                               @CurrentMember MemberVO memberVO) throws CustomException {
         return CustomResponse.builder()
                 .data(partnershipService.createInviteLink(partnershipIdx, memberVO))
+                .build();
+    }
+
+    /**
+     * 파트너쉽 초대 링크 수정
+     * @param partnershipIdx
+     * @param memberVO
+     * @param inviteInfo
+     * @return
+     * @throws CustomException
+     */
+    @PutMapping("/{partnershipIdx}/invite-links")
+    public CustomResponse<?> updateInviteLink(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                  @CurrentMember MemberVO memberVO,
+                                                  @RequestBody RequestPartnershipDTO.InviteInfo inviteInfo) throws CustomException {
+        return CustomResponse.builder()
+                .data(partnershipService.updateInviteLink(partnershipIdx, memberVO, inviteInfo))
                 .build();
     }
 

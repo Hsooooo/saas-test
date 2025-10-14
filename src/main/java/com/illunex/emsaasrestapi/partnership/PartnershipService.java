@@ -100,7 +100,7 @@ public class PartnershipService {
     /**
      * 파트너쉽 멤버 초대
      * @param partnershipIdx 파트너쉽 번호
-     * @param memberIdx 파트너쉽 관리자 회원 번호
+     * @param memberVO 로그인한 회원 정보
      * @param inviteMember 초대 회원 정보
      * @return
      * @throws CustomException
@@ -118,9 +118,10 @@ public class PartnershipService {
 
         List<ResponsePartnershipDTO.InviteResult> validList = new ArrayList<>();
         List<ResponsePartnershipDTO.InviteResult> invalidList = new ArrayList<>();
+        RequestPartnershipDTO.InviteInfo inviteInfo = inviteMember.getInviteInfo();
 
         // 제품코드 유효성체크
-        for (String product : inviteMember.getProducts()) {
+        for (String product : inviteInfo.getProducts()) {
             boolean isValid = Arrays.stream(EnumCode.Product.ProductCd.values())
                     .anyMatch(p -> p.getCode().equals(product));
 
@@ -130,10 +131,10 @@ public class PartnershipService {
         }
         // 초대 제품 및 권한 정보 세팅
         JSONArray productArray = new JSONArray();
-        for (String product : inviteMember.getProducts()) {
+        for (String product : inviteInfo.getProducts()) {
             JSONObject productJson = new JSONObject()
                     .put("productCode", product)
-                    .put("auth", inviteMember.getAuth());   //TODO 권한 정보 확인 필ㄹ요 제품별 권한 설정이 없으면 빼도 될 듯
+                    .put("productAuth", EnumCode.Product.ProductAuthCd.EDITOR.getCode());   //TODO 권한 정보 확인 필ㄹ요 제품별 권한 설정이 없으면 빼도 될 듯
             productArray.put(productJson);
         }
 
@@ -180,7 +181,7 @@ public class PartnershipService {
                 PartnershipMemberVO invitePartnershipMemberVO = new PartnershipMemberVO();
                 invitePartnershipMemberVO.setMemberIdx(inviteTargetMember.getIdx());
                 invitePartnershipMemberVO.setPartnershipIdx(partnershipIdx);
-                invitePartnershipMemberVO.setManagerCd(inviteMember.getAuth());
+                invitePartnershipMemberVO.setManagerCd(inviteInfo.getAuth());
                 invitePartnershipMemberVO.setStateCd(EnumCode.PartnershipMember.StateCd.Wait.getCode());
                 partnershipMemberMapper.insertByPartnershipMember(invitePartnershipMemberVO);
 
@@ -215,14 +216,17 @@ public class PartnershipService {
             }
         }
         // 초대 링크 토큰
-        String invitedToken = inviteMember.getInviteToken().isBlank() ? this.createInviteLink(partnershipIdx, memberVO) : inviteMember.getInviteToken();
+        String invitedToken = inviteInfo.getInviteToken().isBlank() ? this.createInviteLink(partnershipIdx, memberVO) : inviteInfo.getInviteToken();
 
         // 초대링크정보 조회
         PartnershipInviteLinkVO linkVO = partnershipInviteLinkMapper.selectByInviteTokenHash(invitedToken)
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
 
+        JSONObject inviteInfoJson = new JSONObject();
+        inviteInfoJson.put("products", productArray);
+        inviteInfoJson.put("auth", inviteInfo.getAuth());
         // 초대링크 정보 수정
-        linkVO.setInviteInfoJson(productArray.toString());
+        linkVO.setInviteInfoJson(inviteInfoJson.toString());
         linkVO.setStateCd(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode());
         linkVO.setExpireDate(linkVO.getCreateDate().plusDays(7));
         partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
@@ -469,20 +473,19 @@ public class PartnershipService {
         if (infoJsonString == null || infoJsonString.isBlank()) {
             throw new CustomException(ErrorCode.COMMON_INVALID);
         }
-        JSONArray products = new JSONArray(linkVO.getInviteInfoJson());
-        String auth = ""; //TODO 로직 점검
+        JSONObject infoJson = new JSONObject(infoJsonString);
+        JSONArray products = infoJson.getJSONArray("products");
         for (int i = 0; i < products.length(); i++) {
             JSONObject product = products.getJSONObject(i);
             boolean isValid = Arrays.stream(EnumCode.Product.ProductCd.values())
                     .anyMatch(p -> p.getCode().equals(product.getString("productCode")));
 
-            auth = product.getString("auth");
             if (!isValid) {
                 throw new CustomException(ErrorCode.COMMON_INVALID);
             }
         }
         // 초대된 파트너쉽 회원 정보
-        String finalAuth = auth;
+        String finalAuth = infoJson.getString("auth");;
         PartnershipMemberVO invitedPartnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(linkVO.getPartnershipIdx(), memberVO.getIdx())
                 .orElseGet(() -> {
                     PartnershipMemberVO newMember = new PartnershipMemberVO();
@@ -518,7 +521,7 @@ public class PartnershipService {
                 PartnershipMemberProductGrantVO productGrant = new PartnershipMemberProductGrantVO();
                 productGrant.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
                 productGrant.setProductCode(product.getString("productCode"));
-                productGrant.setPermissionCode(product.getString("auth"));
+                productGrant.setPermissionCode(product.getString("productAuth"));
 
                 partnershipMemberProductGrantMapper.insertByPartnershipMemberProductGrantVO(productGrant);
             }
@@ -529,6 +532,53 @@ public class PartnershipService {
                 invitedPartnershipMember.getIdx(),
                 EnumCode.PartnershipMember.StateCd.Normal.getCode()
         );
+        linkVO.setUsedCount(linkVO.getUsedCount() == null ? 1 : linkVO.getUsedCount() + 1);
+        partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
+
+        return null;
+    }
+
+    /**
+     * 초대링크 정보 수정
+     * @param partnershipIdx
+     * @param memberVO
+     * @param inviteInfo
+     * @return
+     */
+    public Object updateInviteLink(Integer partnershipIdx, MemberVO memberVO, RequestPartnershipDTO.InviteInfo inviteInfo) throws CustomException {
+        PartnershipMemberVO ownerMember = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
+        if (!ownerMember.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
+            throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
+        }
+        PartnershipInviteLinkVO linkVO = partnershipInviteLinkMapper.selectByInviteTokenHash(inviteInfo.getInviteToken())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        // 제품코드 유효성체크
+        for (String product : inviteInfo.getProducts()) {
+            boolean isValid = Arrays.stream(EnumCode.Product.ProductCd.values())
+                    .anyMatch(p -> p.getCode().equals(product));
+
+            if (!isValid) {
+                throw new CustomException(ErrorCode.COMMON_INVALID);
+            }
+        }
+        // 초대 제품 및 권한 정보 세팅
+        JSONArray productArray = new JSONArray();
+        for (String product : inviteInfo.getProducts()) {
+            JSONObject productJson = new JSONObject()
+                    .put("productCode", product)
+                    .put("productAuth", EnumCode.Product.ProductAuthCd.EDITOR.getCode());   //TODO 권한 정보 확인 필ㄹ요 제품별 권한 설정이 없으면 빼도 될 듯
+            productArray.put(productJson);
+        }
+
+        JSONObject inviteInfoJson = new JSONObject();
+        inviteInfoJson.put("products", productArray);
+        inviteInfoJson.put("auth", inviteInfo.getAuth());
+        // 초대링크 정보 수정
+        linkVO.setInviteInfoJson(inviteInfoJson.toString());
+        linkVO.setStateCd(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode());
+        linkVO.setExpireDate(linkVO.getCreateDate().plusDays(7));
+        linkVO.setUsedCount(0);
+        partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
 
         return null;
     }

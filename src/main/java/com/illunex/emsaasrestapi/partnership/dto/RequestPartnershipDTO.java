@@ -14,11 +14,7 @@ public class RequestPartnershipDTO {
     public static class InviteMember {
         @NotNull(message = "이메일은 필수 입력값입니다.")
         private String emails;
-        @NotNull
-        private String inviteToken;
-        @ValidEnumCode(enumClass = EnumCode.PartnershipMember.ManagerCd.class, message = "유효하지 않은 권한 코드입니다.")
-        private String auth;
-        private List<String> products;
+        private InviteInfo inviteInfo;
     }
 
     @Getter
@@ -49,5 +45,14 @@ public class RequestPartnershipDTO {
     @Getter
     public static class ApproveInvite {
         private String inviteToken;
+    }
+
+    @Getter
+    public static class InviteInfo {
+        @NotNull
+        private String inviteToken;
+        @ValidEnumCode(enumClass = EnumCode.PartnershipMember.ManagerCd.class, message = "유효하지 않은 권한 코드입니다.")
+        private String auth;
+        private List<String> products;
     }
 }
