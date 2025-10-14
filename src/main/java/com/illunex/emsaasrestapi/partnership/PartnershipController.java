@@ -22,6 +22,19 @@ public class PartnershipController {
     private final PartnershipService partnershipService;
 
     /**
+     * 초대 승인
+     * @param request
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/invite-approve")
+    public CustomResponse<?> approveInvite(@RequestBody RequestPartnershipDTO.ApproveInvite request,
+                                           @CurrentMember MemberVO memberVO) throws CustomException {
+        return partnershipService.approveInvite(request, memberVO);
+    }
+
+    /**
      * 신규 파트너쉽 생성
      * @param createDTO 파트너쉽 생성 정보
      * @param memberVO 로그인사용자정보

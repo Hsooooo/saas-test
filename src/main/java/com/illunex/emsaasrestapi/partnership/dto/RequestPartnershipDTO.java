@@ -45,4 +45,9 @@ public class RequestPartnershipDTO {
         // 유입경로 (마지막으로, 저희를 어떻게 알게 되었나요?)
         private String referrer;
     }
+
+    @Getter
+    public static class ApproveInvite {
+        private String inviteToken;
+    }
 }

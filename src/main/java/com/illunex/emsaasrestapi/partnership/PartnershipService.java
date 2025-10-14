@@ -445,4 +445,91 @@ public class PartnershipService {
 
         return hashString;
     }
+
+    /**
+     * 초대 승인
+     * @param request
+     * @param memberVO
+     * @return
+     */
+    public CustomResponse<?> approveInvite(RequestPartnershipDTO.ApproveInvite request, MemberVO memberVO) throws CustomException {
+        // 초대링크 유효성 체크
+        PartnershipInviteLinkVO linkVO = partnershipInviteLinkMapper.selectByInviteTokenHash(request.getInviteToken())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+
+        if (linkVO.getExpireDate() != null && linkVO.getExpireDate().isBefore(ZonedDateTime.now())) {
+            throw new CustomException(ErrorCode.COMMON_INVITE_LINK_EXPIRE);
+        }
+
+        if (!linkVO.getStateCd().equals(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode())) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        String infoJsonString = linkVO.getInviteInfoJson();
+        if (infoJsonString == null || infoJsonString.isBlank()) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+        JSONArray products = new JSONArray(linkVO.getInviteInfoJson());
+        String auth = ""; //TODO 로직 점검
+        for (int i = 0; i < products.length(); i++) {
+            JSONObject product = products.getJSONObject(i);
+            boolean isValid = Arrays.stream(EnumCode.Product.ProductCd.values())
+                    .anyMatch(p -> p.getCode().equals(product.getString("productCode")));
+
+            auth = product.getString("auth");
+            if (!isValid) {
+                throw new CustomException(ErrorCode.COMMON_INVALID);
+            }
+        }
+        // 초대된 파트너쉽 회원 정보
+        String finalAuth = auth;
+        PartnershipMemberVO invitedPartnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(linkVO.getPartnershipIdx(), memberVO.getIdx())
+                .orElseGet(() -> {
+                    PartnershipMemberVO newMember = new PartnershipMemberVO();
+                    newMember.setMemberIdx(memberVO.getIdx());
+                    newMember.setPartnershipIdx(linkVO.getPartnershipIdx());
+                    newMember.setManagerCd(finalAuth);
+                    newMember.setStateCd(EnumCode.PartnershipMember.StateCd.Normal.getCode());
+                    partnershipMemberMapper.insertByPartnershipMember(newMember);
+
+                    return newMember;
+                });
+
+
+
+        PartnershipInvitedMemberVO invitedMemberVO = new PartnershipInvitedMemberVO();
+        invitedMemberVO.setEmail(memberVO.getEmail());
+        invitedMemberVO.setPartnershipIdx(linkVO.getPartnershipIdx());
+        invitedMemberVO.setInvitedByPartnershipMemberIdx(linkVO.getCreatedByPartnershipMemberIdx());
+        invitedMemberVO.setMemberIdx(memberVO.getIdx());
+        invitedMemberVO.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
+        invitedMemberVO.setInvitedDate(linkVO.getCreateDate()); //TODO 초대일시 확인필요
+        invitedMemberVO.setJoinedDate(ZonedDateTime.now());
+        partnershipInvitedMemberMapper.insertInvitedMember(invitedMemberVO);
+//
+//        if (!invitedPartnershipMember.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Wait.getCode())) {
+//            throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
+//        }
+
+        // 제품 권한 정보 저장
+        if (!products.isEmpty()) {
+            for (int i = 0; i < products.length(); i++) {
+                JSONObject product = products.getJSONObject(i);
+                PartnershipMemberProductGrantVO productGrant = new PartnershipMemberProductGrantVO();
+                productGrant.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
+                productGrant.setProductCode(product.getString("productCode"));
+                productGrant.setPermissionCode(product.getString("auth"));
+
+                partnershipMemberProductGrantMapper.insertByPartnershipMemberProductGrantVO(productGrant);
+            }
+        }
+
+        // 파트너쉽 회원 상태 변경
+        partnershipMemberMapper.updatePartnershipMemberStateByIdx(
+                invitedPartnershipMember.getIdx(),
+                EnumCode.PartnershipMember.StateCd.Normal.getCode()
+        );
+
+        return null;
+    }
 }
