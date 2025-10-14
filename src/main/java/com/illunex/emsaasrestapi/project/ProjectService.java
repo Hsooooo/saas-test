@@ -531,7 +531,7 @@ public class ProjectService {
 
         var d = draftRepo.get(dc.getSessionId());
 
-        if (d == null || !"OPEN".equals(d.getStatus())) throw new CustomException(ErrorCode.COMMON_EMPTY);
+        if (d == null || !"OPEN".equals(d.getStatus())) throw new CustomException(ErrorCode.PROJECT_DRAFT_ALREADY_COMMITED);
         if (d.getProjectDoc() == null || d.getExcelMeta() == null)
             throw new CustomException(PROJECT_EMPTY_DATA);
 
@@ -637,6 +637,7 @@ public class ProjectService {
         dc.require();
 
         ProjectDraft d = draftRepo.get(dc.getSessionId()); // 존재 여부 체크용
+        if (d == null || !"OPEN".equals(d.getStatus())) throw new CustomException(ErrorCode.PROJECT_DRAFT_ALREADY_COMMITED);
 
         return CustomResponse.builder()
                 .data(projectComponent.createResponseProject(null, d))
