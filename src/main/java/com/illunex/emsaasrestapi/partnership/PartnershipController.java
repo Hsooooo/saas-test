@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.partnership;
 
 import com.illunex.emsaasrestapi.common.CurrentMember;
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.dto.PartnershipCreateDTO;
@@ -157,11 +158,24 @@ public class PartnershipController {
         return partnershipService.updateProfileImage(partnershipIdx, memberVO, file);
     }
 
+
+    /**
+     * 파트너쉽 회원 목록 조회ㄴ
+     * @param partnershipIdx
+     * @param request
+     * @param memberVO
+     * @param pageRequest
+     * @param sort
+     * @return
+     * @throws CustomException
+     */
     @GetMapping("/{partnershipIdx}/members")
     public CustomResponse<?> getPartnershipMembers(@PathVariable("partnershipIdx") Integer partnershipIdx,
-                                                   @CurrentMember MemberVO memberVO) throws CustomException {
+                                                   @RequestBody RequestPartnershipDTO.SearchMember request,
+                                                   @CurrentMember MemberVO memberVO,
+                                                   CustomPageRequest pageRequest, String[] sort) throws CustomException {
         return CustomResponse.builder()
-                .data(partnershipService.getPartnershipMembers(partnershipIdx, memberVO))
+                .data(partnershipService.getPartnershipMembers(partnershipIdx, memberVO, request, pageRequest, sort))
                 .build();
     }
 

@@ -55,4 +55,9 @@ public class RequestPartnershipDTO {
         private String auth;
         private List<String> products;
     }
+
+    @Getter
+    public static class SearchMember {
+        private String searchString;
+    }
 }

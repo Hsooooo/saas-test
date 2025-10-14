@@ -1,6 +1,7 @@
 package com.illunex.emsaasrestapi.partnership;
 
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
@@ -393,7 +394,7 @@ public class PartnershipService {
         return CustomResponse.builder().build();
     }
 
-    public Object getPartnershipMembers(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
+    public Object getPartnershipMembers(Integer partnershipIdx, MemberVO memberVO, RequestPartnershipDTO.SearchMember request, CustomPageRequest pageRequest, String[] sort) throws CustomException {
         // 파트너쉽 관리자 여부 확인
         PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
                 .selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
