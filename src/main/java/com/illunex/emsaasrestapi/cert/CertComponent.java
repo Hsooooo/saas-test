@@ -34,7 +34,12 @@ public class CertComponent {
     private String encryptKey;
 
     public JSONObject verifyCertData(String certData) throws Exception {
-        String decrypted = Utils.AES256.decrypt(encryptKey, certData);
+        String decrypted = "";
+        try {
+            decrypted = Utils.AES256.decrypt(encryptKey, certData);
+        } catch (Exception e) {
+            throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID);
+        }
         JSONObject data = new JSONObject(decrypted);
         ZonedDateTime expireDate = ZonedDateTime.parse(data.getString("expire"));
 

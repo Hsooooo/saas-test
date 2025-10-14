@@ -25,6 +25,7 @@ public enum ErrorCode {
     COMMON_EMAIL_CERTIFICATE_EXPIRE(107, "인증이 만료 되었습니다."),
     COMMON_EMAIL_CERTIFICATE_INVALID(108, "인증이 유효 하지 않습니다."),
     COMMON_ALREADY_EMAIL_CERTIFICATE(109, "이미 인증이 완료된 계정입니다."),
+    COMMON_INVITE_LINK_EXPIRE(110, "초대 링크가 만료되었습니다."),
 
     /**
      * 회원

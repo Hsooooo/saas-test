@@ -8,27 +8,46 @@ import com.illunex.emsaasrestapi.common.Utils;
 import com.illunex.emsaasrestapi.common.aws.AwsSESComponent;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.mapper.EmailHistoryMapper;
+import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
 import com.illunex.emsaasrestapi.member.vo.MemberEmailHistoryVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipInviteLinkMapper;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipInvitedMemberMapper;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipInviteLinkVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipInvitedMemberVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import lombok.RequiredArgsConstructor;
+import org.json.JSONArray;
 import org.json.JSONObject;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class CertService {
     private final MemberMapper memberMapper;
     private final EmailHistoryMapper emailHistoryMapper;
-
     private final CertComponent certComponent;
 
     private final PasswordEncoder passwordEncoder;
+    private final PartnershipInviteLinkMapper partnershipInviteLinkMapper;
+    private final PartnershipMemberMapper partnershipMemberMapper;
+    private final PartnershipMapper partnershipMapper;
+    private final MemberJoinMapper memberJoinMapper;
+    private final PartnershipInvitedMemberMapper partnershipInvitedMemberMapper;
+
+    private final ModelMapper modelMapper;
 
     @Value("${server.encrypt-key}")
     private String encryptKey;
@@ -137,38 +156,113 @@ public class CertService {
      */
     @Transactional(rollbackFor = Exception.class)
     public CustomResponse<?> certificateInviteSignup(RequestCertDTO.InviteSignup request) throws Exception {
-        final String INVITE_MAIL_TYPE = AwsSESComponent.EmailType.invite.getValue();
-        final String INVITE_PROJECT_MAIL_TYPE = AwsSESComponent.EmailType.inviteProject.getValue();
-        // 인증키 유효성 체크
-        JSONObject data = certComponent.verifyCertData(request.getCertData());
+        Optional<PartnershipInviteLinkVO> inviteLinkOpt = partnershipInviteLinkMapper.selectByInviteTokenHash(request.getCertData());
+        // 이메일 링크을 통한 가입
+        if (inviteLinkOpt.isEmpty()) {
+            final String INVITE_MAIL_TYPE = AwsSESComponent.EmailType.invite.getValue();
+            final String INVITE_PROJECT_MAIL_TYPE = AwsSESComponent.EmailType.inviteProject.getValue();
+            // 인증키 유효성 체크
+            JSONObject data = certComponent.verifyCertData(request.getCertData());
 
-        String password = request.getPassword();
-        String emailType = data.getString("type");
+            String password = request.getPassword();
+            String emailType = data.getString("type");
 
-        // 초대받은 회원정보 조회
-        String email = data.getString("receiverEmail");
-        MemberVO memberVO = memberMapper.selectByEmail(email)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
-        // 대기 상태가 아닌 경우 예외
-        if (!memberVO.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
-            throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID);
+            // 초대받은 회원정보 조회
+            String email = data.getString("receiverEmail");
+            MemberVO memberVO = memberMapper.selectByEmail(email)
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
+            // 대기 상태가 아닌 경우 예외
+            if (!memberVO.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
+                throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID);
+            }
+            // 회원정보 업데이트(상태, 패스워드)
+            memberMapper.updateNameByIdx(request.getName(), memberVO.getIdx());
+            memberMapper.updateStateAndPasswordByIdx(memberVO.getIdx(), EnumCode.Member.StateCd.Approval.getCode(), passwordEncoder.encode(password));
+
+            // 파트너쉽 초대 승인 로직
+            if (emailType.equals(INVITE_MAIL_TYPE)) {
+                certComponent.approvePartnershipMember(data, memberVO);
+            }
+
+            // 프로젝트 초대 승인 로직
+            if (emailType.equals(INVITE_PROJECT_MAIL_TYPE)) {
+                // TODO
+            }
+
+            // 이메일 인증 완료 처리
+            certComponent.markEmailHistoryAsUsed(request.getCertData());
+        // 초대 링크를 통한 가입
+        } else {
+            PartnershipInviteLinkVO linkVO = inviteLinkOpt.get();
+            if (request.getEmail().isBlank()) {
+                throw new CustomException(ErrorCode.COMMON_INVALID);
+            }
+            // 링크 유효성 체크
+            if (linkVO.getExpireDate().isBefore(ZonedDateTime.now())) {
+                if (linkVO.getStateCd().equals(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode())) {
+                    // 만료된 링크 상태 변경
+                    linkVO.setStateCd(EnumCode.PartnershipInviteLink.StateCd.EXPIRE.getCode());
+                    partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
+                }
+                throw new CustomException(ErrorCode.COMMON_INVITE_LINK_EXPIRE);
+            }
+
+            JSONArray products = new JSONArray(linkVO.getInviteInfoJson());
+            String auth = ""; //TODO 로직 점검
+            for (int i = 0; i < products.length(); i++) {
+                JSONObject product = products.getJSONObject(i);
+                boolean isValid = Arrays.stream(EnumCode.Product.ProductCd.values())
+                        .anyMatch(p -> p.getCode().equals(product.getString("productCode")));
+
+                auth = product.getString("auth");
+                if (!isValid) {
+                    throw new CustomException(ErrorCode.COMMON_INVALID);
+                }
+            }
+            // 초대된 파트너쉽 회원 정보
+            String finalAuth = auth;
+
+            PartnershipMemberVO invitePartnershipMember = partnershipMemberMapper.selectByIdx(linkVO.getCreatedByPartnershipMemberIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+            PartnershipVO partnershipVO = partnershipMapper.selectByIdx(invitePartnershipMember.getPartnershipIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+
+            // 회원가입
+            MemberVO member;
+            Optional<MemberVO> memberOPT = memberMapper.selectByEmail(request.getEmail());
+            if (memberOPT.isPresent()) {
+                member = memberOPT.get();
+            } else {
+                member = modelMapper.map(request, MemberVO.class);
+                // 일반 회원
+                member.setTypeCd(finalAuth);
+                // 승인 완료 상태
+                member.setStateCd(EnumCode.Member.StateCd.Approval.getCode());
+                member.setPassword(passwordEncoder.encode(member.getPassword()));
+                member.setName(request.getName());
+                //회원정보 생성
+                memberJoinMapper.insertByMemberJoin(member);
+            }
+            // 파트너쉽 회원 등록
+            PartnershipMemberVO partnershipMember = new PartnershipMemberVO();
+            partnershipMember.setMemberIdx(member.getIdx());
+            partnershipMember.setPartnershipIdx(partnershipVO.getIdx());
+            partnershipMember.setManagerCd(finalAuth);
+            partnershipMember.setStateCd(EnumCode.PartnershipMember.StateCd.Normal.getCode());
+
+            partnershipMemberMapper.insertByPartnershipMember(partnershipMember);
+
+            // 초대 상태 등록
+            PartnershipInvitedMemberVO invitedMemberVO = new PartnershipInvitedMemberVO();
+            invitedMemberVO.setPartnershipMemberIdx(partnershipMember.getIdx());
+            invitedMemberVO.setPartnershipIdx(partnershipVO.getIdx());
+            invitedMemberVO.setEmail(member.getEmail());
+            invitedMemberVO.setInvitedDate(ZonedDateTime.now());
+            invitedMemberVO.setInvitedByPartnershipMemberIdx(linkVO.getCreatedByPartnershipMemberIdx());
+            invitedMemberVO.setJoinedDate(ZonedDateTime.now());
+            partnershipInvitedMemberMapper.insertInvitedMember(invitedMemberVO);
         }
-        // 회원정보 업데이트(상태, 패스워드)
-        memberMapper.updateNameByIdx(request.getName(), memberVO.getIdx());
-        memberMapper.updateStateAndPasswordByIdx(memberVO.getIdx(), EnumCode.Member.StateCd.Approval.getCode(), passwordEncoder.encode(password));
 
-        // 파트너쉽 초대 승인 로직
-        if (emailType.equals(INVITE_MAIL_TYPE)) {
-            certComponent.approvePartnershipMember(data, memberVO);
-        }
-
-        // 프로젝트 초대 승인 로직
-        if (emailType.equals(INVITE_PROJECT_MAIL_TYPE)) {
-            // TODO
-        }
-
-        // 이메일 인증 완료 처리
-        certComponent.markEmailHistoryAsUsed(request.getCertData());
 
         return CustomResponse.builder()
                 .build();
