@@ -476,7 +476,7 @@ COMMENT='LLM 채팅 이력'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
 
-CREATE TABLE `em_saas`.`chat_tool_result` (
+CREATE TABLE IF NOT EXISTS `em_saas`.`chat_tool_result` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 외부 도구 결과 번호',
     `chat_history_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 이력 번호',
     `tool_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '채팅 도구 타입' COLLATE 'utf8mb4_general_ci',
