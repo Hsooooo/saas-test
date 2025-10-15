@@ -1,8 +1,10 @@
 package com.illunex.emsaasrestapi.partnership.dto;
 
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import jakarta.validation.Valid;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -75,16 +77,32 @@ public class ResponsePartnershipDTO {
         private String domain;
     }
 
-    @Builder
     @Getter
+    @Setter
     public static class PartnershipMember {
         private Integer partnershipMemberIdx;
         private String name;
-        private String email;
-        private String stateCd; // INVITED | JOINED | LEFT
-        private PartnershipPositionInfo positionInfo;
         private String profileImageUrl;
         private String profileImagePath;
+        private String email;
+        private String stateCd;
+        private String stateCdDesc;
+        private String managerCd;
+        private String managerCdDesc;
+        private String teamName;
+        private Integer partnershipTeamIdx;
+        private String inviteMemberName;
+        private Integer invitedByPartnershipMemberIdx;
+
+        public void setStateCd(String stateCd) {
+            this.stateCd = stateCd;
+            this.stateCdDesc = EnumCode.getCodeDesc(stateCd);
+        }
+
+        public void setManagerCd(String managerCd) {
+            this.managerCd = managerCd;
+            this.managerCdDesc = EnumCode.getCodeDesc(managerCd);
+        }
     }
 }
 

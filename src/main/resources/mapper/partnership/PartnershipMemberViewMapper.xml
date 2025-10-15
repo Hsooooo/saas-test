@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberViewMapper">
+
+    <select id="selectAllBySearchMemberAndPageable" resultType="PartnershipMemberViewVO">
+        select pm.idx as partnership_member_idx,
+               m.name,
+               m.email,
+               pm.profile_image_url,
+               pm.profile_image_path,
+               pm.state_cd,
+               pm.manager_cd,
+               pt.name as team_name,
+               pm.partnership_team_idx,
+               mm.name as invite_member_name,
+               pim.invited_by_partnership_member_idx,
+               pim.joined_date,
+               pim.invited_date
+        from partnership_member pm
+         join member m on pm.member_idx = m.idx
+         left join partnership_invited_member pim on pm.idx = pim.partnership_member_idx
+         left join partnership_member invited_member on pim.invited_by_partnership_member_idx = invited_member.idx
+         left join member mm on invited_member.member_idx = mm.idx
+         left join partnership_team pt on pm.partnership_team_idx = pt.idx
+        where pm.partnership_idx = #{searchMember.partnershipIdx}
+        and pm.state_cd != 'PMS0003'
+        <if test="searchMember.searchString != null and !searchMember.searchString.empty">
+        and (m.name like concat('%', #{searchMember.searchString}, '%') or m.email like concat('%', #{searchMember.searchString}, '%'))
+        </if>
+        <if test="pageable.sort != null and !pageable.sort.empty">
+            ORDER BY
+            <foreach item="order" collection="pageable.sort" separator=",">
+                ${order.property} ${order.direction}
+            </foreach>
+        </if>
+        LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
+    </select>
+
+    <select id="countAllBySearchMember" resultType="Integer">
+        select count(*)
+        from partnership_member pm
+        join member m on pm.member_idx = m.idx
+        left join partnership_invited_member pim on pm.idx = pim.partnership_member_idx
+        left join partnership_member invited_member on pim.invited_by_partnership_member_idx = invited_member.idx
+        left join member mm on invited_member.member_idx = mm.idx
+        left join partnership_team pt on pm.partnership_team_idx = pt.idx
+        where pm.partnership_idx = #{partnershipIdx}
+        and pm.state_cd != 'PMS0003'
+        <if test="searchString != null and !searchString.empty">
+            and (m.name like concat('%', #{searchString}, '%') or m.email like concat('%', #{searchString}, '%'))
+        </if>
+    </select>
+
+</mapper>

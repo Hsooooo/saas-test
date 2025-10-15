@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -52,6 +54,7 @@ public class PartnershipService {
     private final PartnershipInvitedMemberMapper partnershipInvitedMemberMapper;
     private final PartnershipMemberProductGrantMapper partnershipMemberProductGrantMapper;
     private final PartnershipInviteLinkMapper partnershipInviteLinkMapper;
+    private final PartnershipMemberViewMapper partnershipMemberViewMapper;
 
     private final AwsSESComponent sesComponent;
 
@@ -394,7 +397,7 @@ public class PartnershipService {
         return CustomResponse.builder().build();
     }
 
-    public Object getPartnershipMembers(Integer partnershipIdx, MemberVO memberVO, RequestPartnershipDTO.SearchMember request, CustomPageRequest pageRequest, String[] sort) throws CustomException {
+    public CustomResponse<?> getPartnershipMembers(Integer partnershipIdx, MemberVO memberVO, RequestPartnershipDTO.SearchMember request, CustomPageRequest pageRequest, String[] sort) throws CustomException {
         // 파트너쉽 관리자 여부 확인
         PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
                 .selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
@@ -403,26 +406,26 @@ public class PartnershipService {
             throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
         }
 
-        List<PartnershipMemberVO> members = partnershipMemberMapper.selectAllByPartnershipIdx(partnershipIdx);
-        List<ResponsePartnershipDTO.PartnershipMember> result = new ArrayList<>();
-        for (PartnershipMemberVO member : members) {
-
-            MemberVO mv = memberMapper.selectByIdx(member.getMemberIdx())
-                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
-
-            PartnershipInvitedMemberVO invitedMemberVO = partnershipInvitedMemberMapper.selectByPartnershipMemberIdx(member.getIdx()).orElse(null);
-            List<PartnershipMemberProductGrantVO> products = partnershipMemberProductGrantMapper.selectByPartnershipMemberIdx(member.getIdx());
-            result.add(
-                    ResponsePartnershipDTO.PartnershipMember.builder()
-                            .partnershipMemberIdx(member.getIdx())
-                            .email(mv.getEmail())
-                            .name(mv.getName())
-                            .profileImageUrl(member.getProfileImageUrl())
-                            .profileImagePath(member.getProfileImagePath())
-                            .build()
-            );
+        request.setPartnershipIdx(partnershipIdx);
+        if (sort == null) {
+            sort = new String[]{"partnership_member_idx,ASC"};
         }
-        return result;
+        Pageable pageable = pageRequest.of(sort);
+        log.info("mapper={}, request={}, pageable={}", partnershipMemberViewMapper, request, pageable);
+        List<PartnershipMemberViewVO> members = partnershipMemberViewMapper.selectAllBySearchMemberAndPageable(request, pageable);
+        long totalCount = partnershipMemberViewMapper.countAllBySearchMember(request);
+
+        List<ResponsePartnershipDTO.PartnershipMember> result = new ArrayList<>();
+        for (PartnershipMemberViewVO member : members) {
+            ResponsePartnershipDTO.PartnershipMember pm = modelMapper.map(member, ResponsePartnershipDTO.PartnershipMember.class);
+            pm.setStateCd(member.getStateCd());
+            pm.setManagerCd(member.getManagerCd());
+            result.add(pm);
+        }
+
+        return CustomResponse.builder()
+                .data(new PageImpl<>(result, pageable, totalCount))
+                .build();
     }
 
     /**

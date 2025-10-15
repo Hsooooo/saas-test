@@ -174,9 +174,7 @@ public class PartnershipController {
                                                    @RequestBody RequestPartnershipDTO.SearchMember request,
                                                    @CurrentMember MemberVO memberVO,
                                                    CustomPageRequest pageRequest, String[] sort) throws CustomException {
-        return CustomResponse.builder()
-                .data(partnershipService.getPartnershipMembers(partnershipIdx, memberVO, request, pageRequest, sort))
-                .build();
+        return partnershipService.getPartnershipMembers(partnershipIdx, memberVO, request, pageRequest, sort);
     }
 
     /**

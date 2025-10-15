@@ -5,6 +5,7 @@ import com.illunex.emsaasrestapi.common.validation.ValidEnumCode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -56,8 +57,10 @@ public class RequestPartnershipDTO {
         private List<String> products;
     }
 
+    @Setter
     @Getter
     public static class SearchMember {
+        private Integer partnershipIdx;
         private String searchString;
     }
 }
