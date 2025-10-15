@@ -38,7 +38,6 @@ spring:
     init:
       schema-locations:
         - classpath*:db/dev/schema.sql
-        - classpath*:db/common/alter_table.sql
       data-locations:
         - classpath*:db/common/code.sql
       mode: always
