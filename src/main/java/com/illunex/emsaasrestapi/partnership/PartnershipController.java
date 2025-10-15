@@ -160,7 +160,7 @@ public class PartnershipController {
 
 
     /**
-     * 파트너쉽 회원 목록 조회ㄴ
+     * 파트너쉽 회원 목록 조회
      * @param partnershipIdx
      * @param request
      * @param memberVO
@@ -169,7 +169,7 @@ public class PartnershipController {
      * @return
      * @throws CustomException
      */
-    @GetMapping("/{partnershipIdx}/members")
+    @PutMapping("/{partnershipIdx}/members")
     public CustomResponse<?> getPartnershipMembers(@PathVariable("partnershipIdx") Integer partnershipIdx,
                                                    @RequestBody RequestPartnershipDTO.SearchMember request,
                                                    @CurrentMember MemberVO memberVO,
