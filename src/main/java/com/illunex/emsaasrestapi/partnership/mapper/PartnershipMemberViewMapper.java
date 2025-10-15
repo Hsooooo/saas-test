@@ -11,4 +11,5 @@ import java.util.List;
 public interface PartnershipMemberViewMapper {
     List<PartnershipMemberViewVO> selectAllBySearchMemberAndPageable(RequestPartnershipDTO.SearchMember searchMember, Pageable pageable);
     Integer countAllBySearchMember(RequestPartnershipDTO.SearchMember searchMember);
+    List<PartnershipMemberViewVO> selectAllByPartnershipIdxAndSearchString(Integer partnershipIdx, String searchString);
 }

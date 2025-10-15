@@ -54,4 +54,31 @@
         </if>
     </select>
 
+    <select id="selectAllByPartnershipIdxAndSearchString" resultType="PartnershipMemberViewVO">
+        select pm.idx as partnership_member_idx,
+               m.name,
+               m.email,
+               pm.profile_image_url,
+               pm.profile_image_path,
+               pm.state_cd,
+               pm.manager_cd,
+               pt.name as team_name,
+               pm.partnership_team_idx,
+               mm.name as invite_member_name,
+               pim.invited_by_partnership_member_idx,
+               pim.joined_date,
+               pim.invited_date
+        from partnership_member pm
+         join member m on pm.member_idx = m.idx
+         left join partnership_invited_member pim on pm.idx = pim.partnership_member_idx
+         left join partnership_member invited_member on pim.invited_by_partnership_member_idx = invited_member.idx
+         left join member mm on invited_member.member_idx = mm.idx
+         left join partnership_team pt on pm.partnership_team_idx = pt.idx
+        where pm.partnership_idx = #{partnershipIdx}
+        and pm.state_cd != 'PMS0003'
+        <if test="searchString != null and !searchString.empty">
+            and (m.name like concat('%', #{searchString}, '%') or m.email like concat('%', #{searchString}, '%'))
+        </if>
+    </select>
+
 </mapper>

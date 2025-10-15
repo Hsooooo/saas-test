@@ -1,4 +1,5 @@
 INSERT INTO `partnership` (`idx`, `name`, `domain`, `image_url`, `image_path`, `comment`, `update_date`, `create_date`) VALUES (1, '1', '1', NULL, NULL, NULL, NULL, '2025-04-21 18:45:53');
+INSERT INTO `partnership` (`idx`, `name`, `domain`, `image_url`, `image_path`, `comment`, `update_date`, `create_date`) VALUES (2, '2', '2', NULL, NULL, NULL, NULL, '2025-04-21 18:45:53');
 INSERT INTO `project_category` (`idx`, `partnership_idx`, `name`, `sort`, `update_date`, `create_date`) VALUES (1, 1, '미분류', 1, now(), now());
 INSERT INTO `project_category` (`idx`, `partnership_idx`, `name`, `sort`, `update_date`, `create_date`) VALUES (2, 1, '피카츄', 2, now(), now());
 INSERT INTO `project_category` (`idx`, `partnership_idx`, `name`, `sort`, `update_date`, `create_date`) VALUES (3, 1, '라이츄', 3, now(), now());
@@ -12,6 +13,7 @@ INSERT INTO `member` (idx, email, password, name, profile_image_url, type_cd, st
 INSERT INTO `member` (idx, email, password, name, profile_image_url, type_cd, state_cd, comment, last_login_date, leave_date, update_date, create_date) VALUES (6, 'test6@test.com', '$2a$10$3yOGt4XE/3VNv3TxgGDM1.H76.NhggSfg2XuN7GgdhZxQDrlPnNIi', '오징어', null, 'MTP0001', 'MST0002', null, null, null, '2025-04-25 11:07:09', '2025-04-25 11:07:09');
 INSERT INTO `member` (idx, email, password, name, profile_image_url, type_cd, state_cd, comment, last_login_date, leave_date, update_date, create_date) VALUES (7, 'test7@test.com', '$2a$10$3yOGt4XE/3VNv3TxgGDM1.H76.NhggSfg2XuN7GgdhZxQDrlPnNIi', '청어', null, 'MTP0001', 'MST0002', null, null, null, '2025-04-25 11:07:09', '2025-04-25 11:07:09');
 INSERT INTO `member` (idx, email, password, name, profile_image_url, type_cd, state_cd, comment, last_login_date, leave_date, update_date, create_date) VALUES (8, 'test8@test.com', '$2a$10$3yOGt4XE/3VNv3TxgGDM1.H76.NhggSfg2XuN7GgdhZxQDrlPnNIi', '갈치', null, 'MTP0001', 'MST0002', null, null, null, '2025-04-25 11:07:09', '2025-04-25 11:07:09');
+INSERT INTO `member` (idx, email, password, name, profile_image_url, type_cd, state_cd, comment, last_login_date, leave_date, update_date, create_date) VALUES (9, 'anoter@anoter.com', '$2a$10$3yOGt4XE/3VNv3TxgGDM1.H76.NhggSfg2XuN7GgdhZxQDrlPnNIi', '갈치', null, 'MTP0001', 'MST0002', null, null, null, '2025-04-25 11:07:09', '2025-04-25 11:07:09');
 INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(1, 'PST0001', 'PMS0001', 1, 1);
 INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(2, 'PST0001', 'PMS0001', 1, 2);
 INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(3, 'PST0002', 'PMS0001', 1, 3);
@@ -20,6 +22,7 @@ INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, me
 INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(6, 'PST0002', 'PMS0001', 1, 6);
 INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(7, 'PST0002', 'PMS0001', 1, 7);
 INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(8, 'PST0002', 'PMS0001', 1, 8);
+INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(9, 'PST0001', 'PMS0001', 2, 9);
 
 INSERT INTO `partnership_invited_member` (idx, email, partnership_idx, invited_by_partnership_member_idx, member_idx, partnership_member_idx, invited_date, joined_date) VALUES(1, 'test3@test.com', 1, 1, 3, 3, now(), now());
 INSERT INTO `partnership_invited_member` (idx, email, partnership_idx, invited_by_partnership_member_idx, member_idx, partnership_member_idx, invited_date, joined_date) VALUES(2, 'test3@test.com', 1, 2, 4, 4, now(), now());

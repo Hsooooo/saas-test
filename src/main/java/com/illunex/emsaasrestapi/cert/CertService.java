@@ -107,40 +107,55 @@ public class CertService {
      * @return
      */
     public CustomResponse<?> verify(String certData) throws Exception {
-        String decrypted = Utils.AES256.decrypt(encryptKey, certData);
-        JSONObject data = new JSONObject(decrypted);
-        ZonedDateTime expireDate = ZonedDateTime.parse(data.getString("expire"));
+        Optional<PartnershipInviteLinkVO> inviteLinkOpt = partnershipInviteLinkMapper.selectByInviteTokenHash(certData);
+        JSONObject data;
+        if (inviteLinkOpt.isEmpty()) {
+            String decrypted = Utils.AES256.decrypt(encryptKey, certData);
+            data = new JSONObject(decrypted);
+            ZonedDateTime expireDate = ZonedDateTime.parse(data.getString("expire"));
 
-        MemberEmailHistoryVO historyVO = emailHistoryMapper.selectByCertData(certData)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
-        // 인증 만료 체크
-        if(expireDate.isBefore(ZonedDateTime.now())
-                || historyVO.getExpireDate().isBefore(ZonedDateTime.now())
-                || !historyVO.getCertData().equals(certData)
-                || historyVO.isUsed()) {
-            throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_EXPIRE);
-        }
-
-        String emailType = data.getString("type");
-
-        // 파트너쉽초대 or 프로젝트 초대 시 회원가입여부 확인
-        if (emailType.equals(AwsSESComponent.EmailType.invite.getValue()) ||
-        emailType.equals(AwsSESComponent.EmailType.inviteProject.getValue())) {
-            int memberIdx = data.getInt("memberIdx");
-            MemberVO memberVO = memberMapper.selectByIdx(memberIdx)
+            MemberEmailHistoryVO historyVO = emailHistoryMapper.selectByCertData(certData)
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
-
-            // 정지/탈퇴 상태인 회원인 경우 예외
-            if (memberVO.getStateCd().equals(EnumCode.Member.StateCd.Withdrawal.getCode()) ||
-            memberVO.getStateCd().equals(EnumCode.Member.StateCd.Suspend.getCode())) {
-                throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID);
+            // 인증 만료 체크
+            if (expireDate.isBefore(ZonedDateTime.now())
+                    || historyVO.getExpireDate().isBefore(ZonedDateTime.now())
+                    || !historyVO.getCertData().equals(certData)
+                    || historyVO.isUsed()) {
+                throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_EXPIRE);
             }
 
-            if (memberVO.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
-                data.put("isMemberApproved", false);
-            } else if (memberVO.getStateCd().equals(EnumCode.Member.StateCd.Approval.getCode())) {
-                data.put("isMemberApproved", true);
+            String emailType = data.getString("type");
+
+            // 파트너쉽초대 or 프로젝트 초대 시 회원가입여부 확인
+            if (emailType.equals(AwsSESComponent.EmailType.invite.getValue()) ||
+                    emailType.equals(AwsSESComponent.EmailType.inviteProject.getValue())) {
+                PartnershipMemberVO invitePartnershipMember = partnershipMemberMapper.selectByIdx(data.getInt("partnershipMemberIdx"))
+                        .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
+                PartnershipVO partnershipVO = partnershipMapper.selectByIdx(invitePartnershipMember.getPartnershipIdx())
+                        .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
+                String receiverEmail = data.getString("receiverEmail");
+                MemberVO memberVO = memberMapper.selectByEmail(receiverEmail)
+                        .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID));
+
+                // 정지/탈퇴 상태인 회원인 경우 예외
+                if (memberVO.getStateCd().equals(EnumCode.Member.StateCd.Withdrawal.getCode()) ||
+                        memberVO.getStateCd().equals(EnumCode.Member.StateCd.Suspend.getCode())) {
+                    throw new CustomException(ErrorCode.COMMON_EMAIL_CERTIFICATE_INVALID);
+                }
+
+                if (memberVO.getStateCd().equals(EnumCode.Member.StateCd.Wait.getCode())) {
+                    data.put("isMemberApproved", false);
+                } else if (memberVO.getStateCd().equals(EnumCode.Member.StateCd.Approval.getCode())) {
+                    data.put("isMemberApproved", true);
+                }
+                data.put("partnershipName", partnershipVO.getName());
             }
+        } else {
+            PartnershipInviteLinkVO linkVO = inviteLinkOpt.get();
+            PartnershipVO partnershipVO = partnershipMapper.selectByIdx(linkVO.getPartnershipIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+            data = new JSONObject(linkVO);
+            data.put("partnershipName", partnershipVO.getName());
         }
 
         return CustomResponse.builder()

@@ -171,8 +171,9 @@ public class EnumCode {
         @Getter
         @AllArgsConstructor
         public enum TypeCd implements BaseCodeEnum {
-            Manager("PMT0001", "관리자"),
-            Normal("PMT0002", "구성원");
+            Owner("PMT0001", "소유자"),
+            Viewer("PMT0002", "뷰어"),
+            Editor("PMT0003", "에디터");
 
             private final String code;
             private final String value;

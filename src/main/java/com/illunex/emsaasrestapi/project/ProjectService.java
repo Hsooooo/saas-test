@@ -36,7 +36,6 @@ import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import jakarta.servlet.http.HttpServletRequest;
-import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -133,7 +132,7 @@ public class ProjectService {
             ProjectMemberVO projectMemberVO = new ProjectMemberVO();
             projectMemberVO.setProjectIdx(projectVO.getIdx());
             projectMemberVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Manager.getCode());
+            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Owner.getCode());
             projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
 
             return CustomResponse.builder()
@@ -585,7 +584,7 @@ public class ProjectService {
             ProjectMemberVO projectMemberVO = new ProjectMemberVO();
             projectMemberVO.setProjectIdx(pvo.getIdx());
             projectMemberVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Manager.getCode());
+            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Owner.getCode());
             projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
         } else {
             // 수정: 권한 체크만 하고 본 Project 도큐 덮어쓰기

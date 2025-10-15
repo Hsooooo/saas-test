@@ -1,5 +1,6 @@
 package com.illunex.emsaasrestapi.partnership;
 
+import com.illunex.emsaasrestapi.cert.CertComponent;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
@@ -57,6 +58,7 @@ public class PartnershipService {
     private final PartnershipMemberViewMapper partnershipMemberViewMapper;
 
     private final AwsSESComponent sesComponent;
+    private final CertComponent certComponent;
 
     private final ModelMapper modelMapper;
     private final PartnershipComponent partnershipComponent;
@@ -397,6 +399,16 @@ public class PartnershipService {
         return CustomResponse.builder().build();
     }
 
+    /**
+     * 파트너쉽 회원 목록 조회
+     * @param partnershipIdx 파트너쉽 번호
+     * @param memberVO 로그인회원정보
+     * @param request 검색조건
+     * @param pageRequest 페이지요청정보
+     * @param sort 정렬정보
+     * @return
+     * @throws CustomException
+     */
     public CustomResponse<?> getPartnershipMembers(Integer partnershipIdx, MemberVO memberVO, RequestPartnershipDTO.SearchMember request, CustomPageRequest pageRequest, String[] sort) throws CustomException {
         // 파트너쉽 관리자 여부 확인
         PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
@@ -411,7 +423,6 @@ public class PartnershipService {
             sort = new String[]{"partnership_member_idx,ASC"};
         }
         Pageable pageable = pageRequest.of(sort);
-        log.info("mapper={}, request={}, pageable={}", partnershipMemberViewMapper, request, pageable);
         List<PartnershipMemberViewVO> members = partnershipMemberViewMapper.selectAllBySearchMemberAndPageable(request, pageable);
         long totalCount = partnershipMemberViewMapper.countAllBySearchMember(request);
 
@@ -460,86 +471,108 @@ public class PartnershipService {
      * @param memberVO
      * @return
      */
-    public CustomResponse<?> approveInvite(RequestPartnershipDTO.ApproveInvite request, MemberVO memberVO) throws CustomException {
+    public CustomResponse<?> approveInvite(RequestPartnershipDTO.ApproveInvite request, MemberVO memberVO) throws Exception {
         // 초대링크 유효성 체크
-        PartnershipInviteLinkVO linkVO = partnershipInviteLinkMapper.selectByInviteTokenHash(request.getInviteToken())
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+        Optional<PartnershipInviteLinkVO> inviteLinkOpt = partnershipInviteLinkMapper.selectByInviteTokenHash(request.getInviteToken());
 
-        if (linkVO.getExpireDate() != null && linkVO.getExpireDate().isBefore(ZonedDateTime.now())) {
-            throw new CustomException(ErrorCode.COMMON_INVITE_LINK_EXPIRE);
-        }
+        if (inviteLinkOpt.isEmpty()) {
+//            final String INVITE_MAIL_TYPE = AwsSESComponent.EmailType.invite.getValue();
+//            final String INVITE_PROJECT_MAIL_TYPE = AwsSESComponent.EmailType.inviteProject.getValue();
+            // 인증키 유효성 체크
+            JSONObject data = certComponent.verifyCertData(request.getInviteToken());
 
-        if (!linkVO.getStateCd().equals(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode())) {
-            throw new CustomException(ErrorCode.COMMON_INVALID);
-        }
+            certComponent.approvePartnershipMember(data, memberVO);
+            // 파트너쉽 초대 승인 로직
+//            if (emailType.equals(INVITE_MAIL_TYPE)) {
+//                certComponent.approvePartnershipMember(data, memberVO);
+//            }
+//
+//            // 프로젝트 초대 승인 로직
+//            if (emailType.equals(INVITE_PROJECT_MAIL_TYPE)) {
+//                // TODO
+//            }
 
-        String infoJsonString = linkVO.getInviteInfoJson();
-        if (infoJsonString == null || infoJsonString.isBlank()) {
-            throw new CustomException(ErrorCode.COMMON_INVALID);
-        }
-        JSONObject infoJson = new JSONObject(infoJsonString);
-        JSONArray products = infoJson.getJSONArray("products");
-        for (int i = 0; i < products.length(); i++) {
-            JSONObject product = products.getJSONObject(i);
-            boolean isValid = Arrays.stream(EnumCode.Product.ProductCd.values())
-                    .anyMatch(p -> p.getCode().equals(product.getString("productCode")));
+            // 이메일 인증 완료 처리
+            certComponent.markEmailHistoryAsUsed(request.getInviteToken());
 
-            if (!isValid) {
+            return null;
+        } else {
+            PartnershipInviteLinkVO linkVO = inviteLinkOpt.get();
+            if (linkVO.getExpireDate() != null && linkVO.getExpireDate().isBefore(ZonedDateTime.now())) {
+                throw new CustomException(ErrorCode.COMMON_INVITE_LINK_EXPIRE);
+            }
+
+            if (!linkVO.getStateCd().equals(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode())) {
                 throw new CustomException(ErrorCode.COMMON_INVALID);
             }
-        }
-        // 초대된 파트너쉽 회원 정보
-        String finalAuth = infoJson.getString("auth");;
-        PartnershipMemberVO invitedPartnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(linkVO.getPartnershipIdx(), memberVO.getIdx())
-                .orElseGet(() -> {
-                    PartnershipMemberVO newMember = new PartnershipMemberVO();
-                    newMember.setMemberIdx(memberVO.getIdx());
-                    newMember.setPartnershipIdx(linkVO.getPartnershipIdx());
-                    newMember.setManagerCd(finalAuth);
-                    newMember.setStateCd(EnumCode.PartnershipMember.StateCd.Normal.getCode());
-                    partnershipMemberMapper.insertByPartnershipMember(newMember);
 
-                    return newMember;
-                });
+            String infoJsonString = linkVO.getInviteInfoJson();
+            if (infoJsonString == null || infoJsonString.isBlank()) {
+                throw new CustomException(ErrorCode.COMMON_INVALID);
+            }
+            JSONObject infoJson = new JSONObject(infoJsonString);
+            JSONArray products = infoJson.getJSONArray("products");
+            for (int i = 0; i < products.length(); i++) {
+                JSONObject product = products.getJSONObject(i);
+                boolean isValid = Arrays.stream(EnumCode.Product.ProductCd.values())
+                        .anyMatch(p -> p.getCode().equals(product.getString("productCode")));
 
+                if (!isValid) {
+                    throw new CustomException(ErrorCode.COMMON_INVALID);
+                }
+            }
+            // 초대된 파트너쉽 회원 정보
+            String finalAuth = infoJson.getString("auth");;
+            PartnershipMemberVO invitedPartnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(linkVO.getPartnershipIdx(), memberVO.getIdx())
+                    .orElseGet(() -> {
+                        PartnershipMemberVO newMember = new PartnershipMemberVO();
+                        newMember.setMemberIdx(memberVO.getIdx());
+                        newMember.setPartnershipIdx(linkVO.getPartnershipIdx());
+                        newMember.setManagerCd(finalAuth);
+                        newMember.setStateCd(EnumCode.PartnershipMember.StateCd.Normal.getCode());
+                        partnershipMemberMapper.insertByPartnershipMember(newMember);
 
+                        return newMember;
+                    });
 
-        PartnershipInvitedMemberVO invitedMemberVO = new PartnershipInvitedMemberVO();
-        invitedMemberVO.setEmail(memberVO.getEmail());
-        invitedMemberVO.setPartnershipIdx(linkVO.getPartnershipIdx());
-        invitedMemberVO.setInvitedByPartnershipMemberIdx(linkVO.getCreatedByPartnershipMemberIdx());
-        invitedMemberVO.setMemberIdx(memberVO.getIdx());
-        invitedMemberVO.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
-        invitedMemberVO.setInvitedDate(linkVO.getCreateDate()); //TODO 초대일시 확인필요
-        invitedMemberVO.setJoinedDate(ZonedDateTime.now());
-        partnershipInvitedMemberMapper.insertInvitedMember(invitedMemberVO);
+            PartnershipInvitedMemberVO invitedMemberVO = new PartnershipInvitedMemberVO();
+            invitedMemberVO.setEmail(memberVO.getEmail());
+            invitedMemberVO.setPartnershipIdx(linkVO.getPartnershipIdx());
+            invitedMemberVO.setInvitedByPartnershipMemberIdx(linkVO.getCreatedByPartnershipMemberIdx());
+            invitedMemberVO.setMemberIdx(memberVO.getIdx());
+            invitedMemberVO.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
+            invitedMemberVO.setInvitedDate(linkVO.getCreateDate()); //TODO 초대일시 확인필요
+            invitedMemberVO.setJoinedDate(ZonedDateTime.now());
+            partnershipInvitedMemberMapper.insertInvitedMember(invitedMemberVO);
 //
 //        if (!invitedPartnershipMember.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Wait.getCode())) {
 //            throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
 //        }
 
-        // 제품 권한 정보 저장
-        if (!products.isEmpty()) {
-            for (int i = 0; i < products.length(); i++) {
-                JSONObject product = products.getJSONObject(i);
-                PartnershipMemberProductGrantVO productGrant = new PartnershipMemberProductGrantVO();
-                productGrant.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
-                productGrant.setProductCode(product.getString("productCode"));
-                productGrant.setPermissionCode(product.getString("productAuth"));
+            // 제품 권한 정보 저장
+            if (!products.isEmpty()) {
+                for (int i = 0; i < products.length(); i++) {
+                    JSONObject product = products.getJSONObject(i);
+                    PartnershipMemberProductGrantVO productGrant = new PartnershipMemberProductGrantVO();
+                    productGrant.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
+                    productGrant.setProductCode(product.getString("productCode"));
+                    productGrant.setPermissionCode(product.getString("productAuth"));
 
-                partnershipMemberProductGrantMapper.insertByPartnershipMemberProductGrantVO(productGrant);
+                    partnershipMemberProductGrantMapper.insertByPartnershipMemberProductGrantVO(productGrant);
+                }
             }
+
+            // 파트너쉽 회원 상태 변경
+            partnershipMemberMapper.updatePartnershipMemberStateByIdx(
+                    invitedPartnershipMember.getIdx(),
+                    EnumCode.PartnershipMember.StateCd.Normal.getCode()
+            );
+            linkVO.setUsedCount(linkVO.getUsedCount() == null ? 1 : linkVO.getUsedCount() + 1);
+            partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
+
+            return null;
         }
 
-        // 파트너쉽 회원 상태 변경
-        partnershipMemberMapper.updatePartnershipMemberStateByIdx(
-                invitedPartnershipMember.getIdx(),
-                EnumCode.PartnershipMember.StateCd.Normal.getCode()
-        );
-        linkVO.setUsedCount(linkVO.getUsedCount() == null ? 1 : linkVO.getUsedCount() + 1);
-        partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
-
-        return null;
     }
 
     /**
@@ -584,6 +617,57 @@ public class PartnershipService {
         linkVO.setUsedCount(0);
         partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
 
+        return null;
+    }
+
+    /**
+     * 파트너쉽 멤버 자동완성 조회
+     * @param partnershipIdx
+     * @param memberVO
+     * @param searchString
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> getPartnershipMembersAutoComplete(Integer partnershipIdx, MemberVO memberVO, String searchString) throws CustomException {
+        partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
+
+        List<PartnershipMemberViewVO> members = partnershipMemberViewMapper.selectAllByPartnershipIdxAndSearchString(partnershipIdx, searchString);
+
+        List<ResponsePartnershipDTO.PartnershipMember> result = new ArrayList<>();
+        for (PartnershipMemberViewVO member : members) {
+            ResponsePartnershipDTO.PartnershipMember pm = modelMapper.map(member, ResponsePartnershipDTO.PartnershipMember.class);
+            pm.setStateCd(member.getStateCd());
+            pm.setManagerCd(member.getManagerCd());
+            result.add(pm);
+        }
+
+        return CustomResponse.builder()
+                .data(result)
+                .build();
+    }
+
+    /**
+     * 파트너쉽 회원 비활성화 (TODO)
+     * @param partnershipIdx 파트너쉽 번호
+     * @param memberVO 로그인회원정보
+     * @param partnershipMemberIdx 비활성화할 파트너쉽회원번호
+     * @return
+     */
+    public Object deactivatePartnershipMembers(Integer partnershipIdx, MemberVO memberVO, Integer partnershipMemberIdx) throws CustomException {
+        // 파트너쉽 관리자 여부 확인
+        PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
+                .selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+        if (!loginPartnershipMemberVO.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
+            throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
+        }
+
+        PartnershipMemberVO targetMember = partnershipMemberMapper
+                .selectByIdx(partnershipMemberIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+        if (!targetMember.getPartnershipIdx().equals(partnershipIdx)) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
         return null;
     }
 }

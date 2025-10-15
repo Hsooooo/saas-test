@@ -32,7 +32,7 @@ public class PartnershipController {
     @PostMapping("/invite-approve")
     public CustomResponse<?> approveInvite(@RequestBody RequestPartnershipDTO.ApproveInvite request,
 
-                                           @CurrentMember MemberVO memberVO) throws CustomException {
+                                           @CurrentMember MemberVO memberVO) throws Exception {
         return CustomResponse.builder()
                 .data(partnershipService.approveInvite(request, memberVO))
                 .build();
@@ -89,8 +89,8 @@ public class PartnershipController {
      */
     @PutMapping("/{partnershipIdx}/invite-links")
     public CustomResponse<?> updateInviteLink(@PathVariable("partnershipIdx") Integer partnershipIdx,
-                                                  @CurrentMember MemberVO memberVO,
-                                                  @RequestBody RequestPartnershipDTO.InviteInfo inviteInfo) throws CustomException {
+                                              @CurrentMember MemberVO memberVO,
+                                              @RequestBody RequestPartnershipDTO.InviteInfo inviteInfo) throws CustomException {
         return CustomResponse.builder()
                 .data(partnershipService.updateInviteLink(partnershipIdx, memberVO, inviteInfo))
                 .build();
@@ -175,6 +175,30 @@ public class PartnershipController {
                                                    @CurrentMember MemberVO memberVO,
                                                    CustomPageRequest pageRequest, String[] sort) throws CustomException {
         return partnershipService.getPartnershipMembers(partnershipIdx, memberVO, request, pageRequest, sort);
+    }
+
+    /**
+     * 파트너쉽 회원 자동완성 조회
+     * @param partnershipIdx
+     * @param searchString
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/{partnershipIdx}/members/auto-complete")
+    public CustomResponse<?> getPartnershipMembersAutoComplete(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                               @RequestParam(name = "searchString", required = false) String searchString,
+                                                               @CurrentMember MemberVO memberVO) throws CustomException {
+        return partnershipService.getPartnershipMembersAutoComplete(partnershipIdx, memberVO, searchString);
+    }
+
+    @PatchMapping("/{partnershipIdx}/members/deactivate")
+    public CustomResponse<?> deactivatePartnershipMembers(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                          @RequestParam("partnershipMemberIdx") Integer partnershipMemberIdx,
+                                                          @CurrentMember MemberVO memberVO) throws CustomException {
+        return CustomResponse.builder()
+                .data(partnershipService.deactivatePartnershipMembers(partnershipIdx, memberVO, partnershipMemberIdx))
+                .build();
     }
 
     /**
