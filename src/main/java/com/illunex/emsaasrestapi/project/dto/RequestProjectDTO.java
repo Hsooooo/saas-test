@@ -175,4 +175,29 @@ public class RequestProjectDTO {
         private String excelSheetName;
         private String excelCellName;
     }
+
+    @Getter
+    @Setter
+    public static class ProjectMemberAdd {
+        private Integer projectIdx;
+        private List<ProjectMemberAuth> projectMemberList;
+    }
+
+    @Getter
+    @Setter
+    public static class ProjectMemberAuth {
+        private Integer partnershipMemberIdx;
+        private String typeCd;
+    }
+
+    @Getter
+    @Setter
+    public static class ProjectMember {
+        private Integer projectMemberIdx;
+        private Integer partnershipMemberIdx;
+        private String email;
+        private String name;
+        private String imageUrl;
+        private String typeCd;
+    }
 }

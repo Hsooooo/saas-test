@@ -218,4 +218,30 @@ public class ProjectController {
         }
         return CustomResponse.builder().build();
     }
+
+    @GetMapping("/member")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> getProjectMemberList(@CurrentMember MemberVO memberVO,
+                                                  @RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        return CustomResponse.builder()
+                .data(projectService.getProjectMemberList(memberVO, projectIdx))
+                .build();
+    }
+
+//    @GetMapping("/member/search")
+//    @PreAuthorize("isAuthenticated()")
+//    public CustomResponse<?> searchProjectMember(@CurrentMember MemberVO memberVO,
+//                                                 @RequestParam(name = "projectIdx") Integer projectIdx,
+//                                                 @RequestParam(name = "query") String query) throws CustomException {
+//        return CustomResponse.builder()
+//                .data(projectService.searchProjectMember(memberVO, projectIdx, query))
+//                .build();
+//    }
+//
+//    @PostMapping("/member/add")
+//    @PreAuthorize("isAuthenticated()")
+//    public CustomResponse<?> addProjectMember(@CurrentMember MemberVO memberVO,
+//                                              @RequestBody RequestProjectDTO.AddProjectMember addProjectMember) throws CustomException {
+//        return projectService.addProjectMember(memberVO, addProjectMember);
+//    }
 }

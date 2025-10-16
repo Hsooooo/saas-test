@@ -12,6 +12,8 @@ import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
+import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
@@ -27,12 +29,14 @@ import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMemberViewMapper;
 import com.illunex.emsaasrestapi.project.session.DraftContext;
 import com.illunex.emsaasrestapi.project.session.ExcelMetaUtil;
 import com.illunex.emsaasrestapi.project.session.ProjectDraft;
 import com.illunex.emsaasrestapi.project.session.ProjectDraftRepository;
 import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectMemberViewVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import jakarta.servlet.http.HttpServletRequest;
@@ -61,6 +65,7 @@ import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.illunex.emsaasrestapi.common.ErrorCode.PROJECT_EMPTY_DATA;
 import static com.illunex.emsaasrestapi.common.ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY;
@@ -69,21 +74,26 @@ import static com.illunex.emsaasrestapi.common.ErrorCode.PROJECT_INVALID_FILE_DA
 @RequiredArgsConstructor
 @Service
 public class ProjectService {
+    private final MongoTemplate mongoTemplate;
+    private final ModelMapper modelMapper;
+
+    private final ProjectProcessingService projectProcessingService;
+    private final ChatService chatService;
+
+    private final PartnershipComponent partnershipComponent;
+    private final ProjectComponent projectComponent;
+    private final AwsS3Component awsS3Component;
+
+    private final ExcelMetaUtil excelMetaUtil;
+
+    private final MemberMapper memberMapper;
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
     private final ProjectFileMapper projectFileMapper;
-    private final MemberMapper memberMapper;
-
-    private final MongoTemplate mongoTemplate;
-    private final ModelMapper modelMapper;
-    private final PartnershipComponent partnershipComponent;
-    private final ProjectProcessingService projectProcessingService;
-    private final ProjectComponent projectComponent;
-    private final AwsS3Component awsS3Component;
-    private final ChatService chatService;
+    private final PartnershipMemberMapper partnershipMemberMapper;
+    private final ProjectMemberViewMapper projectMemberViewMapper;
 
     private final ProjectDraftRepository draftRepo;
-    private final ExcelMetaUtil excelMetaUtil;
 
     /**
      * 프로젝트 생성
@@ -680,9 +690,11 @@ public class ProjectService {
 
         for(ResponseProjectDTO.ProjectListItem projectListItem : response){
             // 프로젝트 구성원 조회
-            List<MemberVO> projectMemberList = memberMapper.selectByProjectIdx(projectListItem.getIdx());
-            List<ResponseMemberDTO.Member> members = modelMapper.map(projectMemberList, new TypeToken<List<ResponseMemberDTO.Member>>(){}.getType());
-            projectListItem.setMembers(members);
+//            List<PartnershipMemberVO> projectMemberList = partnershipMemberMapper.selectByProjectIdx(projectListItem.getIdx());
+//            List<ResponsePartnershipDTO.PartnershipMember> members = projectMemberList.stream()
+//                    .map(vo -> modelMapper.map(vo, ResponsePartnershipDTO.PartnershipMember.class))
+//                    .collect(Collectors.toList());
+//            projectListItem.setMembers(members);
         }
 
         return CustomResponse.builder()
@@ -1371,5 +1383,29 @@ public class ProjectService {
         if (req.getImageUrl() != null)              u.set("imageUrl", req.getImageUrl());
 
         return u;
+    }
+
+    /**
+     * 프로젝트 멤버 목록 조회
+     * @param memberVO
+     * @param projectIdx
+     * @return
+     */
+    public List<ResponseProjectDTO.ProjectMember> getProjectMemberList(MemberVO memberVO, Integer projectIdx) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+
+        List<ResponseProjectDTO.ProjectMember> result = new ArrayList<>();
+        List<ProjectMemberViewVO> memberViewList = projectMemberViewMapper.selectAllByProjectIdx(projectIdx);
+        for (ProjectMemberViewVO pmv : memberViewList) {
+            ResponseProjectDTO.ProjectMember member = modelMapper.map(pmv, ResponseProjectDTO.ProjectMember.class);
+            member.setStateCd(pmv.getStateCd());
+            member.setTypeCd(pmv.getTypeCd());
+            result.add(member);
+        }
+
+        return result;
     }
 }

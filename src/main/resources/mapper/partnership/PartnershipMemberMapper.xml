@@ -139,4 +139,13 @@
         WHERE partnership_idx = #{partnershipIdx}
     </select>
 
+    <select id="selectByProjectIdx" resultType="PartnershipMemberVO">
+        SELECT
+            pm2.*
+        FROM project_member pm
+                 LEFT JOIN partnership_member pm2 ON pm.partnership_member_idx = pm2.partnership_idx
+                 LEFT JOIN member m  ON pm2.member_idx = m.idx
+        WHERE pm.project_idx = #{ProjectIdx};
+    </select>
+
 </mapper>
