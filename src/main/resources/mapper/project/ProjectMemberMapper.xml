@@ -32,6 +32,7 @@
             *
         FROM em_saas.project_member
         WHERE project_idx = #{projectIdx}
+            AND delete_date IS NULL
     </select>
 
     <select id="selectByProjectIdxAndPartnershipMemberIdx" resultType="ProjectMemberVO">
@@ -40,5 +41,47 @@
         FROM em_saas.project_member
         WHERE project_idx = #{projectIdx}
           AND partnership_member_idx = #{partnershipMemberIdx}
+            AND delete_date IS NULL
     </select>
+
+    <!-- 소프트 삭제 -->
+    <update id="softDeleteByProjectIdxAndProjectMemberIdxList">
+        UPDATE project_member
+        SET delete_date = NOW(), update_date = NOW()
+        WHERE project_idx = #{projectIdx}
+        AND idx IN
+        <foreach collection="projectMemberIdxList" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND delete_date IS NULL
+    </update>
+
+    <!-- type 갱신 -->
+    <update id="updateTypeByIdx">
+        UPDATE project_member
+        SET type_cd = #{typeCd}, update_date = NOW()
+        WHERE idx = #{idx} AND delete_date IS NULL
+    </update>
+
+    <!-- 복구(undelete) -->
+    <update id="undeleteByProjectAndPartnership">
+        UPDATE project_member
+        SET delete_date = NULL, type_cd = #{typeCd}, update_date = NOW()
+        WHERE project_idx = #{projectIdx}
+          AND partnership_member_idx = #{partnershipMemberIdx}
+          AND delete_date IS NOT NULL
+            ORDER BY delete_date DESC
+        LIMIT 1
+    </update>
+
+    <!-- 과거(소프트삭제된) 이력 존재 여부 -->
+    <select id="existsSoftDeleted" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM project_member
+            WHERE project_idx = #{projectIdx}
+              AND partnership_member_idx = #{partnershipMemberIdx}
+              AND delete_date IS NOT NULL
+        )
+    </select>
+
 </mapper>

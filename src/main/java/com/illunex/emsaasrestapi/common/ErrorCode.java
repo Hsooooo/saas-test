@@ -62,6 +62,10 @@ public enum ErrorCode {
     PROJECT_CONTENT_EMPTY_DATA(505, "저장된 설정 데이터가 없습니다."),
     PROJECT_INVALID_MEMBER(506, "유효한 프로젝트 구성원이 아닙니다."),
     PROJECT_DRAFT_ALREADY_COMMITED(507, "이미 커밋된 임시저장본입니다."),
+    PROJECT_MEMBER_INVALID_AUTH(508, "프로젝트 구성원 권한이 없습니다."),
+    PROJECT_MEMBER_OWNER_NEED(509, "소유자는 한 명 이상 존재해야 합니다."),
+    PROJECT_INVALID_TYPE_CD(510, "올바르지 않은 권한 코드입니다."),
+    PROJECT_MEMBER_DUPLICATE(510, "중복되는 프로젝트 구성원이 존재합니다."),
 
     PROJECT_CATEGORY_INVALID_SORT_ORDER(550, "요청된 정렬 순서가 올바르지 않습니다."),
     ;

@@ -71,6 +71,7 @@
         </choose>
         AND pm.partnership_member_idx = #{partnershipMemberIdx}
         AND p.delete_date IS NULL
+        AND pm.delete_date IS NULL
     </select>
 <!--파트너쉽 구성원에 포함되어 있는 프로젝트 총 개수 조회-->
     <select id="countAllByPartnershipMemberIdx" parameterType="Integer" resultType="Integer">
@@ -81,6 +82,7 @@
         ON p.idx = pm.project_idx
         AND pm.partnership_member_idx = #{partnershipMemberIdx}
         AND p.delete_date IS NULL
+        AND pm.delete_date IS NULL
     </select>
 
     <select id="selectAllByProjectCategoryIdx" parameterType="Integer" resultType="ProjectVO">
@@ -134,6 +136,7 @@
             </when>
         </choose>
         AND pm.partnership_member_idx = #{partnershipMemberIdx}
+        AND pm.delete_date IS NULL
         <if test="pageable.sort != null and !pageable.sort.empty">
             ORDER BY
             <foreach item="order" collection="pageable.sort" separator=",">
@@ -165,6 +168,7 @@
             </when>
         </choose>
         AND pm.partnership_member_idx = #{partnershipMemberIdx}
+        AND pm.delete_date IS NULL
     </select>
 
 <!--파트너쉽&카테고리&프로젝트 구성원에 포함된 총 개수 조회-->
@@ -189,5 +193,6 @@
             </when>
         </choose>
         AND pm.partnership_member_idx = #{partnershipMemberIdx}
+        AND pm.delete_date IS NULL
     </select>
 </mapper>

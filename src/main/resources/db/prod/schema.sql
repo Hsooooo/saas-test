@@ -311,12 +311,15 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_member` (
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 회원번호',
     `type_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '사용자 구분(code테이블)' COLLATE 'utf8mb4_general_ci',
     `disable_functions` VARCHAR(1024) NULL DEFAULT NULL COMMENT '사용제한 프로젝트 기능들(code 쉼표 구분)' COLLATE 'utf8mb4_general_ci',
+    `active_flag` TINYINT(1) AS (CASE WHEN `delete_date` IS NULL THEN 1 ELSE 0 END) STORED COMMENT '활성여부(1:활성, 0:비활성)',
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    `delete_date` DATETIME NULL DEFAULT NULL COMMENT '삭제일',
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `type_cd` (`type_cd`) USING BTREE,
     INDEX `fk_project_member_project_idx` (`project_idx`) USING BTREE,
     INDEX `fk_project_member_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
+    UNIQUE INDEX `ui_project_member_project_idx_partnership_member_idx_active_flag` (`project_idx`, `partnership_member_idx`, `delete_date`) USING BTREE,
     CONSTRAINT `fk_project_member_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
     CONSTRAINT `fk_project_member_project_idx` FOREIGN KEY (`project_idx`) REFERENCES `project` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
     )

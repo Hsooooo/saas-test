@@ -19,6 +19,7 @@
         FROM project_member pm
         JOIN partnership_member psm on pm.partnership_member_idx = psm.idx
         JOIN member m on psm.member_idx = m.idx
-        WHERE project_idx = #{projectIdx}
+        WHERE pm.project_idx = #{projectIdx}
+          AND pm.delete_date IS NULL
     </select>
 </mapper>

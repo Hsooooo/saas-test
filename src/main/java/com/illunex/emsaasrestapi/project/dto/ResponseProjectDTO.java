@@ -326,4 +326,22 @@ public class ResponseProjectDTO {
         }
     }
 
+    @Getter
+    @Setter
+    public static class PartnershipMember {
+        private Integer partnershipMemberIdx;
+        private String email;
+        private String name;
+        private String profileImageUrl;
+        private String profileImagePath;
+        private String stateCd;
+        private String stateCdDesc;
+        private boolean isAdded;
+
+        public void setStateCd(String stateCd) {
+            this.stateCd = stateCd;
+            this.stateCdDesc = EnumCode.getCodeDesc(stateCd);
+        }
+    }
+
 }

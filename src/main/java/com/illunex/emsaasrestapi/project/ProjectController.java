@@ -219,6 +219,13 @@ public class ProjectController {
         return CustomResponse.builder().build();
     }
 
+    /**
+     * 프로젝트 구성원 목록 조회
+     * @param memberVO
+     * @param projectIdx
+     * @return
+     * @throws CustomException
+     */
     @GetMapping("/member")
     @PreAuthorize("isAuthenticated()")
     public CustomResponse<?> getProjectMemberList(@CurrentMember MemberVO memberVO,
@@ -228,20 +235,35 @@ public class ProjectController {
                 .build();
     }
 
-//    @GetMapping("/member/search")
-//    @PreAuthorize("isAuthenticated()")
-//    public CustomResponse<?> searchProjectMember(@CurrentMember MemberVO memberVO,
-//                                                 @RequestParam(name = "projectIdx") Integer projectIdx,
-//                                                 @RequestParam(name = "query") String query) throws CustomException {
-//        return CustomResponse.builder()
-//                .data(projectService.searchProjectMember(memberVO, projectIdx, query))
-//                .build();
-//    }
-//
-//    @PostMapping("/member/add")
-//    @PreAuthorize("isAuthenticated()")
-//    public CustomResponse<?> addProjectMember(@CurrentMember MemberVO memberVO,
-//                                              @RequestBody RequestProjectDTO.AddProjectMember addProjectMember) throws CustomException {
-//        return projectService.addProjectMember(memberVO, addProjectMember);
-//    }
+    /**
+     * 프로젝트 구성원 추가 대상 회원 조회
+     * @param memberVO
+     * @param projectIdx
+     * @param query
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/member/search")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> searchProjectMember(@CurrentMember MemberVO memberVO,
+                                                 @RequestParam(name = "projectIdx") Integer projectIdx,
+                                                 @RequestParam(name = "query") String query) throws CustomException {
+        return CustomResponse.builder()
+                .data(projectService.searchProjectMember(memberVO, projectIdx, query))
+                .build();
+    }
+
+    /**
+     * 프로젝트 구성원 수정
+     * @param memberVO
+     * @param addProjectMember
+     * @return
+     * @throws CustomException
+     */
+    @PatchMapping("/member")
+    @PreAuthorize("isAuthenticated()")
+    public CustomResponse<?> updateProjectMember(@CurrentMember MemberVO memberVO,
+                                              @RequestBody RequestProjectDTO.ProjectMemberUpdate addProjectMember) throws CustomException {
+        return projectService.updateProjectMember(memberVO, addProjectMember);
+    }
 }
