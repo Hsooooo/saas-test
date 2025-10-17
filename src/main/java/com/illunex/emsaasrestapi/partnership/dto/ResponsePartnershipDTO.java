@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 public class ResponsePartnershipDTO {
@@ -93,6 +94,8 @@ public class ResponsePartnershipDTO {
         private Integer partnershipTeamIdx;
         private String inviteMemberName;
         private Integer invitedByPartnershipMemberIdx;
+        private ZonedDateTime invitedDate;
+        private ZonedDateTime joinedDate;
 
         public void setStateCd(String stateCd) {
             this.stateCd = stateCd;
