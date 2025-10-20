@@ -536,13 +536,16 @@ public class PartnershipService {
                         newMember.setMemberIdx(memberVO.getIdx());
                         newMember.setPartnershipIdx(linkVO.getPartnershipIdx());
                         newMember.setManagerCd(finalAuth);
-                        newMember.setStateCd(EnumCode.PartnershipMember.StateCd.Normal.getCode());
+                        newMember.setStateCd(EnumCode.PartnershipMember.StateCd.Wait.getCode());
                         partnershipMemberMapper.insertByPartnershipMember(newMember);
 
                         return newMember;
                     });
 
-            Optional<PartnershipInvitedMemberVO> invitedOpt = partnershipInvitedMemberMapper.selectByPartnershipMemberIdx(invitedPartnershipMember.getPartnershipPositionIdx());
+            if (invitedPartnershipMember.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Normal.getCode())) {
+                throw new CustomException(ErrorCode.PARTNERSHIP_MEMBER_ALREADY_JOINED);
+            }
+            Optional<PartnershipInvitedMemberVO> invitedOpt = partnershipInvitedMemberMapper.selectByPartnershipMemberIdx(invitedPartnershipMember.getIdx());
 
             if (invitedOpt.isPresent()) {
                 PartnershipInvitedMemberVO invitedMemberVO = invitedOpt.get();

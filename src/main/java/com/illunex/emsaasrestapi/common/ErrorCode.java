@@ -49,6 +49,7 @@ public enum ErrorCode {
     PARTNERSHIP_DOMAIN_DUPLICATE(401, "중복되는 도메인입니다."),
     PARTNERSHIP_INVALID_MEMBER(402, "유효한 파트너쉽 회원이 아닙니다."),
     PARTNERSHIP_MEMBER_DUPLICATE_EMAIL(403, "동일한 이메일로 초대된 회원이 있습니다."),
+    PARTNERSHIP_MEMBER_ALREADY_JOINED(404, "이미 가입이 완료된 계정입니다."),
 
     /**
      * 프로젝트
