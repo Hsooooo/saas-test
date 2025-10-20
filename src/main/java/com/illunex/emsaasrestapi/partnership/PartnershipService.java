@@ -542,15 +542,25 @@ public class PartnershipService {
                         return newMember;
                     });
 
-            PartnershipInvitedMemberVO invitedMemberVO = new PartnershipInvitedMemberVO();
-            invitedMemberVO.setEmail(memberVO.getEmail());
-            invitedMemberVO.setPartnershipIdx(linkVO.getPartnershipIdx());
-            invitedMemberVO.setInvitedByPartnershipMemberIdx(linkVO.getCreatedByPartnershipMemberIdx());
-            invitedMemberVO.setMemberIdx(memberVO.getIdx());
-            invitedMemberVO.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
-            invitedMemberVO.setInvitedDate(linkVO.getCreateDate()); //TODO 초대일시 확인필요
-            invitedMemberVO.setJoinedDate(ZonedDateTime.now());
-            partnershipInvitedMemberMapper.insertInvitedMember(invitedMemberVO);
+            Optional<PartnershipInvitedMemberVO> invitedOpt = partnershipInvitedMemberMapper.selectByPartnershipMemberIdx(invitedPartnershipMember.getPartnershipPositionIdx());
+
+            if (invitedOpt.isPresent()) {
+                PartnershipInvitedMemberVO invitedMemberVO = invitedOpt.get();
+                invitedMemberVO.setJoinedDate(ZonedDateTime.now());
+                partnershipInvitedMemberMapper.updateJoinedDateNowByIdx(invitedMemberVO.getIdx());
+            } else {
+                PartnershipInvitedMemberVO invitedMemberVO = new PartnershipInvitedMemberVO();
+
+
+                invitedMemberVO.setEmail(memberVO.getEmail());
+                invitedMemberVO.setPartnershipIdx(linkVO.getPartnershipIdx());
+                invitedMemberVO.setInvitedByPartnershipMemberIdx(linkVO.getCreatedByPartnershipMemberIdx());
+                invitedMemberVO.setMemberIdx(memberVO.getIdx());
+                invitedMemberVO.setPartnershipMemberIdx(invitedPartnershipMember.getIdx());
+                invitedMemberVO.setInvitedDate(linkVO.getCreateDate()); //TODO 초대일시 확인필요
+                invitedMemberVO.setJoinedDate(ZonedDateTime.now());
+                partnershipInvitedMemberMapper.insertInvitedMember(invitedMemberVO);
+            }
 //
 //        if (!invitedPartnershipMember.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Wait.getCode())) {
 //            throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
