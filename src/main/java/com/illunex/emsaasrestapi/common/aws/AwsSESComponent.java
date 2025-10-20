@@ -175,7 +175,7 @@ public class AwsSESComponent {
                 .profileImage(partnershipMemberVO.getProfileImageUrl())
                 .name(member.getName())
                 .partnershipName(partnershipVO.getName())
-                .certUrl(frontEndUrl + "auth/invite-approve")
+                .certUrl(frontEndUrl + "/auth/invite-approve")
                 .build();
 
         SendEmailRequest sendEmailRequest = senderDto.createSendEmailRequest(EmailType.invite);
