@@ -226,6 +226,7 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_invite_link` (
      PRIMARY KEY (`idx`) USING BTREE,
      INDEX `fk_partnership_invite_link_partnership_idx` (`partnership_idx`) USING BTREE,
      INDEX `fk_partnership_invite_link_created_by_partnership_member_idx` (`created_by_partnership_member_idx`) USING BTREE,
+     UNIQUE INDEX `ui_partnership_invite_link_invite_token_hash` (`invite_token_hash`) USING BTREE,
      CONSTRAINT `fk_partnership_invite_link_partnership_idx` FOREIGN KEY (`partnership_idx`) REFERENCES `partnership` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
      CONSTRAINT `fk_partnership_invite_link_created_by_partnership_member_idx` FOREIGN KEY (`created_by_partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
 )

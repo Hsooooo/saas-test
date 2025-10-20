@@ -451,9 +451,16 @@ public class PartnershipService {
             throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
         }
 
-        String uuid = new UUID(0L, System.currentTimeMillis()).toString();
+        String uuid = UUID.randomUUID().toString();
         byte[] hash = sha256(uuid);
         String hashString = Base64.getEncoder().encodeToString(hash);
+
+        // 중복 확인
+        if (partnershipInviteLinkMapper.selectByInviteTokenHash(hashString).isPresent()) {
+            uuid = UUID.randomUUID().toString();
+            hash = sha256(uuid);
+            hashString = Base64.getEncoder().encodeToString(hash);
+        }
 
         PartnershipInviteLinkVO linkVO = new PartnershipInviteLinkVO();
         linkVO.setPartnershipIdx(partnershipIdx);
