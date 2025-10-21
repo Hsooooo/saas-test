@@ -1,6 +1,7 @@
 package com.illunex.emsaasrestapi.chat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.illunex.emsaasrestapi.chat.mapper.ChatToolResultMapper;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import jakarta.transaction.Transactional;
@@ -24,5 +25,10 @@ public class ToolResultService {
     @Transactional
     public void linkResultsToHistory(List<Long> toolResultIds, int historyIdx) {
         chatToolResultMapper.updateHistoryIdxByIdxs(historyIdx, toolResultIds);
+    }
+
+    @Transactional
+    public Long insertToolPayloadSingle(JsonNode n) {
+        return chatService.insertChatMCP(n);
     }
 }

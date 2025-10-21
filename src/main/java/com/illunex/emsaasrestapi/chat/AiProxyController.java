@@ -184,6 +184,11 @@ public class AiProxyController {
                             normalizeForPersist(completed, om); // 결과 슬림화/타임스탬프
                             List<Long> ids = toolSvc.upsertToolPayload(completed.toString());
                             if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
+                        } else {
+                            Long id = toolSvc.insertToolPayloadSingle(n);
+                            List<Long> ids = new ArrayList<>();
+                            ids.add(id);
+                            toolResultIds.addAll(ids);
                         }
                     }
                 } catch (Exception ex) {

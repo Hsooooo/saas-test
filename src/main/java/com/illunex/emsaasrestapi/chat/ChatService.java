@@ -304,6 +304,14 @@ public class ChatService {
         return insertedIds;
     }
 
+    public Long insertChatMCP(JsonNode mcpNode) {
+        ChatToolResultVO vo = new ChatToolResultVO();
+        vo.setToolType(EnumCode.ChatToolResult.ToolType.MCP.getCode());
+        vo.setTitle(mcpNode.get("tool").asText());
+        chatToolResultMapper.insertByChatToolResultVO(vo);
+        return vo.getIdx();
+    }
+
     int saveHistory(int chatRoomIdx, String senderCode, String categoryCode, String message) {
         ChatHistoryVO h = new ChatHistoryVO();
         h.setChatRoomIdx(chatRoomIdx);

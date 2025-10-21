@@ -312,7 +312,8 @@ public class EnumCode {
         @Getter
         @AllArgsConstructor
         public enum ToolType implements BaseCodeEnum {
-            QUERY_RESULT("CTT0001", "get_search_result_by_query_tool");
+            QUERY_RESULT("CTT0001", "get_search_result_by_query_tool"),
+            MCP("CTT0002", "MCP");
 
             private final String code;
             private final String value;
@@ -362,6 +363,65 @@ public class EnumCode {
         public enum ProductAuthCd implements BaseCodeEnum {
             EDITOR("PPG0001", "EDITOR"),
             VIEWER("PPG0002", "VIEWER");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    /**
+     * 라이센스 관련 코드
+     */
+    public static class License {
+        /**
+         * 플랜 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum PlanCd implements BaseCodeEnum {
+            BASIC("PLC0001", "Basic Plan"),
+            ADVANCED("PLC0002", "Advanced Plan"),
+            PREMIUM("PLC0003", "Premium Plan");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    /**
+     * 파트너쉽 라이센스 관련 코드
+     */
+    public static class LicensePartnership {
+        /**
+         * 상태 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum StateCd implements BaseCodeEnum {
+            DRAFT("LPS0001", "임시"),
+            ACTIVE("LPS0002", "활성"),
+            PAUSED("LPS0003", "일시정지"),
+            EXPIRED("LPS0004", "만료");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    /**
+     * 파트너쉽 라이센스 관련 코드
+     */
+    public static class SubscriptionChangeEvent {
+        /**
+         * 구독 변경 타입 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum TypeCd implements BaseCodeEnum {
+            ADD_SEAT("CET0001", "구성원 추가"),
+            REMOVE_SEAT("CET0002", "구성원 제거"),
+            PLAN_UPGRADE("CET0003", "플랜 업그레이드"),
+            PLAN_DOWNGRADE("CET0004", "플랜 다운그레이드");
 
             private final String code;
             private final String value;
