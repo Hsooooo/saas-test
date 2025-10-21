@@ -184,7 +184,7 @@ public class AiProxyController {
                             normalizeForPersist(completed, om); // 결과 슬림화/타임스탬프
                             List<Long> ids = toolSvc.upsertToolPayload(completed.toString());
                             if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
-                        } else {
+                        } else if (isTerminalForOtherTools(n)) {
                             Long id = toolSvc.insertToolPayloadSingle(n);
                             List<Long> ids = new ArrayList<>();
                             ids.add(id);
@@ -384,6 +384,12 @@ public class AiProxyController {
         headers.add("X-Chat-Room-Idx", String.valueOf(chatRoomIdx));
         headers.add("Access-Control-Expose-Headers", "X-Chat-Room-Idx");
         return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
+    }
+
+    private boolean isTerminalForOtherTools(JsonNode n) {
+        if (!n.hasNonNull("tool")) return false;
+        String toolName = n.get("tool").asText();
+        return !toolName.equalsIgnoreCase("get_search_result_by_query_tool");
     }
 
     private JsonNode callDocxGenerate(String mdText, Integer pmIdx, Integer historyIdx) {
