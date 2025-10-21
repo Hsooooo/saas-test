@@ -7,10 +7,7 @@ import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -40,5 +37,11 @@ public class ChatController {
                                             CustomPageRequest page,
                                             String[] sort) throws CustomException {
         return chatService.getChatHistoryList(memberVO,partnershipMemberIdx, chatRoomIdx, page, sort);
+    }
+
+    @DeleteMapping("/rooms/{chatRoomIdx}")
+    public CustomResponse<?> deleteChatRoom(@CurrentMember MemberVO memberVO,
+                                            @PathVariable Integer chatRoomIdx) throws CustomException {
+        return chatService.deleteChatRoom(memberVO, chatRoomIdx);
     }
 }

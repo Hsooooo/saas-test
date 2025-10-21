@@ -13,6 +13,7 @@ public class ChatRoomVO {
     private Integer idx;
     private Integer partnershipMemberIdx;
     private String title;
+    private ZonedDateTime deleteDate;
     private ZonedDateTime createDate;
     private ZonedDateTime updateDate;
 }

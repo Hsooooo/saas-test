@@ -441,4 +441,16 @@ public class ChatService {
 
         return om.convertValue(resultsObj, RequestProjectDTO.Project.class);
     }
+
+    public CustomResponse<?> deleteChatRoom(MemberVO memberVO, Integer chatRoomIdx) {
+        ChatRoomVO room = chatRoomMapper.selectByIdx(chatRoomIdx)
+                .orElseThrow(() -> new IllegalArgumentException("Chat room not found"));
+        PartnershipMemberVO pm = partnershipMemberMapper.selectByIdx(room.getPartnershipMemberIdx())
+                .orElseThrow(() -> new IllegalArgumentException("Partnership member not found"));
+        if (!memberVO.getIdx().equals(pm.getMemberIdx())) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        chatRoomMapper.softDeleteByIdx(chatRoomIdx);
+        return CustomResponse.builder().build();
+    }
 }
