@@ -23,11 +23,14 @@ import com.illunex.emsaasrestapi.project.session.ProjectDraft;
 import com.illunex.emsaasrestapi.project.session.ProjectDraftRepository;
 import com.illunex.emsaasrestapi.project.vo.ProjectTableVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
+import com.mongodb.MongoBulkWriteException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
+import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -134,118 +137,138 @@ public class ProjectProcessingService {
         }
     }
 
-    /** 공통 빌드 로직: 노드/엣지 초기화 → 시트 돌며 생성 → 저장 */
+    /**
+     * 노드/엣지 초기화 후, 시트별로 노드/엣지/컬럼 문서 생성
+     * * MongoDB : Node, Edge, Column
+     * * MariaDB : project_table
+     * @param projectIdx
+     * @param wb
+     * @param sheets
+     * @param project
+     * @throws CustomException
+     */
     private void wipeAndBuildAll(int projectIdx, Workbook wb, List<ExcelSheet> sheets, Project project) throws CustomException {
-        // 기존 Node·Edge 삭제 + 테이블 메타 삭제
+        // 0) 기존 데이터 제거
         Query byProject = Query.query(Criteria.where("_id.projectIdx").is(projectIdx));
+        Query byProjectColumn = Query.query(Criteria.where("projectIdx").is(projectIdx));
         mongoTemplate.remove(byProject, Node.class);
         mongoTemplate.remove(byProject, Edge.class);
-        mongoTemplate.remove(byProject, Column.class);
+        mongoTemplate.remove(byProjectColumn, Column.class);
         projectTableMapper.deleteAllByProjectIdx(projectIdx);
 
-        for (ExcelSheet sheet : sheets) {
-            String sheetName = sheet.getExcelSheetName();
+        final int BATCH = 2000;
+        DataFormatter fmt = new DataFormatter(Locale.KOREA);
+
+        for (ExcelSheet sheetMeta : sheets) {
+            final String sheetName = sheetMeta.getExcelSheetName();
             Sheet ws = wb.getSheet(sheetName);
             if (ws == null) continue;
 
-            ProjectNode nodeDef = null;
-            if (project.getProjectNodeList() != null) {
-                nodeDef = project.getProjectNodeList().stream()
-                        .filter(n -> sheetName.equals(n.getNodeType()))
-                        .findFirst().orElse(null);
-            }
-
-            ProjectEdge edgeDef = null;
-            if (project.getProjectEdgeList() != null) {
-                edgeDef = project.getProjectEdgeList().stream()
-                        .filter(e -> sheetName.equals(e.getEdgeType()))
-                        .findFirst().orElse(null);
-            }
-
+            ProjectNode nodeDef = (project.getProjectNodeList()==null)? null :
+                    project.getProjectNodeList().stream().filter(n -> sheetName.equals(n.getNodeType())).findFirst().orElse(null);
+            ProjectEdge edgeDef = (project.getProjectEdgeList()==null)? null :
+                    project.getProjectEdgeList().stream().filter(e -> sheetName.equals(e.getEdgeType())).findFirst().orElse(null);
             if (nodeDef == null && edgeDef == null) continue;
 
-            List<Node> nodeBatch = new ArrayList<>();
-            List<Edge> edgeBatch = new ArrayList<>();
-            List<String> columns = sheet.getExcelCellList();
-            int colCnt = columns.size();
+            List<String> headers = sheetMeta.getExcelCellList();
+            final int colCnt = headers.size();
 
-            ProjectTableVO projectTableVO = new ProjectTableVO();
-            projectTableVO.setProjectIdx(projectIdx);
-            projectTableVO.setTitle(sheetName);
-            projectTableVO.setDataCount(sheet.getTotalRowCnt());
-            EnumCode.ProjectTable.TypeCd typeCd = nodeDef != null ? EnumCode.ProjectTable.TypeCd.Node : EnumCode.ProjectTable.TypeCd.Edge;
-            projectTableVO.setTypeCd(typeCd.getCode());
-            projectTableMapper.insertByProjectTableVO(projectTableVO);
+            // 1) project_table 메타
+            ProjectTableVO tbl = new ProjectTableVO();
+            tbl.setProjectIdx(projectIdx);
+            tbl.setTitle(sheetName);
+            tbl.setDataCount(sheetMeta.getTotalRowCnt());
+            tbl.setTypeCd((nodeDef != null ? EnumCode.ProjectTable.TypeCd.Node : EnumCode.ProjectTable.TypeCd.Edge).getCode());
+            projectTableMapper.insertByProjectTableVO(tbl);
 
-            // 2) Column 문서 저장: 시트 단위 1개, 첫 행 헤더만 반영
-            if (columns != null && !columns.isEmpty()) {
-                List<ColumnDetail> detailList = new ArrayList<>(columns.size());
-                for (int c = 0; c < columns.size(); c++) {
-                    String header = columns.get(c);
-                    ColumnDetail detail = new ColumnDetail();
-                    detail.setColumnName(header);   // 엑셀 헤더
-                    detail.setAlias(header);        // 기본 alias=컬럼명
-                    detail.setOrder(c);             // 헤더 순서
-                    detail.setVisible(true);        // 기본 표시
-                    detailList.add(detail);
+            // 2) Column 문서 (시트당 1회)
+            if (!headers.isEmpty()) {
+                List<ColumnDetail> detailList = new ArrayList<>(colCnt);
+                for (int c = 0; c < colCnt; c++) {
+                    ColumnDetail d = new ColumnDetail();
+                    String h = headers.get(c);
+                    d.setColumnName(h);
+                    d.setAlias(h);
+                    d.setOrder(c);
+                    d.setVisible(true);
+                    detailList.add(d);
                 }
-
-                Column columnDoc = new Column();
-                columnDoc.setProjectIdx(projectIdx);
-                columnDoc.setType(sheetName);               // 시트명
-                columnDoc.setColumnDetailList(detailList);  // 헤더 기반 컬럼 목록
-                mongoTemplate.insert(columnDoc);
+                Column colDoc = new Column();
+                colDoc.setProjectIdx(projectIdx);
+                colDoc.setType(sheetName);
+                colDoc.setColumnDetailList(detailList);
+                mongoTemplate.insert(colDoc);
             }
 
-            Set<Object> seenKeys = new HashSet<>();
-            int skippedDup = 0;
-            int skippedInvalid = 0;
+            // 3) 벌크 작성 (언오더드, 소배치)
+            BulkOperations nodeBulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Node.class);
+            BulkOperations edgeBulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Edge.class);
+            int nodeCnt = 0, edgeCnt = 0;
 
-            for (int r = 1; r <= sheet.getTotalRowCnt(); r++) {
-                Row row = ws.getRow(r);
-                if (row == null || row.getLastCellNum() == -1) break;
+            // 배치 한정 중복 필터 (전역 Set 제거)
+            Set<Object> seenKeysBatch = new HashSet<>(BATCH * 2);
 
-                LinkedHashMap<String,Object> props = new LinkedHashMap<>(colCnt);
+            for (Iterator<Row> it = ws.rowIterator(); it.hasNext();) {
+                Row row = it.next();
+                if (row.getRowNum() == 0) continue; // 헤더행 스킵
+
+                // props 구축: 빈값 스킵, fmt 재사용
+                LinkedHashMap<String, Object> props = new LinkedHashMap<>();
                 for (int c = 0; c < colCnt; c++) {
-                    props.put(columns.get(c), projectComponent.getExcelColumnData(row.getCell(c)));
+                    Cell cell = row.getCell(c, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    if (cell == null) continue;
+                    String v = fmt.formatCellValue(cell);
+                    if (v == null || v.isEmpty()) continue;
+                    props.put(headers.get(c), v);
                 }
+                if (props.isEmpty()) continue;
 
-                if (nodeDef != null) { // Node
+                if (nodeDef != null) {
                     Object key = props.get(nodeDef.getUniqueCellName());
-                    if (key == null) {
-                        skippedInvalid++;
-                        continue;
-                    }
-                    if (!seenKeys.add(key)) { // 이미 본 키 → 스킵
-                        skippedDup++;
-                        continue;
-                    }
-                    nodeBatch.add(Node.builder()
+                    if (key == null) continue;
+                    if (!seenKeysBatch.add(key)) continue;
+
+                    nodeBulk.insert(Node.builder()
                             .nodeId(new NodeId(projectIdx, sheetName, key))
                             .id(key)
                             .label(sheetName)
                             .properties(props)
                             .build());
-                } else {               // Edge
+
+                    if (++nodeCnt % BATCH == 0) {
+                        try { nodeBulk.execute(); } catch (MongoBulkWriteException ignored) {}
+                        nodeBulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Node.class);
+                        seenKeysBatch.clear();
+                    }
+                } else {
                     Object src = props.get(edgeDef.getSrcEdgeCellName());
                     Object dst = props.get(edgeDef.getDestEdgeCellName());
-                    if (src != null && dst != null) {
-                        edgeBatch.add(Edge.builder()
-                                .edgeId(new EdgeId(projectIdx, sheetName, r))
-                                .id(r)
-                                .startType(edgeDef.getSrcNodeType())
-                                .start(src)
-                                .endType(edgeDef.getDestNodeType())
-                                .end(dst)
-                                .type(sheetName)
-                                .properties(props)
-                                .build());
+                    if (src == null || dst == null) continue;
+
+                    edgeBulk.insert(Edge.builder()
+                            .edgeId(new EdgeId(projectIdx, sheetName, row.getRowNum()))
+                            .id(row.getRowNum())
+                            .startType(edgeDef.getSrcNodeType())
+                            .start(src)
+                            .endType(edgeDef.getDestNodeType())
+                            .end(dst)
+                            .type(sheetName)
+                            .properties(props)
+                            .build());
+
+                    if (++edgeCnt % BATCH == 0) {
+                        try { edgeBulk.execute(); } catch (MongoBulkWriteException ignored) {}
+                        edgeBulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Edge.class);
                     }
                 }
             }
 
-            if (!nodeBatch.isEmpty()) mongoTemplate.insertAll(nodeBatch);
-            if (!edgeBatch.isEmpty()) mongoTemplate.insertAll(edgeBatch);
+            // 잔여 flush
+            if (nodeCnt % BATCH != 0) { try { nodeBulk.execute(); } catch (MongoBulkWriteException ignored) {} }
+            if (edgeCnt % BATCH != 0) { try { edgeBulk.execute(); } catch (MongoBulkWriteException ignored) {} }
+
+            // 큰 객체 레퍼런스 해제
+            seenKeysBatch.clear();
         }
     }
 }
