@@ -109,6 +109,8 @@ public class MemberService {
 
             // 리프레시 토큰 쿠키 등록
             response.addCookie(tokenProvider.createCookie("refreshToken", tokenProvider.generateRefreshToken(auth), MemberComponent.getClientIpAddr(request)));
+            ResponseMemberDTO.Member responseMember = modelMapper.map(member, ResponseMemberDTO.Member.class);
+            responseLoginDto.setMember(responseMember);
 
             return CustomResponse.builder()
                     .data(responseLoginDto)

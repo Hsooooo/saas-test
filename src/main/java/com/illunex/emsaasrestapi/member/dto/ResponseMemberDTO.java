@@ -28,6 +28,7 @@ public class ResponseMemberDTO {
     public static class Login {
         private String email;
         private String accessToken;
+        private Member member;
     }
 
     /**
@@ -36,9 +37,8 @@ public class ResponseMemberDTO {
     @Getter
     @Setter
     public static class Member {
+        private Integer idx;
         private String email;
         private String name;
-        private String profileImageUrl;
-        private String comment;
     }
 }
