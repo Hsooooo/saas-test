@@ -158,16 +158,30 @@ public class ProjectProcessingService {
 
         final int BATCH = 2000;
         DataFormatter fmt = new DataFormatter(Locale.KOREA);
+        List<ProjectNode> nodeDefs = project.getProjectNodeList();
+        List<ProjectEdge> edgeDefs = project.getProjectEdgeList();
 
-        for (ExcelSheet sheetMeta : sheets) {
+        for (int s = 0; s < sheets.size(); s++) {
+            ExcelSheet sheetMeta = sheets.get(s);
             final String sheetName = sheetMeta.getExcelSheetName();
             Sheet ws = wb.getSheet(sheetName);
             if (ws == null) continue;
 
-            ProjectNode nodeDef = (project.getProjectNodeList()==null)? null :
-                    project.getProjectNodeList().stream().filter(n -> sheetName.equals(n.getNodeType())).findFirst().orElse(null);
-            ProjectEdge edgeDef = (project.getProjectEdgeList()==null)? null :
-                    project.getProjectEdgeList().stream().filter(e -> sheetName.equals(e.getEdgeType())).findFirst().orElse(null);
+            // 스트림 없이 탐색
+            ProjectNode nodeDef = null;
+            if (nodeDefs != null) {
+                for (int i = 0; i < nodeDefs.size(); i++) {
+                    ProjectNode cand = nodeDefs.get(i);
+                    if (sheetName.equals(cand.getNodeType())) { nodeDef = cand; break; }
+                }
+            }
+            ProjectEdge edgeDef = null;
+            if (edgeDefs != null) {
+                for (int i = 0; i < edgeDefs.size(); i++) {
+                    ProjectEdge cand = edgeDefs.get(i);
+                    if (sheetName.equals(cand.getEdgeType())) { edgeDef = cand; break; }
+                }
+            }
             if (nodeDef == null && edgeDef == null) continue;
 
             List<String> headers = sheetMeta.getExcelCellList();
