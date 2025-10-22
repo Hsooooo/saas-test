@@ -110,6 +110,7 @@ public class ProjectProcessingService {
             vo.setStatusCd(EnumCode.Project.StatusCd.Complete.getCode());
             projectMapper.updateByProjectVO(vo);
             log.info("[THREAD-SUCCESS] 프로젝트 정제 완료 projectIdx={} {}ms", projectIdx, System.currentTimeMillis()-start);
+            System.gc();
         }
     }
 
@@ -134,6 +135,7 @@ public class ProjectProcessingService {
             vo.setEdgeCnt(draft.getEdgeCnt());
             projectMapper.updateByProjectVO(vo);
             log.info("[THREAD-SUCCESS] Draft 프로젝트 정제 완료 projectIdx={} {}ms", projectIdx, System.currentTimeMillis()-start);
+            System.gc();
         }
     }
 

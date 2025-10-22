@@ -617,8 +617,8 @@ public class ProjectService {
         mongoTemplate.insert(excel);
 
         // 워커 비동기 정제 시작 (sessionId 전달해서 S3+매핑 읽게)
-//        projectProcessingService.processAsyncWithDraft(pid, dc.getSessionId());
-        projectProcessingService.processProjectFromDraft(pvo, d);   // ← 핵심
+        projectProcessingService.processAsyncWithDraft(pid, dc.getSessionId());
+//        projectProcessingService.processProjectFromDraft(pvo, d);   // ← 핵심
         log.info("[THREAD-SUCCESS] Draft 정제 완료 projectIdx={}", projectIdx);
 
         draftRepo.mark(dc.getSessionId(), "COMMITTED");
