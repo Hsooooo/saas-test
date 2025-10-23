@@ -147,3 +147,4 @@ INSERT INTO em_saas.code (code, first_code, second_code, third_code, code_value,
 ('CBC0001','CBC','00','01','VISA',1),
 ('CBC0002','CBC','00','02','MASTER',2)
 ;
+

@@ -24,6 +24,7 @@ import com.illunex.emsaasrestapi.project.session.ProjectDraftRepository;
 import com.illunex.emsaasrestapi.project.vo.ProjectTableVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.MongoBulkWriteException;
+import com.mongodb.client.model.ReplaceOptions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -31,9 +32,11 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.mongodb.core.BulkOperations;
+import org.springframework.data.mongodb.core.FindAndReplaceOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -52,6 +55,8 @@ public class ProjectProcessingService {
     private final ProjectComponent projectComponent;
     private final AwsS3Component awsS3Component;
     private final ProjectDraftRepository draftRepo;
+
+    private static final int LOG_EVERY_FLUSH = 20;
 
     // 라이브 데이터 기반 비동기 정제
     public void processAsync(Integer projectIdx) {
@@ -76,7 +81,8 @@ public class ProjectProcessingService {
         projectExecutor.execute(() -> {
             ProjectVO projectVO = null;
             try {
-                projectVO = projectMapper.selectByIdx(projectIdx).orElseThrow();
+                projectVO = projectMapper.selectByIdx(projectIdx).orElseThrow(() ->
+                        new IllegalStateException("프로젝트 정보 없음 idx=" + projectIdx));
                 ProjectDraft d = draftRepo.get(sessionId);
                 if (d == null) throw new IllegalStateException("Draft not found: " + sessionId);
                 processProjectFromDraft(projectVO, d);   // ← 핵심
@@ -158,29 +164,26 @@ public class ProjectProcessingService {
         mongoTemplate.remove(byProjectColumn, Column.class);
         projectTableMapper.deleteAllByProjectIdx(projectIdx);
 
-        final int BATCH = 2000;
+        final int BATCH = 1000;
         DataFormatter fmt = new DataFormatter(Locale.KOREA);
         List<ProjectNode> nodeDefs = project.getProjectNodeList();
         List<ProjectEdge> edgeDefs = project.getProjectEdgeList();
 
-        for (int s = 0; s < sheets.size(); s++) {
-            ExcelSheet sheetMeta = sheets.get(s);
+        for (ExcelSheet sheetMeta : sheets) {
             final String sheetName = sheetMeta.getExcelSheetName();
             Sheet ws = wb.getSheet(sheetName);
             if (ws == null) continue;
 
-            // 스트림 없이 탐색
+            // 시트 매핑 대상 탐색
             ProjectNode nodeDef = null;
             if (nodeDefs != null) {
-                for (int i = 0; i < nodeDefs.size(); i++) {
-                    ProjectNode cand = nodeDefs.get(i);
+                for (ProjectNode cand : nodeDefs) {
                     if (sheetName.equals(cand.getNodeType())) { nodeDef = cand; break; }
                 }
             }
             ProjectEdge edgeDef = null;
             if (edgeDefs != null) {
-                for (int i = 0; i < edgeDefs.size(); i++) {
-                    ProjectEdge cand = edgeDefs.get(i);
+                for (ProjectEdge cand : edgeDefs) {
                     if (sheetName.equals(cand.getEdgeType())) { edgeDef = cand; break; }
                 }
             }
@@ -197,7 +200,7 @@ public class ProjectProcessingService {
             tbl.setTypeCd((nodeDef != null ? EnumCode.ProjectTable.TypeCd.Node : EnumCode.ProjectTable.TypeCd.Edge).getCode());
             projectTableMapper.insertByProjectTableVO(tbl);
 
-            // 2) Column 문서 (시트당 1회)
+            // 2) Column 문서 업서트(필수 필드 setOnInsert)
             if (!headers.isEmpty()) {
                 List<ColumnDetail> detailList = new ArrayList<>(colCnt);
                 for (int c = 0; c < colCnt; c++) {
@@ -209,26 +212,33 @@ public class ProjectProcessingService {
                     d.setVisible(true);
                     detailList.add(d);
                 }
-                Column colDoc = new Column();
-                colDoc.setProjectIdx(projectIdx);
-                colDoc.setType(sheetName);
-                colDoc.setColumnDetailList(detailList);
-                mongoTemplate.insert(colDoc);
+                Query colQ = Query.query(Criteria.where("projectIdx").is(projectIdx).and("type").is(sheetName));
+                Update colU = new Update()
+                        .set("columnDetailList", detailList)
+                        .setOnInsert("projectIdx", projectIdx)
+                        .setOnInsert("type", sheetName);
+                mongoTemplate.upsert(colQ, colU, Column.class);
             }
 
-            // 3) 벌크 작성 (언오더드, 소배치)
+            // 3) 벌크 INSERT (중복은 시트 전역 Set으로 스킵)
             BulkOperations nodeBulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Node.class);
             BulkOperations edgeBulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Edge.class);
             int nodeCnt = 0, edgeCnt = 0;
+            int nodeFlushSeq = 0, edgeFlushSeq = 0;
 
-            // 배치 한정 중복 필터 (전역 Set 제거)
-            Set<Object> seenKeysBatch = new HashSet<>(BATCH * 2);
+            // 시트 전역 중복 차단용 Set (Node 키: uniqueCellName 정규화)
+            Set<String> seenNodeKeys = (nodeDef != null)
+                    ? new HashSet<>(Math.min(Math.max(sheetMeta.getTotalRowCnt(), 16), 200000))
+                    : Collections.emptySet();
+            // Edge도 혹시 모를 중복 대비(기본 rowNum 사용)
+            Set<Integer> seenEdgeKeys = (edgeDef != null)
+                    ? new HashSet<>(Math.min(Math.max(sheetMeta.getTotalRowCnt(), 16), 200000))
+                    : Collections.emptySet();
 
             for (Iterator<Row> it = ws.rowIterator(); it.hasNext();) {
                 Row row = it.next();
-                if (row.getRowNum() == 0) continue; // 헤더행 스킵
+                if (row.getRowNum() == 0) continue; // 헤더 스킵
 
-                // props 구축: 빈값 스킵, fmt 재사용
                 LinkedHashMap<String, Object> props = new LinkedHashMap<>();
                 for (int c = 0; c < colCnt; c++) {
                     Cell cell = row.getCell(c, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
@@ -240,9 +250,9 @@ public class ProjectProcessingService {
                 if (props.isEmpty()) continue;
 
                 if (nodeDef != null) {
-                    Object key = props.get(nodeDef.getUniqueCellName());
-                    if (key == null) continue;
-                    if (!seenKeysBatch.add(key)) continue;
+                    String key = norm(props.get(nodeDef.getUniqueCellName()));
+                    if (key == null || key.isEmpty()) continue;
+                    if (!seenNodeKeys.add(key)) continue; // 중복 스킵
 
                     nodeBulk.insert(Node.builder()
                             .nodeId(new NodeId(projectIdx, sheetName, key))
@@ -251,19 +261,23 @@ public class ProjectProcessingService {
                             .properties(props)
                             .build());
 
+                    // node flush 시점
                     if (++nodeCnt % BATCH == 0) {
-                        try { nodeBulk.execute(); } catch (MongoBulkWriteException ignored) {}
+                        silentExecute(nodeBulk);
+                        logFlush("node:" + sheetName, nodeCnt, ++nodeFlushSeq);
                         nodeBulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Node.class);
-                        seenKeysBatch.clear();
                     }
                 } else {
-                    Object src = props.get(edgeDef.getSrcEdgeCellName());
-                    Object dst = props.get(edgeDef.getDestEdgeCellName());
+                    String src = norm(props.get(edgeDef.getSrcEdgeCellName()));
+                    String dst = norm(props.get(edgeDef.getDestEdgeCellName()));
                     if (src == null || dst == null) continue;
 
+                    int rowKey = row.getRowNum();
+                    if (!seenEdgeKeys.add(rowKey)) continue; // 혹시 모를 중복 스킵
+
                     edgeBulk.insert(Edge.builder()
-                            .edgeId(new EdgeId(projectIdx, sheetName, row.getRowNum()))
-                            .id(row.getRowNum())
+                            .edgeId(new EdgeId(projectIdx, sheetName, rowKey))
+                            .id(rowKey)
                             .startType(edgeDef.getSrcNodeType())
                             .start(src)
                             .endType(edgeDef.getDestNodeType())
@@ -272,19 +286,41 @@ public class ProjectProcessingService {
                             .properties(props)
                             .build());
 
+                    // edge flush 시점
                     if (++edgeCnt % BATCH == 0) {
-                        try { edgeBulk.execute(); } catch (MongoBulkWriteException ignored) {}
+                        silentExecute(edgeBulk);
+                        logFlush("edge:" + sheetName, edgeCnt, ++edgeFlushSeq);
                         edgeBulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Edge.class);
                     }
                 }
             }
 
             // 잔여 flush
-            if (nodeCnt % BATCH != 0) { try { nodeBulk.execute(); } catch (MongoBulkWriteException ignored) {} }
-            if (edgeCnt % BATCH != 0) { try { edgeBulk.execute(); } catch (MongoBulkWriteException ignored) {} }
-
-            // 큰 객체 레퍼런스 해제
-            seenKeysBatch.clear();
+            if (nodeCnt % BATCH != 0) {
+                silentExecute(nodeBulk);
+                logFlush("node:" + sheetName, nodeCnt, ++nodeFlushSeq);
+            }
+            if (edgeCnt % BATCH != 0) {
+                silentExecute(edgeBulk);
+                logFlush("edge:" + sheetName, edgeCnt, ++edgeFlushSeq);
+            }
         }
+    }
+
+    private static String norm(Object v) {
+        if (v == null) return null;
+        String s = v.toString().trim();
+        s = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFKC);
+        s = s.replace('\u00A0',' ').replaceAll("\\s+"," ");
+        return s; // 필요하면 .toLowerCase(Locale.ROOT)
+    }
+
+    private static void silentExecute(BulkOperations bulk) {
+        try { bulk.execute(); } catch (RuntimeException ignored) { /* no-op */ }
+    }
+
+    private static void logFlush(String label, int processed, int flushSeq) {
+        if (flushSeq % LOG_EVERY_FLUSH != 0) return;   // 10분의 1로 감소
+        log.info("[{}] bulk commit processed={}", label, processed);
     }
 }

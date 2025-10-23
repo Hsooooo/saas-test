@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+public class PaymentMandateVO {
+    private Integer idx;
+    private Integer partnershipIdx;
+    private Integer paymentMethodIdx;
+    private String providerCd;
+    private String mandateId;
+    private String statusCd;
+    private ZonedDateTime agreeDate;
+    private ZonedDateTime revokeDate;
+    private String meta;
+    private ZonedDateTime updateDate;
+    private ZonedDateTime createDate;
+}
+
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.payment.mapper.PaymentMandateMapper">
+    <insert id="insertByPaymentMandateVO" parameterType="PaymentMandateVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO payment_mandate(
+           partnership_idx,
+           payment_method_idx,
+           provider_cd,
+           mandate_id,
+           status_cd,
+           agree_date,
+           revoke_date,
+           meta,
+           create_date,
+           update_date
+        ) VALUES (
+            #{partnershipIdx},
+            #{paymentMethodIdx},
+            #{providerCd},
+            #{mandateId},
+            #{statusCd},
+            now(),
+            #{revokeDate},
+            #{meta},
+            now(),
+            now()
+        )
+    </insert>
+
+</mapper>

@@ -49,3 +49,37 @@ INSERT INTO `member_term` (`idx`, `subject`, `content`, `active`, `required`, `u
 INSERT INTO em_saas.project_table (idx, project_idx, title, data_count, type_cd, update_date, create_date) VALUES (1, 1, 'Company', 5000, 'PTT0001', '2025-07-23 07:13:21', '2025-07-23 07:13:21');
 INSERT INTO em_saas.project_table (idx, project_idx, title, data_count, type_cd, update_date, create_date) VALUES (2, 1, 'Company-Company', 826, 'PTT0002', '2025-07-23 07:13:23', '2025-07-23 07:13:23');
 
+INSERT INTO `license` (`idx`, `plan_cd`, `name`, `description`, `price_per_user`, `min_user_count`, `data_total_limit`, `project_count_limit`, `period_month`, `active`, `update_date`, `create_date`)
+VALUES
+    (1, 'PLC0001', 'Basic Plan', 'basic license', 0, 1,  1000, 1, 0, 1, NOW(), NOW()),
+    (2, 'PLC0002', 'Advanced Plan', 'advanced license', 10000, 3,  200000, 50, 1, 1, NOW(), NOW()),
+    (3, 'PLC0003', 'Premium Plan', 'premium license', 20000, 5,  500000, 100, 1, 1, NOW(), NOW());
+
+
+-- 오늘 기준으로 청구일 세팅
+SET @today = CURDATE();
+SET @start = DATE_SUB(@today, INTERVAL 1 MONTH);
+
+INSERT INTO license_partnership (
+    idx, partnership_idx, license_idx, billing_day,
+    period_start_date, period_end_date, next_billing_date,
+    current_seat_count, current_unit_price, current_min_user_count,
+    cancel_at_period_end, state_cd, update_date, create_date
+) VALUES (
+             1, 1, 2, DAY(@today),
+             @start, @today, @today,
+             3, 100000, 3,
+             0, 'LPS0002', NOW(), NOW()
+         );
+
+-- 이벤트 여러 개 (전 달부터 오늘 사이)
+INSERT INTO subscription_change_event (license_partnership_idx, occurred_date, type_cd, qty_delta, note, create_date)
+VALUES
+    (1, DATE_ADD(@start, INTERVAL 3 DAY), 'CET0001', 2, '좌석 추가 +2', NOW()),
+    (1, DATE_ADD(@start, INTERVAL 10 DAY), 'CET0002', -1, '좌석 감소 -1', NOW()),
+    (1, DATE_ADD(@start, INTERVAL 15 DAY), 'CET0001', 3, '좌석 추가 +3', NOW()),
+    (1, DATE_ADD(@start, INTERVAL 20 DAY), 'CET0002', -2, '좌석 감소 -2', NOW());
+
+INSERT INTO partnership_payment_method (idx, partnership_idx, method_type_cd, brand, last4, exp_year, exp_month, customer_key, auth_key, holder_name, state_cd, is_default, delete_date, update_date, create_date)
+VALUES (1, 1, 'PMC0001', 'CBC0001', '1234', '2029', '12', 'bQk1hIGGl8PzpsiQwL9CH', 'bln_9Z60wpWYn5o', 'dd', 'PSC0001', 1, null, now(), now());
+INSERT INTO em_saas.payment_mandate (idx, partnership_idx, payment_method_idx, provider_cd, mandate_id, status_cd, agree_date, revoke_date, meta, update_date, create_date) VALUES (1, 1, 1, 'TOSS', 'oZxgD-eck57eRbhay2cz0q6VGHYwlxvv2lyoQeJGT_c=', 'MDS0001', '2025-10-22 09:21:49', null, null, '2025-10-22 09:23:01', '2025-10-22 09:21:49');

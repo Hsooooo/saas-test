@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+@Getter
+@Setter
+@Alias("InvoiceVO")
+public class InvoiceVO {
+    private Integer idx;
+    private Integer partnershipIdx;
+    private Integer licensePartnershipIdx;
+    private LocalDate periodStart;
+    private LocalDate periodEnd;
+    private ZonedDateTime issueDate;
+    private ZonedDateTime dueDate;
+    private Double subtotal;
+    private Double tax;
+    private Double total;
+    private String statusCd;
+    private String unitCd;
+    private String meta;
+    private ZonedDateTime createDate;
+    private ZonedDateTime updateDate;
+}
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.payment.mapper.InvoiceMapper">
+    <insert id="insertByInvoiceVO" parameterType="InvoiceVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO invoice(
+           partnership_idx,
+           license_partnership_idx,
+           period_start,
+           period_end,
+           issue_date,
+           due_date,
+           subtotal,
+           tax,
+           total,
+           status_cd,
+           unit_cd,
+           meta,
+           create_date,
+           update_date
+        ) VALUES (
+            #{partnershipIdx},
+            #{licensePartnershipIdx},
+            #{periodStart},
+            #{periodEnd},
+            now(),
+            #{dueDate},
+            #{subtotal},
+            #{tax},
+            #{total},
+            #{statusCd},
+            #{unitCd},
+            #{meta},
+            now(),
+            now()
+        )
+    </insert>
+
+    <select id="selectActiveByPeriod" resultType="InvoiceVO">
+        SELECT *
+        FROM invoice
+        WHERE license_partnership_idx = #{licensePartnershipIdx}
+        AND period_start = #{start}
+        AND period_end   = #{end}
+        AND status_cd <![CDATA[<>]]> 'ICS0004' -- VOID 제외
+        LIMIT 1
+    </select>
+
+    <update id="recalcTotals">
+        UPDATE invoice i
+            JOIN (
+            SELECT invoice_idx, COALESCE(SUM(amount),0) AS subtotal
+            FROM invoice_item
+            WHERE invoice_idx = #{invoiceIdx}
+            GROUP BY invoice_idx
+            ) s ON s.invoice_idx = i.idx
+            SET i.subtotal = s.subtotal,
+                i.tax      = ROUND(s.subtotal * #{vatRate}, 2),
+                i.total    = i.subtotal + i.tax,
+                i.update_date = CURRENT_TIMESTAMP
+        WHERE i.idx = #{invoiceIdx}
+    </update>
+
+    <update id="markOpen">
+        UPDATE invoice
+        SET status_cd = 'ICS0002',  -- OPEN
+            update_date = CURRENT_TIMESTAMP
+        WHERE idx = #{invoiceIdx}
+          AND status_cd = 'ICS0001' -- DRAFT 에서만 OPEN
+    </update>
+
+    <select id="selectByIdx" resultType="InvoiceVO">
+        select *
+          from invoice
+        where idx = #{idx}
+    </select>
+
+</mapper>

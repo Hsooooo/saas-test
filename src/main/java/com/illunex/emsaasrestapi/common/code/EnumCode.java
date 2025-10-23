@@ -427,4 +427,24 @@ public class EnumCode {
             private final String value;
         }
     }
+
+    /**
+     * 청구 항목 관련 코드
+     */
+    public static class InvoiceItem {
+        /**
+         * 청구 항목 타입 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum ItemTypeCd implements BaseCodeEnum {
+            RECURRING("ITC0001", "정기결제액"),
+            PRORATION("ITC0002", "일할요금"),
+            FIX("ITC0003", "보정액"),
+            ADJUST("ITC0004", "조정항목");
+
+            private final String code;
+            private final String value;
+        }
+    }
 }

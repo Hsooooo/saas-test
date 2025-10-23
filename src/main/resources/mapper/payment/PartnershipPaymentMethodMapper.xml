@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+public class PartnershipPaymentMethodVO {
+    private Integer idx;
+    private Integer partnershipIdx;
+    private String methodTypeCd;
+    private String brand;
+    private String last4;
+    private String expYear;
+    private String expMonth;
+    private String customerKey;
+    private String authKey;
+    private String holderName;
+    private String stateCd;
+    private Boolean isDefault;
+    private ZonedDateTime deleteDate;
+    private ZonedDateTime updateDate;
+    private ZonedDateTime createDate;
+}
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.payment.mapper.PartnershipPaymentMethodMapper">
+    <insert id="insertByPartnershipPaymentMethodVO" parameterType="PartnershipPaymentMethodVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO partnership_payment_method(
+           partnership_idx,
+           method_type_cd,
+           brand,
+           last4,
+           exp_year,
+           exp_month,
+           customer_key,
+           auth_key,
+           holder_name,
+           state_cd,
+           is_default,
+           create_date,
+           update_date
+        ) VALUES (
+            #{partnershipIdx},
+            #{methodTypeCd},
+            #{brand},
+            #{last4},
+            #{expYear},
+            #{expMonth},
+            #{customerKey},
+            #{authKey},
+            #{holderName},
+            #{stateCd},
+            #{isDefault},
+            now(),
+            now()
+        )
+    </insert>
+
+</mapper>

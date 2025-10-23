@@ -424,6 +424,7 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_room` (
                                                      `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅방 번호',
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원번호',
     `title` VARCHAR(255) NULL DEFAULT NULL COMMENT '채팅방 제목' COLLATE 'utf8mb4_general_ci',
+    `delete_date` DATETIME NULL DEFAULT NULL COMMENT '삭제일',
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
     PRIMARY KEY (`idx`) USING BTREE,

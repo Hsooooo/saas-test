@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+public class InvoiceItemVO {
+    private Integer idx;
+    private Integer invoiceIdx;
+    private String itemTypeCd;
+    private String description;
+    private Integer quantity;
+    private BigDecimal unitPrice;
+    private Integer days;
+    private BigDecimal amount;
+    private Integer relatedEventIdx;
+    private String meta;
+    private String createDate;
+}
+
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.payment.mapper.InvoiceItemMapper">
+    <insert id="insertByInvoiceItemVO" parameterType="InvoiceItemVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO invoice_item(
+           invoice_idx,
+           item_type_cd,
+           description,
+           quantity,
+           unit_price,
+           days,
+           amount,
+           related_event_idx,
+           meta,
+           create_date
+        ) VALUES (
+            #{invoiceIdx},
+            #{itemTypeCd},
+            #{description},
+            #{quantity},
+            #{unitPrice},
+            #{days},
+            #{amount},
+            #{relatedEventIdx},
+            #{meta},
+            now()
+        )
+    </insert>
+
+</mapper>

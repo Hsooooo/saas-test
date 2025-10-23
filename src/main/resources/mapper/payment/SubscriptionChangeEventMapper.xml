@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+@Getter
+@Setter
+@Alias("InvoiceVO")
+public class InvoiceVO {
+    private Integer idx;
+    private Integer partnershipIdx;
+    private Integer licensePartnershipIdx;
+    private LocalDate periodStart;
+    private LocalDate periodEnd;
+    private ZonedDateTime issueDate;
+    private ZonedDateTime dueDate;
+    private Double subtotal;
+    private Double tax;
+    private Double total;
+    private String statusCd;
+    private String unitCd;
+    private String meta;
+    private ZonedDateTime createDate;
+    private ZonedDateTime updateDate;
+}
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.payment.mapper.SubscriptionChangeEventMapper">
+
+    <select id="selectByLpAndOccurredBetween" resultType="com.illunex.emsaasrestapi.payment.vo.SubscriptionChangeEventVO">
+        SELECT
+            *
+        FROM subscription_change_event
+        WHERE license_partnership_idx = #{lpIdx}
+        AND occurred_date >= #{start}
+        AND occurred_date <![CDATA[<]]>  #{end}
+        ORDER BY occurred_date ASC, idx ASC
+    </select>
+</mapper>

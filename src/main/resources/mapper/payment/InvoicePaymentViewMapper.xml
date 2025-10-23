@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+@Getter
+@Setter
+@Alias("InvoiceVO")
+public class InvoiceVO {
+    private Integer idx;
+    private Integer partnershipIdx;
+    private Integer licensePartnershipIdx;
+    private LocalDate periodStart;
+    private LocalDate periodEnd;
+    private ZonedDateTime issueDate;
+    private ZonedDateTime dueDate;
+    private Double subtotal;
+    private Double tax;
+    private Double total;
+    private String statusCd;
+    private String unitCd;
+    private String meta;
+    private ZonedDateTime createDate;
+    private ZonedDateTime updateDate;
+}
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.payment.mapper.InvoicePaymentViewMapper">
+    <!-- 인보이스 총액/수납합계/잔액 조회 -->
+    <select id="selectInvoicePaymentSummary" resultType="InvoicePaymentView">
+        SELECT
+            i.idx AS invoiceId,
+            i.total AS invoiceTotal,
+            COALESCE(SUM(p.amount),0) AS paidTotal,
+            (i.total - COALESCE(SUM(p.amount),0)) AS balanceDue
+        FROM invoice i
+                 LEFT JOIN license_payment_history p ON p.invoice_idx = i.idx
+        WHERE i.idx = #{invoiceId}
+        GROUP BY i.idx, i.total
+    </select>
+
+    <select id="selectDefaultMethodAndMandate" resultType="map">
+        SELECT
+            pm.idx AS paymentMethodIdx,
+            md.idx AS paymentMandateIdx,
+            md.provider_cd AS providerCd
+        FROM partnership_payment_method pm
+                 JOIN payment_mandate md
+                      ON md.partnership_idx = pm.partnership_idx
+                          AND md.payment_method_idx = pm.idx
+                          AND md.status_cd = 'MDS0001' /* ACTIVE */
+        WHERE pm.partnership_idx = #{partnershipIdx}
+          AND pm.is_default = 1
+          AND pm.state_cd = 'PSC0001' /* ACTIVE */
+        ORDER BY md.create_date DESC
+            LIMIT 1
+    </select>
+
+</mapper>

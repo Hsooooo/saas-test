@@ -1,4 +1,11 @@
 -- 라이센스 관련 테이블
+DROP TABLE IF EXISTS `em_saas`.`payment_attempt`;
+DROP TABLE IF EXISTS `em_saas`.`payment_mandate`;
+DROP TABLE IF EXISTS `em_saas`.`partnership_payment_method`;
+DROP TABLE IF EXISTS `em_saas`.`license_payment_history`;
+DROP TABLE IF EXISTS `em_saas`.`invoice_item`;
+DROP TABLE IF EXISTS `em_saas`.`invoice`;
+DROP TABLE IF EXISTS `em_saas`.`subscription_change_event`;
 DROP TABLE IF EXISTS `em_saas`.`license_payment_history`;
 DROP TABLE IF EXISTS `em_saas`.`license_partnership`;
 DROP TABLE IF EXISTS `em_saas`.`license_function`;
@@ -14,6 +21,7 @@ DROP TABLE IF EXISTS `em_saas`.`project_member`;
 DROP TABLE IF EXISTS `em_saas`.`project`;
 DROP TABLE IF EXISTS `em_saas`.`project_category`;
 -- LLM 채팅 관련 테이블
+DROP TABLE IF EXISTS `em_saas`.`chat_mcp`;
 DROP TABLE IF EXISTS `em_saas`.`chat_link`;
 DROP TABLE IF EXISTS `em_saas`.`chat_node`;
 DROP TABLE IF EXISTS `em_saas`.`chat_network`;

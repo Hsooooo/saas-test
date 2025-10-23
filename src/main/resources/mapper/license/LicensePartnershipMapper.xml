@@ -27,5 +27,30 @@
         )
     </insert>
 
+    <!-- TODO EnumCode -->
+    <select id="selectIdxsByNextBillingDateToday" resultType="int">
+        SELECT lp.idx
+        FROM license_partnership lp
+        WHERE lp.state_cd IN ('LPS0002','LPS0003')
+          AND lp.next_billing_date = CURRENT_DATE()
+    </select>
+
+    <!-- MySQL 8: SELECT ... FOR UPDATE -->
+    <select id="selectByIdxForUpdate" parameterType="int" resultType="LicensePartnershipVO">
+        SELECT
+            *
+        FROM license_partnership
+        WHERE idx = #{idx}
+            FOR UPDATE
+    </select>
+
+    <update id="updatePeriod" parameterType="LicensePartnershipVO">
+        UPDATE license_partnership
+        SET period_start_date = #{periodStartDate},
+            period_end_date   = #{periodEndDate},
+            next_billing_date = #{nextBillingDate},
+            update_date       = CURRENT_TIMESTAMP
+        WHERE idx = #{idx}
+    </update>
 
 </mapper>
