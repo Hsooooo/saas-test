@@ -61,7 +61,7 @@ public class ProjectController {
     public CustomResponse<?> uploadSingleExcelFile(@CurrentMember MemberVO memberVO,
                                                    @RequestParam(name = "projectIdx", required = false) Integer projectIdx,
                                                    @RequestPart(name = "excel") MultipartFile excelFile,
-                                                   HttpServletRequest req) throws CustomException, IOException {
+                                                   HttpServletRequest req) throws Exception {
         return projectService.uploadSingleExcelFile(memberVO, projectIdx, excelFile, DraftContext.from(req));
     }
 

@@ -16,6 +16,7 @@ import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberViewMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberViewVO;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
+import com.illunex.emsaasrestapi.project.document.excel.ExcelFile;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.EdgeId;
@@ -58,11 +59,17 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -250,21 +257,47 @@ public class ProjectService {
      */
     @Transactional
     public CustomResponse<?> uploadSingleExcelFile(MemberVO me, Integer projectIdx, MultipartFile excelFile,
-                                                   DraftContext dc) throws CustomException, java.io.IOException {
+                                                   DraftContext dc) throws CustomException, IOException {
         dc.require();
 
-        // S3 업로드 (기존처럼)
+        if (excelFile == null || excelFile.isEmpty()) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        final String originalName = excelFile.getOriginalFilename();
+        final long size = excelFile.getSize();
+
+        // 1) 재다운로드 없이 메타 먼저 추출
+        Excel excelMeta;
+        try (InputStream in = excelFile.getInputStream()) {
+            excelMeta = excelMetaUtil.buildExcelMetaFromStream(originalName, /* provisionalPath */ "", /* provisionalUrl */ null, size, in);
+        }
+
+        // 2) 기존 컴포넌트 그대로 업로드
+        var s3Res = awsS3Component.upload(
+                excelFile,
+                AwsS3Component.FolderType.ProjectFile,
+                "draft/" + dc.getSessionId()
+        );
+
         var res = com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO.builder()
-                .fileName(excelFile.getOriginalFilename())
-                .s3Resource(awsS3Component.upload(excelFile, AwsS3Component.FolderType.ProjectFile, "draft/" + dc.getSessionId()))
+                .fileName(originalName)
+                .s3Resource(s3Res)
                 .build();
 
-        // 시트 메타만 추출
-        Excel excelMeta = excelMetaUtil.buildExcelMeta(res.getOrgFileName(), res.getPath(), res.getUrl(), res.getSize());
+        // 4) 업로드 결과로 경로/URL 주입
+        String path = res.getPath();
+        String url  = res.getUrl();
 
-        draftRepo.upsert(dc.getSessionId(), new Update()
-                .set("excelMeta", excelMeta)
-        );
+        ExcelFile ef = excelMeta.getExcelFileList().get(0);
+        ef.setFilePath(path);
+        ef.setFileUrl(url);
+        ef.setFileSize(size);
+        for (var s : excelMeta.getExcelSheetList()) {
+            s.setFilePath(path);
+        }
+
+        draftRepo.upsert(dc.getSessionId(), new Update().set("excelMeta", excelMeta));
 
         return CustomResponse.builder().data(java.util.Map.of(
                 "sessionId", dc.getSessionId().toHexString(),
@@ -272,6 +305,7 @@ public class ProjectService {
                 "sheets", excelMeta.getExcelSheetList()
         )).build();
     }
+
 
     /**
      * 프로젝트 한번에 수정
@@ -458,7 +492,6 @@ public class ProjectService {
                 edgeCount += c;
             }
         }
-// totalDataCount 계산 (long으로 보호)
         int totalDataCount = 0;
         if (!sheets.isEmpty()) {
             long total = 0L;
@@ -627,9 +660,16 @@ public class ProjectService {
         mongoTemplate.insert(excel);
 
         // 워커 비동기 정제 시작 (sessionId 전달해서 S3+매핑 읽게)
-        projectProcessingService.processAsyncWithDraft(pid, dc.getSessionId());
-//        projectProcessingService.processProjectFromDraft(pvo, d);   // ← 핵심
-        log.info("[THREAD-SUCCESS] Draft 정제 완료 projectIdx={}", projectIdx);
+        Integer finalPid = pid;
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        projectProcessingService.processAsyncWithDraft(finalPid, dc.getSessionId());
+                    }
+                }
+        );
+//        projectProcessingService.processProjectFromDraft(pvo, d);   // ←
 
         draftRepo.mark(dc.getSessionId(), "COMMITTED");
         return CustomResponse.builder().data(projectComponent.createResponseProject(pid)).build();
