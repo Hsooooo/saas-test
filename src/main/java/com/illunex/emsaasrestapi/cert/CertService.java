@@ -39,6 +39,7 @@ public class CertService {
     private final MemberMapper memberMapper;
     private final EmailHistoryMapper emailHistoryMapper;
     private final CertComponent certComponent;
+    private final AwsSESComponent awsSESComponent;
 
     private final PasswordEncoder passwordEncoder;
     private final PartnershipInviteLinkMapper partnershipInviteLinkMapper;
@@ -257,6 +258,20 @@ public class CertService {
                 member.setName(request.getName());
                 //회원정보 생성
                 memberJoinMapper.insertByMemberJoin(member);
+
+                String certData = awsSESComponent.sendJoinEmail(
+                        null,
+                        request.getEmail());
+
+                // 회원가입 인증 메일 이력 저장
+                MemberEmailHistoryVO emailHistoryVO = new MemberEmailHistoryVO();
+                emailHistoryVO.setMemberIdx(member.getIdx());
+                emailHistoryVO.setCertData(certData);
+                emailHistoryVO.setUsed(false);
+                emailHistoryVO.setEmailType(EnumCode.Email.TypeCd.JoinEmail.getCode());
+                emailHistoryVO.setExpireDate(ZonedDateTime.now().plusHours(1)); //1시간?
+
+                emailHistoryMapper.insertByMemberEmailHistoryVO(emailHistoryVO);
             }
             // 파트너쉽 회원 등록
             PartnershipMemberVO partnershipMember = new PartnershipMemberVO();
