@@ -16,6 +16,7 @@ import org.springframework.data.mongodb.core.convert.MongoConverter;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -27,39 +28,63 @@ public class MongoDBProdConfig {
     @Value("${spring.data.mongodb.uri}")
     private String mongoUri;
 
+    private static final int CONNECT_TIMEOUT_MS = (int) Duration.ofSeconds(10).toMillis();
+    private static final int READ_TIMEOUT_MS    = (int) Duration.ofSeconds(180).toMillis(); // 핵심: 15s → 180s
+    private static final int SOCKET_TIMEOUT_MS  = READ_TIMEOUT_MS; // 동치로 운용
+    private static final int SERVER_SELECT_MS   = (int) Duration.ofSeconds(10).toMillis();
+    private static final int HEARTBEAT_MS       = (int) Duration.ofSeconds(10).toMillis();
+    private static final int POOL_MAX_SIZE      = 150;   // 피크 대비 상향
+    private static final int POOL_MIN_SIZE      = 10;
+    private static final int POOL_MAX_CONNECT   = 10;    // 동시 연결 생성 상향
+    private static final int POOL_MAX_WAIT_MS   = (int) Duration.ofSeconds(30).toMillis(); // 5s → 30s
+
+
     @Bean
     public MongoClient mongoClient() {
         ConnectionString cs = new ConnectionString(mongoUri);
+
         MongoClientSettings settings = MongoClientSettings.builder()
-                .applyConnectionString(cs)
+                .applyConnectionString(cs) // URI 파라미터 선적용
                 .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
                 .retryReads(true)
+                .retryWrites(true)
                 .applyToSocketSettings(b -> {
-                    b.connectTimeout((int) Duration.ofSeconds(10).toMillis(), TimeUnit.MILLISECONDS);
-                    b.readTimeout((int) Duration.ofSeconds(15).toMillis(), TimeUnit.MILLISECONDS);
+                    b.connectTimeout(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                    b.readTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);     // = socketTimeoutMS
                 })
+                .applyToClusterSettings(b -> {
+                    b.serverSelectionTimeout(SERVER_SELECT_MS, TimeUnit.MILLISECONDS);
+                    b.localThreshold(15, TimeUnit.MILLISECONDS);
+                })
+                .applyToServerSettings(b -> b.heartbeatFrequency(HEARTBEAT_MS, TimeUnit.MILLISECONDS))
                 .applyToConnectionPoolSettings(b -> {
-                    b.maxSize(100);
-                    b.minSize(10);
-                    b.maxConnecting(5);
-                    b.maxWaitTime((int) Duration.ofSeconds(5).toMillis(), TimeUnit.MILLISECONDS);
+                    b.maxSize(POOL_MAX_SIZE);
+                    b.minSize(POOL_MIN_SIZE);
+                    b.maxConnecting(POOL_MAX_CONNECT);
+                    b.maxWaitTime(POOL_MAX_WAIT_MS, TimeUnit.MILLISECONDS);
                 })
+                .compressorList(List.of(
+                        MongoCompressor.createZstdCompressor(),
+                        MongoCompressor.createSnappyCompressor()
+                ))
                 .build();
+
         return MongoClients.create(settings);
     }
 
     @Bean
     public MongoDatabaseFactory mongoDatabaseFactory(MongoClient mongoClient) {
-        // DB 이름은 URI의 path(dbname)를 사용
         return new SimpleMongoClientDatabaseFactory(mongoClient, new ConnectionString(mongoUri).getDatabase());
     }
 
     @Bean
     public MongoTemplate mongoTemplate(MongoDatabaseFactory factory, MongoConverter converter) {
-        MongoTemplate mongoTemplate = new MongoTemplate(factory, converter);
-        mongoTemplate.setWriteResultChecking(WriteResultChecking.EXCEPTION); // 쓰기 실패 시 예외
-        mongoTemplate.setReadPreference(ReadPreference.secondaryPreferred()); // 읽기 부하분산
-        mongoTemplate.setWriteConcern(WriteConcern.ACKNOWLEDGED);            // 필요 시 .MAJORITY로 상향
-        return mongoTemplate;
+        MongoTemplate template = new MongoTemplate(factory, converter);
+
+        template.setReadPreference(ReadPreference.primary());
+        template.setWriteConcern(WriteConcern.ACKNOWLEDGED);
+        template.setWriteResultChecking(WriteResultChecking.EXCEPTION);
+
+        return template;
     }
 }
