@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.chat.mapper.ChatMcpMapper">
+
+    <insert id="insertByChatMcpVO" parameterType="ChatMcpVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO chat_mcp
+        (chat_history_idx, name, create_date, update_date)
+        VALUES
+        (#{chatHistoryIdx}, #{name}, now(), now())
+    </insert>
+
+    <select id="selectByChatHistoryIdx" parameterType="Integer" resultType="ChatMcpVO">
+        SELECT *
+        FROM chat_mcp
+        WHERE chat_history_idx = #{chatHistoryIdx}
+    </select>
+</mapper>

@@ -48,6 +48,7 @@ public class ChatService {
     private final ChatNetworkMapper chatNetworkMapper;
     private final ChatNodeMapper chatNodeMapper;
     private final ChatLinkMapper chatLinkMapper;
+    private final ChatMcpMapper chatMcpMapper;
     private final ObjectMapper om;
     @Value("${ai.url}") String aiGptBase;
     private final WebClient webClient;
@@ -230,6 +231,12 @@ public class ChatService {
                     })
                     .toList();
 
+            List<ChatMcpVO> chatMcpVOs = chatMcpMapper.selectByChatHistoryIdx(h.getIdx());
+
+            List<String> mcpNames = chatMcpVOs.stream()
+                    .map(ChatMcpVO::getName)
+                    .toList();
+
             return ResponseChatDTO.History.builder()
                     .idx(h.getIdx())
                     .chatRoomIdx(h.getChatRoomIdx())
@@ -242,6 +249,7 @@ public class ChatService {
                     .createDate(h.getCreateDate())
                     .updateDate(h.getUpdateDate())
                     .toolResults(toolResults)
+                    .chatMcpNames(mcpNames)
                     .chatFiles(chatFiles) // ← 누락 보완
                     .chatNetworks(chatNetworks)
                     .build();
