@@ -149,6 +149,7 @@ public class CertService {
                 } else if (memberVO.getStateCd().equals(EnumCode.Member.StateCd.Approval.getCode())) {
                     data.put("isMemberApproved", true);
                 }
+                data.put("partnershipIdx", partnershipVO.getIdx());
                 data.put("partnershipName", partnershipVO.getName());
             }
         } else {
@@ -156,6 +157,7 @@ public class CertService {
             PartnershipVO partnershipVO = partnershipMapper.selectByIdx(linkVO.getPartnershipIdx())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
             data = new JSONObject(linkVO);
+            data.put("partnershipIdx", partnershipVO.getIdx());
             data.put("partnershipName", partnershipVO.getName());
         }
 
