@@ -252,7 +252,7 @@ public class CertService {
                 // 일반 회원
                 member.setTypeCd(finalAuth);
                 // 승인 완료 상태
-                member.setStateCd(EnumCode.Member.StateCd.Approval.getCode());
+                member.setStateCd(EnumCode.Member.StateCd.Wait.getCode());
                 member.setPassword(passwordEncoder.encode(member.getPassword()));
                 member.setName(request.getName());
                 //회원정보 생성
