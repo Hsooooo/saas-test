@@ -717,7 +717,7 @@ public class PartnershipService {
             throw new CustomException(ErrorCode.COMMON_INVALID);
         }
 
-        if (!request.getStateCd().isEmpty()) {
+        if (request.getStateCd() != null && !request.getStateCd().isEmpty()) {
             // 삭제 요청인 경우
             if (request.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Delete.getCode())) {
                 if (request.getTransferPartnershipMemberIdx() == null) {
@@ -745,12 +745,12 @@ public class PartnershipService {
             targetMember.setStateCd(request.getStateCd());
         }
 
-        if (!request.getManagerCd().isEmpty()) {
+        if (request.getManagerCd() != null && !request.getManagerCd().isEmpty()) {
             // 관리자 권한 변경
             targetMember.setManagerCd(request.getManagerCd());
         }
 
-        if (!request.getPassword().isEmpty()) {
+        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             MemberVO targetUser = memberMapper.selectByIdx(request.getPartnershipMemberIdx())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
             String encodedPassword = passwordEncoder.encode(request.getPassword());
