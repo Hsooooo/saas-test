@@ -20,6 +20,8 @@ import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.*;
 import com.illunex.emsaasrestapi.partnership.vo.*;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ import org.json.JSONObject;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -57,11 +60,15 @@ public class PartnershipService {
     private final PartnershipInviteLinkMapper partnershipInviteLinkMapper;
     private final PartnershipMemberViewMapper partnershipMemberViewMapper;
 
+    private final PasswordEncoder passwordEncoder;
+
     private final AwsSESComponent sesComponent;
     private final CertComponent certComponent;
 
     private final ModelMapper modelMapper;
     private final PartnershipComponent partnershipComponent;
+    private final ProjectMapper projectMapper;
+    private final ProjectMemberMapper projectMemberMapper;
 
     /**
      * 파트너십 생성 (기본 라이센스)
@@ -267,16 +274,17 @@ public class PartnershipService {
                     .sortLevel(positionVO.getSortLevel())
                     .build();
         }
-
+        ResponsePartnershipDTO.MyInfoPartnershipMember pm = ResponsePartnershipDTO.MyInfoPartnershipMember.builder()
+                .idx(partnershipMember.getIdx())
+                .positionInfo(positionInfo)
+                .phone(partnershipMember.getPhone())
+                .profileImageUrl(partnershipMember.getProfileImageUrl())
+                .profileImagePath(partnershipMember.getProfileImagePath())
+                .build();
+        pm.setManagerCd(partnershipMember.getManagerCd());
 
         return ResponsePartnershipDTO.MyInfo.builder()
-                .partnershipMember(ResponsePartnershipDTO.MyInfoPartnershipMember.builder()
-                        .idx(partnershipMember.getIdx())
-                        .positionInfo(positionInfo)
-                        .phone(partnershipMember.getPhone())
-                        .profileImageUrl(partnershipMember.getProfileImageUrl())
-                        .profileImagePath(partnershipMember.getProfileImagePath())
-                        .build())
+                .partnershipMember(pm)
                 .partnership(ResponsePartnershipDTO.PartnershipInfo.builder()
                         .idx(partnership.getIdx())
                         .domain(partnership.getDomain())
@@ -688,6 +696,59 @@ public class PartnershipService {
         if (!targetMember.getPartnershipIdx().equals(partnershipIdx)) {
             throw new CustomException(ErrorCode.COMMON_INVALID);
         }
+        return null;
+    }
+
+    public Object updatePartnershipMember(Integer partnershipIdx, MemberVO memberVO, RequestPartnershipDTO.PatchPartnershipMember request) throws CustomException {
+        // 파트너쉽 관리자 여부 확인
+        PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
+                .selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+        if (!loginPartnershipMemberVO.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
+            throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
+        }
+
+        // 변경하고자 하는 회원 정보 조회
+        PartnershipMemberVO targetMember = partnershipMemberMapper
+                .selectByIdx(request.getPartnershipMemberIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+        // 파트너쉽 일치 여부 확인
+        if (!targetMember.getPartnershipIdx().equals(partnershipIdx)) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        if (!request.getStateCd().isEmpty()) {
+            // 삭제 요청인 경우
+            if (request.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Delete.getCode())) {
+                if (request.getTransferPartnershipMemberIdx() == null) {
+                    throw new CustomException(ErrorCode.PARTNERSHIP_MEMBER_TRANSFER_REQUIRED);
+                }
+                PartnershipMemberVO transferMember = partnershipMemberMapper
+                        .selectByIdx(request.getPartnershipMemberIdx())
+                        .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_MEMBER_TRANSFER_REQUIRED));
+                // TODO: 담당업무 이전 처리
+            }
+            // 상태코드 변경
+            targetMember.setStateCd(request.getStateCd());
+        }
+
+        if (!request.getManagerCd().isEmpty()) {
+            // 관리자 권한 변경
+            targetMember.setManagerCd(request.getManagerCd());
+        }
+
+        if (!request.getPassword().isEmpty()) {
+            MemberVO targetUser = memberMapper.selectByIdx(request.getPartnershipMemberIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+            String encodedPassword = passwordEncoder.encode(request.getPassword());
+            targetUser.setPassword(encodedPassword);
+            memberMapper.updateStateAndPasswordByIdx(targetUser.getIdx(), targetUser.getStateCd(), targetUser.getPassword());
+        }
+
+
+        partnershipMemberMapper.updatePartnershipMemberStateByIdx(targetMember.getIdx(), targetMember.getStateCd());
+        partnershipMemberMapper.updatePartnershipMemberManagerCdByIdx(targetMember.getIdx(), targetMember.getManagerCd());
+
         return null;
     }
 }

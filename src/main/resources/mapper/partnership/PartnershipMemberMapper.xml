@@ -148,4 +148,11 @@
         WHERE pm.project_idx = #{ProjectIdx};
     </select>
 
+    <update id="updatePartnershipMemberManagerCdByIdx">
+        UPDATE partnership_member
+        SET manager_cd = #{managerCd},
+            update_date = now()
+        WHERE idx = #{idx}
+    </update>
+
 </mapper>

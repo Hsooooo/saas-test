@@ -703,10 +703,12 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+        ProjectMemberVO projectMember = projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+        ResponseProjectDTO.Project response = projectComponent.createResponseProject(projectIdx);
+        response.setProjectMemberTypeCd(projectMember.getTypeCd());
 
         return CustomResponse.builder()
-                .data(projectComponent.createResponseProject(projectIdx))
+                .data(response)
                 .build();
     }
 

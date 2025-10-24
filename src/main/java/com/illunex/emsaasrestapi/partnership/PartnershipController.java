@@ -192,12 +192,12 @@ public class PartnershipController {
         return partnershipService.getPartnershipMembersAutoComplete(partnershipIdx, memberVO, searchString);
     }
 
-    @PatchMapping("/{partnershipIdx}/members/deactivate")
-    public CustomResponse<?> deactivatePartnershipMembers(@PathVariable("partnershipIdx") Integer partnershipIdx,
-                                                          @RequestParam("partnershipMemberIdx") Integer partnershipMemberIdx,
-                                                          @CurrentMember MemberVO memberVO) throws CustomException {
+    @PatchMapping("/{partnershipIdx}/member")
+    public CustomResponse<?> updatePartnershipMember(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                     @RequestBody RequestPartnershipDTO.PatchPartnershipMember request,
+                                                     @CurrentMember MemberVO memberVO) throws CustomException {
         return CustomResponse.builder()
-                .data(partnershipService.deactivatePartnershipMembers(partnershipIdx, memberVO, partnershipMemberIdx))
+                .data(partnershipService.updatePartnershipMember(partnershipIdx, memberVO, request))
                 .build();
     }
 
