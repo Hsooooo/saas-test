@@ -69,7 +69,6 @@ public class RequestPartnershipDTO {
     public static class PatchPartnershipMember {
         private Integer partnershipMemberIdx;
         private Integer transferPartnershipMemberIdx; // 권한 이전 대상 멤버 idx
-        private Integer partnershipIdx;
         private String managerCd;
         private String stateCd;
         private String password;

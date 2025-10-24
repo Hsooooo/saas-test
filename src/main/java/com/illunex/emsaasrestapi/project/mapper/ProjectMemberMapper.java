@@ -23,5 +23,5 @@ public interface ProjectMemberMapper {
 
     void softDeleteByProjectIdxAndProjectMemberIdxList(Integer projectIdx, List<Integer> projectMemberIdxList);
 
-    void updatePartnershipMemberIdxByPartnershipIdxAndPartnershipMemberIdx(Integer partnershipIdx, Integer partnershipMemberIdx, Integer transferMemberIdx);
+    void updatePartnershipMemberIdxByPartnershipIdxAndPartnershipMemberIdx(Integer partnershipMemberIdx, Integer transferMemberIdx);
 }

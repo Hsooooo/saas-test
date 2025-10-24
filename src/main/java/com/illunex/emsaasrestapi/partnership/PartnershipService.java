@@ -740,7 +740,6 @@ public class PartnershipService {
                 }
 
                 projectMemberMapper.updatePartnershipMemberIdxByPartnershipIdxAndPartnershipMemberIdx(
-                        partnershipIdx,
                         targetMember.getIdx(),
                         transferMember.getIdx()
                 );
