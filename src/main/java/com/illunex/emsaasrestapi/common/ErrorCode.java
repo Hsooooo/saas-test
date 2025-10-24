@@ -51,6 +51,7 @@ public enum ErrorCode {
     PARTNERSHIP_MEMBER_DUPLICATE_EMAIL(403, "동일한 이메일로 초대된 회원이 있습니다."),
     PARTNERSHIP_MEMBER_ALREADY_JOINED(404, "이미 가입이 완료된 계정입니다."),
     PARTNERSHIP_MEMBER_TRANSFER_REQUIRED(405, "이전 대상 파트너쉽 회원 정보가 없습니다."),
+    PARTNERSHIP_MEMBER_TRANSFER_INVALID(406, "이전 대상 파트너쉽 회원 정보가 유효하지 않습니다."),
 
     /**
      * 프로젝트

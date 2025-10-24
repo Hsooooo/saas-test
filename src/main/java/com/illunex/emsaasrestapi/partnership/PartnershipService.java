@@ -726,7 +726,20 @@ public class PartnershipService {
                 PartnershipMemberVO transferMember = partnershipMemberMapper
                         .selectByIdx(request.getPartnershipMemberIdx())
                         .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_MEMBER_TRANSFER_REQUIRED));
-                // TODO: 담당업무 이전 처리
+
+                if (!transferMember.getPartnershipIdx().equals(partnershipIdx)) {
+                    throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
+                }
+
+                if (transferMember.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Delete.getCode())) {
+                    throw new CustomException(ErrorCode.PARTNERSHIP_MEMBER_TRANSFER_INVALID);
+                }
+
+                projectMemberMapper.updatePartnershipMemberIdxByPartnershipIdxAndPartnershipMemberIdx(
+                        partnershipIdx,
+                        targetMember.getIdx(),
+                        transferMember.getIdx()
+                );
             }
             // 상태코드 변경
             targetMember.setStateCd(request.getStateCd());

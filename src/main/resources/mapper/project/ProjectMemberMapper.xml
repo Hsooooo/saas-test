@@ -84,4 +84,11 @@
         )
     </select>
 
+    <update id="updatePartnershipMemberIdxByPartnershipIdxAndPartnershipMemberIdx">
+        UPDATE project_member
+        SET partnership_member_idx = #{transferMemberIdx}, update_date = NOW()
+        WHERE partnership_idx = #{partnershipIdx}
+          AND partnership_member_idx = #{partnershipMemberIdx}
+          AND delete_date IS NULL
+    </update>
 </mapper>
