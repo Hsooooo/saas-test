@@ -718,6 +718,10 @@ public class PartnershipService {
         }
 
         if (request.getStateCd() != null && !request.getStateCd().isEmpty()) {
+            // 회원 상태가 대기인 경우 상태 변경 불가
+            if (targetMember.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Wait.getCode())) {
+                throw new CustomException(ErrorCode.PARTNERSHIP_MEMBER_INVALID_STATE_CHANGE);
+            }
             // 삭제 요청인 경우
             if (request.getStateCd().equals(EnumCode.PartnershipMember.StateCd.Delete.getCode())) {
                 if (request.getTransferPartnershipMemberIdx() == null) {
