@@ -245,6 +245,13 @@ public class NetworkService {
                 ))
                 .toList();
 
+        if (orCandidates.isEmpty()) {
+            response.setNodes(List.of());
+            response.setLinks(List.of());
+            response.setNodeSize(0);
+            response.setLinkSize(0);
+            return CustomResponse.builder().data(response).build();
+        }
         // 프로젝트 범위 강제 + OR 후보 결합
         Criteria projectScope = Criteria.where("_id.projectIdx").is(search.getProjectIdx());
         Criteria orBlock = new Criteria().orOperator(orCandidates.toArray(new Criteria[0]));
