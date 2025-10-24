@@ -31,9 +31,13 @@ public class NetworkComponent {
      * @return
      */
     public ResponseNetworkDTO.SearchNetwork networkSearchAll(Integer projectIdx, Integer limit) {
-
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
+        // 프로젝트 정보 없을 경우 예외처리
+        Project projectDoc = mongoTemplate.findById(projectIdx, Project.class);
+        if (projectDoc == null) return response;
+
+        limit = projectDoc.getMaxNodeSize() != null ? projectDoc.getMaxNodeSize() : limit;
         Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)).limit(limit);
         List<Node> nodes = mongoTemplate.find(query, Node.class);
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
@@ -47,9 +51,6 @@ public class NetworkComponent {
         // 노드 없을 경우 예외처리
         if (nodes.isEmpty()) return response;
         StopWatch stopWatch = new StopWatch();
-        // 프로젝트 정보 없을 경우 예외처리
-        Project projectDoc = mongoTemplate.findById(projectIdx, Project.class);
-        if (projectDoc == null) return response;
 
         String mainLabel = projectDoc.getProjectNodeContentList().get(0).getLabelContentCellName();
 

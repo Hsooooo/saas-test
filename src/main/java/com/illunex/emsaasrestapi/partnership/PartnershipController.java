@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.partnership;
 
 import com.illunex.emsaasrestapi.common.CurrentMember;
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.dto.PartnershipCreateDTO;
@@ -20,6 +21,22 @@ import java.io.IOException;
 @Slf4j
 public class PartnershipController {
     private final PartnershipService partnershipService;
+
+    /**
+     * 초대 승인
+     * @param request
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/invite-approve")
+    public CustomResponse<?> approveInvite(@RequestBody RequestPartnershipDTO.ApproveInvite request,
+
+                                           @CurrentMember MemberVO memberVO) throws Exception {
+        return CustomResponse.builder()
+                .data(partnershipService.approveInvite(request, memberVO))
+                .build();
+    }
 
     /**
      * 신규 파트너쉽 생성
@@ -48,6 +65,38 @@ public class PartnershipController {
     }
 
     /**
+     * 파트너쉽 초대 링크 임시 생성
+     * @param partnershipIdx
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("/{partnershipIdx}/invite-links")
+    public CustomResponse<?> createInviteLink(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                              @CurrentMember MemberVO memberVO) throws CustomException {
+        return CustomResponse.builder()
+                .data(partnershipService.createInviteLink(partnershipIdx, memberVO))
+                .build();
+    }
+
+    /**
+     * 파트너쉽 초대 링크 수정
+     * @param partnershipIdx
+     * @param memberVO
+     * @param inviteInfo
+     * @return
+     * @throws CustomException
+     */
+    @PutMapping("/{partnershipIdx}/invite-links")
+    public CustomResponse<?> updateInviteLink(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                              @CurrentMember MemberVO memberVO,
+                                              @RequestBody RequestPartnershipDTO.InviteInfo inviteInfo) throws CustomException {
+        return CustomResponse.builder()
+                .data(partnershipService.updateInviteLink(partnershipIdx, memberVO, inviteInfo))
+                .build();
+    }
+
+    /**
      * 파트너쉽 회원 초대
      * @param partnershipIdx 파트너쉽번호
      * @param memberVO 로그인사용자정보
@@ -60,7 +109,7 @@ public class PartnershipController {
                                                      @CurrentMember MemberVO memberVO,
                                                      @RequestBody @Valid RequestPartnershipDTO.InviteMember request) throws CustomException {
         return CustomResponse.builder()
-                .data(partnershipService.invitePartnershipMember(partnershipIdx, memberVO.getIdx(), request))
+                .data(partnershipService.invitePartnershipMember(partnershipIdx, memberVO, request))
                 .build();
     }
 
@@ -107,6 +156,49 @@ public class PartnershipController {
                                                 @RequestPart(name = "image") MultipartFile file,
                                                 @CurrentMember MemberVO memberVO) throws CustomException, IOException {
         return partnershipService.updateProfileImage(partnershipIdx, memberVO, file);
+    }
+
+
+    /**
+     * 파트너쉽 회원 목록 조회
+     * @param partnershipIdx
+     * @param request
+     * @param memberVO
+     * @param pageRequest
+     * @param sort
+     * @return
+     * @throws CustomException
+     */
+    @PutMapping("/{partnershipIdx}/members")
+    public CustomResponse<?> getPartnershipMembers(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                   @RequestBody RequestPartnershipDTO.SearchMember request,
+                                                   @CurrentMember MemberVO memberVO,
+                                                   CustomPageRequest pageRequest, String[] sort) throws CustomException {
+        return partnershipService.getPartnershipMembers(partnershipIdx, memberVO, request, pageRequest, sort);
+    }
+
+    /**
+     * 파트너쉽 회원 자동완성 조회
+     * @param partnershipIdx
+     * @param searchString
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/{partnershipIdx}/members/auto-complete")
+    public CustomResponse<?> getPartnershipMembersAutoComplete(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                               @RequestParam(name = "searchString", required = false) String searchString,
+                                                               @CurrentMember MemberVO memberVO) throws CustomException {
+        return partnershipService.getPartnershipMembersAutoComplete(partnershipIdx, memberVO, searchString);
+    }
+
+    @PatchMapping("/{partnershipIdx}/member")
+    public CustomResponse<?> updatePartnershipMember(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                     @RequestBody RequestPartnershipDTO.PatchPartnershipMember request,
+                                                     @CurrentMember MemberVO memberVO) throws CustomException {
+        return CustomResponse.builder()
+                .data(partnershipService.updatePartnershipMember(partnershipIdx, memberVO, request))
+                .build();
     }
 
     /**

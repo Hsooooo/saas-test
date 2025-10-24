@@ -9,6 +9,7 @@
         SELECT *
           FROM chat_room
          WHERE idx = #{idx}
+          AND delete_date IS NULL
     </select>
 
     <insert id="insertByChatRoomVO" parameterType="ChatRoomVO" useGeneratedKeys="true" keyProperty="idx">
@@ -20,6 +21,7 @@
         SELECT *
         FROM chat_room
         WHERE partnership_member_idx = #{partnershipMemberIdx}
+          AND delete_date IS NULL
         ORDER BY CREATE_DATE DESC
     </select>
 
@@ -27,6 +29,7 @@
         SELECT *
           FROM chat_room
          WHERE partnership_member_idx = #{partnershipMemberIdx}
+        AND delete_date IS NULL
         <if test="pageable.sort != null and !pageable.sort.empty">
             ORDER BY
             <foreach item="order" collection="pageable.sort" separator=",">
@@ -41,5 +44,12 @@
           FROM chat_room
          WHERE partnership_member_idx = #{partnershipMemberIdx}
            AND idx = #{chatRoomIdx}
+           AND delete_date IS NULL
     </select>
+
+    <delete id="softDeleteByIdx" parameterType="Integer">
+        UPDATE chat_room
+           SET delete_date = NOW()
+         WHERE idx = #{idx}
+    </delete>
 </mapper>

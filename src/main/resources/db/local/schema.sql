@@ -95,7 +95,7 @@ create table if not exists em_saas.member_login_history
 CREATE TABLE IF NOT EXISTS `em_saas`.`member_email_history` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '이메일전송이력번호',
     `member_idx` INT(11) NULL DEFAULT NULL COMMENT '회원번호',
-    `cert_data` VARCHAR(255) NULL DEFAULT NULL COMMENT '인증키' COLLATE 'utf8mb4_general_ci',
+    `cert_data` VARCHAR(500) NULL DEFAULT NULL COMMENT '인증키' COLLATE 'utf8mb4_general_ci',
     `used` BIT(1) NULL DEFAULT NULL COMMENT '인증여부(1:인증, 0:미인증)',
     `email_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '메일구분(code)' COLLATE 'utf8mb4_general_ci',
     `expire_date` DATETIME NULL DEFAULT NULL COMMENT '만료일',
@@ -212,6 +212,28 @@ create table if not exists em_saas.partnership_member
     )
     comment '파트너쉽 회원정보';
 
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_invite_link` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너십 초대 링크 번호',
+     `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 번호',
+     `created_by_partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '초대링크 생성자 파트너십 회원 번호',
+     `invite_token_hash` VARCHAR(255) NULL DEFAULT NULL COMMENT '링크 토큰' COLLATE 'utf8mb4_general_ci',
+     `used_count` INT(11) NULL DEFAULT 0 COMMENT '사용된 횟수',
+     `state_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '링크 상태 코드' COLLATE 'utf8mb4_general_ci',
+     `invite_info_json` JSON NULL DEFAULT NULL COMMENT '초대 정보 json' COLLATE 'utf8mb4_general_ci',
+     `expire_date` DATETIME NULL DEFAULT NULL COMMENT '링크 만료일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_partnership_invite_link_partnership_idx` (`partnership_idx`) USING BTREE,
+     INDEX `fk_partnership_invite_link_created_by_partnership_member_idx` (`created_by_partnership_member_idx`) USING BTREE,
+     UNIQUE INDEX `ui_partnership_invite_link_invite_token_hash` (`invite_token_hash`) USING BTREE,
+     CONSTRAINT `fk_partnership_invite_link_partnership_idx` FOREIGN KEY (`partnership_idx`) REFERENCES `partnership` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+     CONSTRAINT `fk_partnership_invite_link_created_by_partnership_member_idx` FOREIGN KEY (`created_by_partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='파트너쉽 초대 링크 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_member_product_grant` (
      `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너십 회원 제품 권한 번호',
      `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원 번호',
@@ -320,12 +342,15 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_member` (
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 회원번호',
     `type_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '사용자 구분(code테이블)' COLLATE 'utf8mb4_general_ci',
     `disable_functions` VARCHAR(1024) NULL DEFAULT NULL COMMENT '사용제한 프로젝트 기능들(code 쉼표 구분)' COLLATE 'utf8mb4_general_ci',
+    `active_flag` TINYINT(1) AS (CASE WHEN `delete_date` IS NULL THEN 1 ELSE 0 END) STORED COMMENT '활성여부(1:활성, 0:비활성)',
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    `delete_date` DATETIME NULL DEFAULT NULL COMMENT '삭제일',
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `type_cd` (`type_cd`) USING BTREE,
     INDEX `fk_project_member_project_idx` (`project_idx`) USING BTREE,
     INDEX `fk_project_member_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
+    UNIQUE INDEX `ui_project_member_project_idx_partnership_member_idx_active_flag` (`project_idx`, `partnership_member_idx`, `delete_date`) USING BTREE,
     CONSTRAINT `fk_project_member_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
     CONSTRAINT `fk_project_member_project_idx` FOREIGN KEY (`project_idx`) REFERENCES `project` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
 )

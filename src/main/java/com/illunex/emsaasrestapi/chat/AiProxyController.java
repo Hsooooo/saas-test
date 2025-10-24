@@ -133,6 +133,7 @@ public class AiProxyController {
 
         // 툴 결과 즉시 upsert된 row들의 id 모음 → 완료 시 history_idx로 연결
         final List<Long> toolResultIds = new CopyOnWriteArrayList<>();
+        final Set<String> mcpResultSet = new HashSet<>();
 
         // 업스트림 구독 (SSE 텍스트 조각을 그대로 흘려보내며, 동시에 파싱)
         Flux<String> stream = upstream.stream(aiGptBase, "/v2/api/report-generate", payload).share();
@@ -184,6 +185,12 @@ public class AiProxyController {
                             normalizeForPersist(completed, om); // 결과 슬림화/타임스탬프
                             List<Long> ids = toolSvc.upsertToolPayload(completed.toString());
                             if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
+                        }
+                    }
+                    if (isMcpResult(n)) {
+                        for (JsonNode item : n.get("mcp")) {
+                            if (item == null || item.isNull()) continue;
+                            mcpResultSet.add(item.asText());
                         }
                     }
                 } catch (Exception ex) {
@@ -246,6 +253,11 @@ public class AiProxyController {
             // 2) tool_result ↔ history 링크
             if (!toolResultIds.isEmpty()) {
                 try { toolSvc.linkResultsToHistory(toolResultIds, historyIdx); }
+                catch (Exception e) { log.error("linkResultsToHistory failed", e); }
+            }
+
+            if(!mcpResultSet.isEmpty()) {
+                try { toolSvc.insertChatMcpArray(mcpResultSet, historyIdx); }
                 catch (Exception e) { log.error("linkResultsToHistory failed", e); }
             }
 
@@ -379,6 +391,10 @@ public class AiProxyController {
         headers.add("X-Chat-Room-Idx", String.valueOf(chatRoomIdx));
         headers.add("Access-Control-Expose-Headers", "X-Chat-Room-Idx");
         return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
+    }
+
+    private boolean isMcpResult(JsonNode n) {
+        return n.hasNonNull("mcp") && n.get("mcp").isArray();
     }
 
     private JsonNode callDocxGenerate(String mdText, Integer pmIdx, Integer historyIdx) {

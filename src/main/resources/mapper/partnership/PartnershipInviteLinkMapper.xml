@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.partnership.mapper.PartnershipInviteLinkMapper">
+
+    <insert id="insertByPartnershipInviteLinkVO" parameterType="PartnershipInviteLinkVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO partnership_invite_link (
+            partnership_idx,
+            created_by_partnership_member_idx,
+            invite_token_hash,
+            used_count,
+            state_cd,
+            invite_info_json,
+            expire_date,
+            create_date
+        ) VALUES (
+              #{partnershipIdx},
+              #{createdByPartnershipMemberIdx},
+              #{inviteTokenHash},
+              #{usedCount},
+              #{stateCd},
+              #{inviteInfoJson},
+              #{expireDate},
+              now()
+        )
+    </insert>
+
+    <select id="selectByInviteTokenHash" resultType="PartnershipInviteLinkVO">
+        SELECT
+            *
+        FROM partnership_invite_link
+        WHERE invite_token_hash = #{inviteTokenHash}
+    </select>
+
+    <update id="updateByPartnershipInviteLinkVO" parameterType="PartnershipInviteLinkVO">
+        UPDATE partnership_invite_link
+        SET
+            invite_info_json = #{inviteInfoJson},
+            state_cd = #{stateCd},
+            used_count = #{usedCount},
+            expire_date = #{expireDate}
+        WHERE idx = #{idx}
+    </update>
+
+</mapper>

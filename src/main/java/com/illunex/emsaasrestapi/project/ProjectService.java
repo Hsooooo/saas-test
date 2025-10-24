@@ -8,11 +8,13 @@ import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
 import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
-import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberViewMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberViewVO;
 import com.illunex.emsaasrestapi.project.document.excel.Excel;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelFile;
 import com.illunex.emsaasrestapi.project.document.excel.ExcelSheet;
@@ -28,16 +30,17 @@ import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.mapper.ProjectMemberViewMapper;
 import com.illunex.emsaasrestapi.project.session.DraftContext;
 import com.illunex.emsaasrestapi.project.session.ExcelMetaUtil;
 import com.illunex.emsaasrestapi.project.session.ProjectDraft;
 import com.illunex.emsaasrestapi.project.session.ProjectDraftRepository;
 import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
+import com.illunex.emsaasrestapi.project.vo.ProjectMemberViewVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.UpdateResult;
 import jakarta.servlet.http.HttpServletRequest;
-import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -46,6 +49,7 @@ import org.bson.types.ObjectId;
 import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -77,21 +81,27 @@ import static com.illunex.emsaasrestapi.common.ErrorCode.PROJECT_INVALID_FILE_DA
 @RequiredArgsConstructor
 @Service
 public class ProjectService {
+    private final MongoTemplate mongoTemplate;
+    private final ModelMapper modelMapper;
+
+    private final ProjectProcessingService projectProcessingService;
+    private final ChatService chatService;
+
+    private final PartnershipComponent partnershipComponent;
+    private final ProjectComponent projectComponent;
+    private final AwsS3Component awsS3Component;
+
+    private final ExcelMetaUtil excelMetaUtil;
+
+    private final MemberMapper memberMapper;
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
     private final ProjectFileMapper projectFileMapper;
-    private final MemberMapper memberMapper;
-
-    private final MongoTemplate mongoTemplate;
-    private final ModelMapper modelMapper;
-    private final PartnershipComponent partnershipComponent;
-    private final ProjectProcessingService projectProcessingService;
-    private final ProjectComponent projectComponent;
-    private final AwsS3Component awsS3Component;
-    private final ChatService chatService;
+    private final PartnershipMemberMapper partnershipMemberMapper;
+    private final ProjectMemberViewMapper projectMemberViewMapper;
+    private final PartnershipMemberViewMapper partnershipMemberViewMapper;
 
     private final ProjectDraftRepository draftRepo;
-    private final ExcelMetaUtil excelMetaUtil;
 
     /**
      * 프로젝트 생성
@@ -140,7 +150,7 @@ public class ProjectService {
             ProjectMemberVO projectMemberVO = new ProjectMemberVO();
             projectMemberVO.setProjectIdx(projectVO.getIdx());
             projectMemberVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Manager.getCode());
+            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Owner.getCode());
             projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
 
             return CustomResponse.builder()
@@ -564,7 +574,7 @@ public class ProjectService {
 
         var d = draftRepo.get(dc.getSessionId());
 
-        if (d == null || !"OPEN".equals(d.getStatus())) throw new CustomException(ErrorCode.COMMON_EMPTY);
+        if (d == null || !"OPEN".equals(d.getStatus())) throw new CustomException(ErrorCode.PROJECT_DRAFT_ALREADY_COMMITED);
         if (d.getProjectDoc() == null || d.getExcelMeta() == null)
             throw new CustomException(PROJECT_EMPTY_DATA);
 
@@ -618,7 +628,7 @@ public class ProjectService {
             ProjectMemberVO projectMemberVO = new ProjectMemberVO();
             projectMemberVO.setProjectIdx(pvo.getIdx());
             projectMemberVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Manager.getCode());
+            projectMemberVO.setTypeCd(EnumCode.ProjectMember.TypeCd.Owner.getCode());
             projectMemberMapper.insertByProjectMemberVO(projectMemberVO);
         } else {
             // 수정: 권한 체크만 하고 본 Project 도큐 덮어쓰기
@@ -677,6 +687,7 @@ public class ProjectService {
         dc.require();
 
         ProjectDraft d = draftRepo.get(dc.getSessionId()); // 존재 여부 체크용
+        if (d == null || !"OPEN".equals(d.getStatus())) throw new CustomException(ErrorCode.PROJECT_DRAFT_ALREADY_COMMITED);
 
         return CustomResponse.builder()
                 .data(projectComponent.createResponseProject(null, d))
@@ -692,10 +703,12 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
-        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+        ProjectMemberVO projectMember = projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+        ResponseProjectDTO.Project response = projectComponent.createResponseProject(projectIdx);
+        response.setProjectMemberTypeCd(projectMember.getTypeCd());
 
         return CustomResponse.builder()
-                .data(projectComponent.createResponseProject(projectIdx))
+                .data(response)
                 .build();
     }
 
@@ -720,9 +733,11 @@ public class ProjectService {
 
         for(ResponseProjectDTO.ProjectListItem projectListItem : response){
             // 프로젝트 구성원 조회
-            List<MemberVO> projectMemberList = memberMapper.selectByProjectIdx(projectListItem.getIdx());
-            List<ResponseMemberDTO.Member> members = modelMapper.map(projectMemberList, new TypeToken<List<ResponseMemberDTO.Member>>(){}.getType());
-            projectListItem.setMembers(members);
+//            List<PartnershipMemberVO> projectMemberList = partnershipMemberMapper.selectByProjectIdx(projectListItem.getIdx());
+//            List<ResponsePartnershipDTO.PartnershipMember> members = projectMemberList.stream()
+//                    .map(vo -> modelMapper.map(vo, ResponsePartnershipDTO.PartnershipMember.class))
+//                    .collect(Collectors.toList());
+//            projectListItem.setMembers(members);
         }
 
         return CustomResponse.builder()
@@ -1411,5 +1426,161 @@ public class ProjectService {
         if (req.getImageUrl() != null)              u.set("imageUrl", req.getImageUrl());
 
         return u;
+    }
+
+    /**
+     * 프로젝트 멤버 목록 조회
+     * @param memberVO
+     * @param projectIdx
+     * @return
+     */
+    public List<ResponseProjectDTO.ProjectMember> getProjectMemberList(MemberVO memberVO, Integer projectIdx) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
+        // 프로젝트 구성원 여부 체크
+        projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
+
+        List<ResponseProjectDTO.ProjectMember> result = new ArrayList<>();
+        List<ProjectMemberViewVO> memberViewList = projectMemberViewMapper.selectAllByProjectIdx(projectIdx);
+        for (ProjectMemberViewVO pmv : memberViewList) {
+            ResponseProjectDTO.ProjectMember member = modelMapper.map(pmv, ResponseProjectDTO.ProjectMember.class);
+            member.setStateCd(pmv.getStateCd());
+            member.setTypeCd(pmv.getTypeCd());
+            result.add(member);
+        }
+
+        return result;
+    }
+
+    /**
+     * 프로젝트 구성원 추가 대상 회원 조회
+     * @param memberVO
+     * @param projectIdx
+     * @param query
+     * @return
+     * @throws CustomException
+     */
+    public List<ResponseProjectDTO.PartnershipMember> searchProjectMember(MemberVO memberVO, Integer projectIdx, String query) throws CustomException {
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
+        // 프로젝트 정보 조회
+        ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+
+        // 파트너쉽 회원 목록 조회
+        List<PartnershipMemberViewVO> partnershipMemberList = partnershipMemberViewMapper.selectAllByPartnershipIdxAndSearchString(projectVO.getPartnershipIdx(), query);
+        // 프로젝트 멤버 목록 조회
+        List<ProjectMemberViewVO> projectMemberList = projectMemberViewMapper.selectAllByProjectIdx(projectIdx);
+
+        List<ResponseProjectDTO.PartnershipMember> result = new ArrayList<>();
+        for (PartnershipMemberViewVO pmv : partnershipMemberList) {
+            ResponseProjectDTO.PartnershipMember member = modelMapper.map(pmv, ResponseProjectDTO.PartnershipMember.class);
+
+            // 프로젝트 멤버 여부 확인
+            boolean isProjectMember = false;
+            for (ProjectMemberViewVO prv : projectMemberList) {
+                if (pmv.getPartnershipMemberIdx().equals(prv.getPartnershipMemberIdx())) {
+                    isProjectMember = true;
+                    break;
+                }
+            }
+
+            member.setStateCd(pmv.getStateCd());
+            member.setAdded(isProjectMember);
+            result.add(member);
+        }
+        return result;
+    }
+
+    /**
+     * 프로젝트 멤버 추가
+     * @param memberVO
+     * @param addProjectMember
+     * @return
+     */
+    public CustomResponse<?> updateProjectMember(MemberVO memberVO, RequestProjectDTO.ProjectMemberUpdate addProjectMember) throws CustomException {
+        // 프로젝트 정보 조회
+        ProjectVO project = projectMapper.selectByIdx(addProjectMember.getProjectIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
+        if (project.getDeleteDate() != null) {
+            throw new CustomException(ErrorCode.PROJECT_DELETED);
+        }
+        // 파트너쉽 회원 여부 체크
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, project.getIdx());
+
+        // 프로젝트 오너 여부 체크
+        ProjectMemberVO ownerMemberVO = projectMemberMapper.selectByProjectIdxAndPartnershipMemberIdx(project.getIdx(), partnershipMemberVO.getIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_INVALID_MEMBER));
+        if (!ownerMemberVO.getTypeCd().equals(EnumCode.ProjectMember.TypeCd.Owner.getCode())) {
+            throw new CustomException(ErrorCode.PROJECT_MEMBER_INVALID_AUTH);
+        }
+
+        int deleted = 0, updated = 0, created = 0;
+
+        // 5) 삭제 처리
+        if (addProjectMember.getDeleteProjectMemberIdxList() != null && !addProjectMember.getDeleteProjectMemberIdxList().isEmpty()) {
+            // (옵션) 자신(실행자)을 삭제하려는 경우 정책적으로 금지하고 싶으면 여기서 차단
+            if (addProjectMember.getDeleteProjectMemberIdxList().contains(ownerMemberVO.getIdx())) {
+                throw new CustomException(ErrorCode.COMMON_INVALID);
+            }
+            projectMemberMapper.softDeleteByProjectIdxAndProjectMemberIdxList(project.getIdx(), addProjectMember.getDeleteProjectMemberIdxList());
+        }
+
+        // 6) 타입 화이트리스트
+        Set<String> allowed = Set.of(
+                EnumCode.ProjectMember.TypeCd.Owner.getCode(),
+                EnumCode.ProjectMember.TypeCd.Viewer.getCode(),
+                EnumCode.ProjectMember.TypeCd.Editor.getCode()
+        );
+
+        // 7) upsert 처리
+        if (addProjectMember.getProjectMemberList() != null && !addProjectMember.getProjectMemberList().isEmpty()) {
+            // payload 내 partnershipMemberIdx 중복 방지
+            Set<Integer> seen = new HashSet<>();
+            for (RequestProjectDTO.ProjectMember pm : addProjectMember.getProjectMemberList()) {
+                if (pm.getProjectMemberIdx() != null) {
+                    // UPDATE
+                    ProjectMemberVO cur = projectMemberMapper.selectByIdx(pm.getProjectMemberIdx())
+                            .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_INVALID_MEMBER));
+                    if (!Objects.equals(cur.getProjectIdx(), project.getIdx())) throw new CustomException(ErrorCode.PROJECT_INVALID_MEMBER);
+
+                    projectMemberMapper.updateTypeByIdx(cur.getIdx(), pm.getTypeCd());
+                    updated++;
+                } else {
+                    // INSERT/UNDELETE
+                    ProjectMemberVO active = projectMemberMapper.selectByProjectIdxAndPartnershipMemberIdx(project.getIdx(), pm.getPartnershipMemberIdx())
+                            .orElse(null);
+                    if (active != null) {
+                        // 이미 활성 → type만 갱신
+                        projectMemberMapper.updateTypeByIdx(active.getIdx(), pm.getTypeCd());
+                        updated++;
+                        continue;
+                    }
+
+                    boolean hasSoftDeleted = projectMemberMapper.existsSoftDeleted(project.getIdx(), pm.getPartnershipMemberIdx());
+                    if (hasSoftDeleted) {
+                        // 복구 + 타입 반영
+                        projectMemberMapper.undeleteByProjectAndPartnership(project.getIdx(), pm.getPartnershipMemberIdx(), pm.getTypeCd());
+                        updated++;
+                    } else {
+                        // 신규 활성 인서트
+                        ProjectMemberVO newPM = new ProjectMemberVO();
+                        newPM.setProjectIdx(project.getIdx());
+                        newPM.setPartnershipMemberIdx(pm.getPartnershipMemberIdx());
+                        if (!allowed.contains(pm.getTypeCd())) {
+                            throw new CustomException(ErrorCode.COMMON_INVALID);
+                        }
+                        newPM.setTypeCd(pm.getTypeCd());
+                        projectMemberMapper.insertByProjectMemberVO(newPM);
+                        created++;
+                    }
+                }
+            }
+        }
+
+        return CustomResponse.builder()
+                .data(Map.of("deleted", deleted, "updated", updated, "created", created))
+                .message("프로젝트 멤버 구성이 업데이트되었습니다.")
+                .build();
     }
 }

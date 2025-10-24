@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberProductGrantMapper">
+
+    <insert id="insertByPartnershipMemberProductGrantVO" parameterType="PartnershipMemberProductGrantVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO partnership_member_product_grant (
+            partnership_member_idx,
+            product_code,
+            permission_code,
+            update_date,
+            create_date
+        ) VALUES (
+            #{partnershipMemberIdx},
+            #{productCode},
+            #{permissionCode},
+            now(),
+            now()
+        )
+    </insert>
+
+    <select id="selectByPartnershipMemberIdx" resultType="PartnershipMemberProductGrantVO">
+        SELECT
+            idx,
+            partnership_member_idx,
+            product_code,
+            permission_code,
+            update_date,
+            create_date
+        FROM partnership_member_product_grant
+        WHERE partnership_member_idx = #{partnershipMemberIdx}
+    </select>
+
+</mapper>

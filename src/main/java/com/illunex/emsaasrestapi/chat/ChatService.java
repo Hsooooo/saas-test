@@ -48,6 +48,7 @@ public class ChatService {
     private final ChatNetworkMapper chatNetworkMapper;
     private final ChatNodeMapper chatNodeMapper;
     private final ChatLinkMapper chatLinkMapper;
+    private final ChatMcpMapper chatMcpMapper;
     private final ObjectMapper om;
     @Value("${ai.url}") String aiGptBase;
     private final WebClient webClient;
@@ -230,6 +231,12 @@ public class ChatService {
                     })
                     .toList();
 
+            List<ChatMcpVO> chatMcpVOs = chatMcpMapper.selectByChatHistoryIdx(h.getIdx());
+
+            List<String> mcpNames = chatMcpVOs.stream()
+                    .map(ChatMcpVO::getName)
+                    .toList();
+
             return ResponseChatDTO.History.builder()
                     .idx(h.getIdx())
                     .chatRoomIdx(h.getChatRoomIdx())
@@ -242,6 +249,7 @@ public class ChatService {
                     .createDate(h.getCreateDate())
                     .updateDate(h.getUpdateDate())
                     .toolResults(toolResults)
+                    .chatMcpNames(mcpNames)
                     .chatFiles(chatFiles) // ← 누락 보완
                     .chatNetworks(chatNetworks)
                     .build();
@@ -302,6 +310,14 @@ public class ChatService {
         }
 
         return insertedIds;
+    }
+
+    public Long insertChatMCP(JsonNode mcpNode) {
+        ChatToolResultVO vo = new ChatToolResultVO();
+        vo.setToolType(EnumCode.ChatToolResult.ToolType.MCP.getCode());
+        vo.setTitle(mcpNode.get("tool").asText());
+        chatToolResultMapper.insertByChatToolResultVO(vo);
+        return vo.getIdx();
     }
 
     int saveHistory(int chatRoomIdx, String senderCode, String categoryCode, String message) {
@@ -432,5 +448,17 @@ public class ChatService {
         com.fasterxml.jackson.databind.JsonNode resultsNode = om.valueToTree(resultsObj);
 
         return om.convertValue(resultsObj, RequestProjectDTO.Project.class);
+    }
+
+    public CustomResponse<?> deleteChatRoom(MemberVO memberVO, Integer chatRoomIdx) {
+        ChatRoomVO room = chatRoomMapper.selectByIdx(chatRoomIdx)
+                .orElseThrow(() -> new IllegalArgumentException("Chat room not found"));
+        PartnershipMemberVO pm = partnershipMemberMapper.selectByIdx(room.getPartnershipMemberIdx())
+                .orElseThrow(() -> new IllegalArgumentException("Partnership member not found"));
+        if (!memberVO.getIdx().equals(pm.getMemberIdx())) {
+            throw new IllegalArgumentException("Unauthorized");
+        }
+        chatRoomMapper.softDeleteByIdx(chatRoomIdx);
+        return CustomResponse.builder().build();
     }
 }

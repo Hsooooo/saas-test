@@ -25,6 +25,7 @@ public enum ErrorCode {
     COMMON_EMAIL_CERTIFICATE_EXPIRE(107, "인증이 만료 되었습니다."),
     COMMON_EMAIL_CERTIFICATE_INVALID(108, "인증이 유효 하지 않습니다."),
     COMMON_ALREADY_EMAIL_CERTIFICATE(109, "이미 인증이 완료된 계정입니다."),
+    COMMON_INVITE_LINK_EXPIRE(110, "초대 링크가 만료되었습니다."),
 
     /**
      * 회원
@@ -48,6 +49,10 @@ public enum ErrorCode {
     PARTNERSHIP_DOMAIN_DUPLICATE(401, "중복되는 도메인입니다."),
     PARTNERSHIP_INVALID_MEMBER(402, "유효한 파트너쉽 회원이 아닙니다."),
     PARTNERSHIP_MEMBER_DUPLICATE_EMAIL(403, "동일한 이메일로 초대된 회원이 있습니다."),
+    PARTNERSHIP_MEMBER_ALREADY_JOINED(404, "이미 가입이 완료된 계정입니다."),
+    PARTNERSHIP_MEMBER_TRANSFER_REQUIRED(405, "이전 대상 파트너쉽 회원 정보가 없습니다."),
+    PARTNERSHIP_MEMBER_TRANSFER_INVALID(406, "이전 대상 파트너쉽 회원 정보가 유효하지 않습니다."),
+    PARTNERSHIP_MEMBER_INVALID_STATE_CHANGE(407, "파트너쉽 회원 상태 변경이 불가능합니다."),
 
     /**
      * 프로젝트
@@ -60,6 +65,11 @@ public enum ErrorCode {
     PROJECT_EMPTY_DATA(505, "저장된 데이터가 없습니다."),
     PROJECT_CONTENT_EMPTY_DATA(505, "저장된 설정 데이터가 없습니다."),
     PROJECT_INVALID_MEMBER(506, "유효한 프로젝트 구성원이 아닙니다."),
+    PROJECT_DRAFT_ALREADY_COMMITED(507, "이미 커밋된 임시저장본입니다."),
+    PROJECT_MEMBER_INVALID_AUTH(508, "프로젝트 구성원 권한이 없습니다."),
+    PROJECT_MEMBER_OWNER_NEED(509, "소유자는 한 명 이상 존재해야 합니다."),
+    PROJECT_INVALID_TYPE_CD(510, "올바르지 않은 권한 코드입니다."),
+    PROJECT_MEMBER_DUPLICATE(510, "중복되는 프로젝트 구성원이 존재합니다."),
 
     PROJECT_CATEGORY_INVALID_SORT_ORDER(550, "요청된 정렬 순서가 올바르지 않습니다."),
     ;

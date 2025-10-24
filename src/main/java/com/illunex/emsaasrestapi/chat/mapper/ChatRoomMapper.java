@@ -17,4 +17,6 @@ public interface ChatRoomMapper {
     List<ChatRoomVO> selectByPartnershipMemberIdxAndPageable(Integer partnershipMemberIdx, Pageable pageable);
 
     Optional<ChatRoomVO> selectByPartnershipMemberIdxAndChatRoomIdx(Integer partnershipMemberIdx, Integer chatRoomIdx);
+
+    void softDeleteByIdx(Integer chatRoomIdx);
 }

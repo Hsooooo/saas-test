@@ -18,7 +18,11 @@ public class RequestCertDTO {
     @Getter
     @NoArgsConstructor
     public static class InviteSignup {
+        // 이메일 초대링크 url or 링크초대 url
         private String certData;
         private String password;
+        private String name;
+        // 링크로 초대한 경우 필수
+        private String email;
     }
 }

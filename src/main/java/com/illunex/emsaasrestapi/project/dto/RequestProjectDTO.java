@@ -1,7 +1,6 @@
 package com.illunex.emsaasrestapi.project.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.project.ProjectComponent;
 import lombok.Getter;
 import lombok.Setter;
@@ -174,5 +173,24 @@ public class RequestProjectDTO {
         private String type;
         private String excelSheetName;
         private String excelCellName;
+    }
+
+    @Getter
+    @Setter
+    public static class ProjectMemberUpdate {
+        private Integer projectIdx;
+        private List<ProjectMember> projectMemberList;
+        private List<Integer> deleteProjectMemberIdxList;
+    }
+
+    @Getter
+    @Setter
+    public static class ProjectMember {
+        // 프로젝트 구성원 번호
+        private Integer projectMemberIdx;
+        // 파트너쉽 회원 번호
+        private Integer partnershipMemberIdx;
+        // 프로젝트 권한
+        private String typeCd;
     }
 }

@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.project.dto;
 
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.dto.ResponseMemberDTO;
+import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.project.document.project.ProjectNodeCount;
 import lombok.Getter;
 import lombok.Setter;
@@ -41,6 +42,8 @@ public class ResponseProjectDTO {
         private List<ProjectNodeContent> projectNodeContentList;    // 속성정보
         private List<ProjectFile> projectFileList;                  // 업로드 파일
         private Integer totalDataCount;                           // 엑셀 총 데이터 수
+        private String projectMemberTypeCd;                              // 프로젝트 권한 코드
+        private String projectMemberTypeCdDesc;                       // 프로젝트 권한 코드 설명
 
         private Excel projectExcel;
         private ZonedDateTime updateDate;
@@ -50,6 +53,11 @@ public class ResponseProjectDTO {
         public void setStatusCd(String statusCd) {
             this.statusCd = statusCd;
             this.statusCdDesc = EnumCode.getCodeDesc(statusCd);
+        }
+
+        public void setProjectMemberTypeCd(String projectMemberTypeCd) {
+            this.projectMemberTypeCd = projectMemberTypeCd;
+            this.projectMemberTypeCdDesc = EnumCode.getCodeDesc(projectMemberTypeCd);
         }
     }
 
@@ -258,7 +266,7 @@ public class ResponseProjectDTO {
         private Integer edgeCnt;
         private ZonedDateTime updateDate;
         private ZonedDateTime createDate;
-        private List<ResponseMemberDTO.Member> members;  // 프로젝트 구성원
+        private List<ResponsePartnershipDTO.PartnershipMember> members;  // 프로젝트 구성원
     }
 
     @Getter
@@ -298,6 +306,49 @@ public class ResponseProjectDTO {
     public static class ExcelValueDistinctItem {
         private String value;
         private Integer count;
+    }
+
+    @Getter
+    @Setter
+    public static class ProjectMember {
+        private Integer projectMemberIdx;
+        private Integer partnershipMemberIdx;
+        private String email;
+        private String name;
+        private String profileImageUrl;
+        private String profileImagePath;
+        private String typeCd;
+        private String typeCdDesc;
+        private String stateCd;
+        private String stateCdDesc;
+
+        public void setTypeCd(String typeCd) {
+            this.typeCd = typeCd;
+            this.typeCdDesc = EnumCode.getCodeDesc(typeCd);
+        }
+
+        public void setStateCd(String stateCd) {
+            this.stateCd = stateCd;
+            this.stateCdDesc = EnumCode.getCodeDesc(stateCd);
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class PartnershipMember {
+        private Integer partnershipMemberIdx;
+        private String email;
+        private String name;
+        private String profileImageUrl;
+        private String profileImagePath;
+        private String stateCd;
+        private String stateCdDesc;
+        private boolean isAdded;
+
+        public void setStateCd(String stateCd) {
+            this.stateCd = stateCd;
+            this.stateCdDesc = EnumCode.getCodeDesc(stateCd);
+        }
     }
 
 }

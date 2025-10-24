@@ -5,6 +5,7 @@ import com.illunex.emsaasrestapi.common.validation.ValidEnumCode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -12,8 +13,9 @@ public class RequestPartnershipDTO {
 
     @Getter
     public static class InviteMember {
-        @Valid
-        List<InviteMemberInfo> inviteMembers;
+        @NotNull(message = "이메일은 필수 입력값입니다.")
+        private String emails;
+        private InviteInfo inviteInfo;
     }
 
     @Getter
@@ -21,16 +23,6 @@ public class RequestPartnershipDTO {
         private String name;
         private String position;
         private String phone;
-    }
-
-    @Valid
-    @Getter
-    public static class InviteMemberInfo {
-        @NotNull
-        private String email;
-        @ValidEnumCode(enumClass = EnumCode.PartnershipMember.ManagerCd.class, message = "유효하지 않은 권한 코드입니다.")
-        private String auth;
-        private List<InviteMemberProduct> products;
     }
 
     @Getter
@@ -52,10 +44,33 @@ public class RequestPartnershipDTO {
     }
 
     @Getter
-    public static class InviteMemberProduct {
-        @ValidEnumCode(enumClass = EnumCode.Product.ProductCd.class, message = "유효하지 않은 권한 코드입니다.")
-        private String productCode;
-        @ValidEnumCode(enumClass = EnumCode.Product.ProductAuthCd.class, message = "유효하지 않은 권한 코드입니다.")
+    public static class ApproveInvite {
+        private String inviteToken;
+    }
+
+    @Getter
+    public static class InviteInfo {
+        @NotNull
+        private String inviteToken;
+        @ValidEnumCode(enumClass = EnumCode.PartnershipMember.ManagerCd.class, message = "유효하지 않은 권한 코드입니다.")
         private String auth;
+        private List<String> products;
+    }
+
+    @Setter
+    @Getter
+    public static class SearchMember {
+        private Integer partnershipIdx;
+        private String searchString;
+    }
+
+    @Getter
+    @Setter
+    public static class PatchPartnershipMember {
+        private Integer partnershipMemberIdx;
+        private Integer transferPartnershipMemberIdx; // 권한 이전 대상 멤버 idx
+        private String managerCd;
+        private String stateCd;
+        private String password;
     }
 }

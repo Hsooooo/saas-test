@@ -1,4 +1,4 @@
-package com.illunex.emsaasrestapi.chat.vo;
+package com.illunex.emsaasrestapi.partnership.vo;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -8,12 +8,14 @@ import java.time.ZonedDateTime;
 
 @Getter
 @Setter
-@Alias("ChatRoomVO")
-public class ChatRoomVO {
+@Alias("PartnershipMemberProductGrantVO")
+public class PartnershipMemberProductGrantVO {
     private Integer idx;
     private Integer partnershipMemberIdx;
-    private String title;
-    private ZonedDateTime deleteDate;
+    private String productCode;
+    private String permissionCode;
     private ZonedDateTime createDate;
     private ZonedDateTime updateDate;
 }
+
+

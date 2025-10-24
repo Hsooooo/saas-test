@@ -1,9 +1,12 @@
 package com.illunex.emsaasrestapi.partnership.dto;
 
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import jakarta.validation.Valid;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 public class ResponsePartnershipDTO {
@@ -52,9 +55,16 @@ public class ResponsePartnershipDTO {
     public static class MyInfoPartnershipMember {
         private Integer idx;
         private String phone;
+        private String managerCd;
+        private String managerCdDesc;
         private PartnershipPositionInfo positionInfo;
         private String profileImageUrl;
         private String profileImagePath;
+
+        public void setManagerCd(String managerCd) {
+            this.managerCd = managerCd;
+            this.managerCdDesc = EnumCode.getCodeDesc(managerCd);
+        }
     }
 
     @Builder
@@ -74,4 +84,35 @@ public class ResponsePartnershipDTO {
         private String imagePath;
         private String domain;
     }
+
+    @Getter
+    @Setter
+    public static class PartnershipMember {
+        private Integer partnershipMemberIdx;
+        private String name;
+        private String profileImageUrl;
+        private String profileImagePath;
+        private String email;
+        private String stateCd;
+        private String stateCdDesc;
+        private String managerCd;
+        private String managerCdDesc;
+        private String teamName;
+        private Integer partnershipTeamIdx;
+        private String inviteMemberName;
+        private Integer invitedByPartnershipMemberIdx;
+        private ZonedDateTime invitedDate;
+        private ZonedDateTime joinedDate;
+
+        public void setStateCd(String stateCd) {
+            this.stateCd = stateCd;
+            this.stateCdDesc = EnumCode.getCodeDesc(stateCd);
+        }
+
+        public void setManagerCd(String managerCd) {
+            this.managerCd = managerCd;
+            this.managerCdDesc = EnumCode.getCodeDesc(managerCd);
+        }
+    }
 }
+
