@@ -36,14 +36,14 @@ public class MongoDBProdConfig {
                 .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
                 .retryReads(true)
                 .applyToSocketSettings(b -> {
-                    b.connectTimeout((int) Duration.ofSeconds(10).toMillis(), TimeUnit.MILLISECONDS);
+                    b.connectTimeout((int) Duration.ofSeconds(30).toMillis(), TimeUnit.MILLISECONDS);
                     b.readTimeout((int) Duration.ofSeconds(180).toMillis(), TimeUnit.MILLISECONDS); // = socketTimeoutMS
                 })
                 .applyToConnectionPoolSettings(b -> {
                     b.maxSize(100);
                     b.minSize(10);
                     b.maxConnecting(5);
-                    b.maxWaitTime((int) Duration.ofSeconds(5).toMillis(), TimeUnit.MILLISECONDS);
+                    b.maxWaitTime((int) Duration.ofSeconds(120).toMillis(), TimeUnit.MILLISECONDS);
                 })
                 .build();
         return MongoClients.create(settings);
