@@ -133,6 +133,7 @@ public class AiProxyController {
 
         // 툴 결과 즉시 upsert된 row들의 id 모음 → 완료 시 history_idx로 연결
         final List<Long> toolResultIds = new CopyOnWriteArrayList<>();
+        final Set<ObjectNode> toolResults = new HashSet<>();
         final Set<String> mcpResultSet = new HashSet<>();
 
         // 업스트림 구독 (SSE 텍스트 조각을 그대로 흘려보내며, 동시에 파싱)
@@ -183,8 +184,10 @@ public class AiProxyController {
                                 completed = (ObjectNode) (n instanceof ObjectNode ? n : om.valueToTree(n));
 
                             normalizeForPersist(completed, om); // 결과 슬림화/타임스탬프
-                            List<Long> ids = toolSvc.upsertToolPayload(completed.toString());
-                            if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
+//                            List<Long> ids = toolSvc.upsertToolPayload(completed.toString());
+
+                            toolResults.clear();
+                            toolResults.add(completed);
                         }
                     }
                     if (isMcpResult(n)) {
@@ -251,8 +254,8 @@ public class AiProxyController {
             );
 
             // 2) tool_result ↔ history 링크
-            if (!toolResultIds.isEmpty()) {
-                try { toolSvc.linkResultsToHistory(toolResultIds, historyIdx); }
+            if (!toolResults.isEmpty()) {
+                try { chatService.insertChatToolByHistoryIdx(toolResults.stream().findFirst().get().toString(), historyIdx); }
                 catch (Exception e) { log.error("linkResultsToHistory failed", e); }
             }
 

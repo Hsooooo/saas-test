@@ -312,6 +312,26 @@ public class ChatService {
         return insertedIds;
     }
 
+    public void insertChatToolByHistoryIdx(String payloadJson, int historyIdx) throws JsonProcessingException {
+        // Jackson으로 파싱
+        JsonNode root = om.readTree(payloadJson);
+
+        JsonNode resultsNode = root.path("results");
+
+        if (resultsNode.isArray()) {
+            for (JsonNode item : resultsNode) {
+                String title = item.path("title").asText("");
+                String url = item.path("url").asText("");
+                ChatToolResultVO vo = new ChatToolResultVO();
+                vo.setChatHistoryIdx(historyIdx);
+                vo.setToolType(EnumCode.ChatToolResult.ToolType.QUERY_RESULT.getCode());
+                vo.setTitle(title);
+                vo.setUrl(url);
+                chatToolResultMapper.insertByChatToolResultVO(vo);
+            }
+        }
+    }
+
     public Long insertChatMCP(JsonNode mcpNode) {
         ChatToolResultVO vo = new ChatToolResultVO();
         vo.setToolType(EnumCode.ChatToolResult.ToolType.MCP.getCode());
