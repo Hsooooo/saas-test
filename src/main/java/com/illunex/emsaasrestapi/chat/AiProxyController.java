@@ -147,7 +147,7 @@ public class AiProxyController {
                 throw new RuntimeException(ex);
             }
             // 그대로 클라이언트에게 흘려보냄
-            try { emitter.send(SseEmitter.event().data(chunk)); } catch (Exception ignore) {}
+            try { emitter.send(chunk); } catch (Exception ignore) {}
         }, e -> {
             try { emitter.send("event: error\ndata: " + (e.getMessage() == null ? "" : e.getMessage()) + "\n\n"); } catch (Exception ignore) {}
             emitter.complete();
