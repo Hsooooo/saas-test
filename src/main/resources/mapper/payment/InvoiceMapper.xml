@@ -98,4 +98,12 @@ public class InvoiceVO {
         where idx = #{idx}
     </select>
 
+    <select id="selectLastIssuedByLicensePartnershipIdx" resultType="InvoiceVO">
+        SELECT *
+        FROM invoice
+        WHERE license_partnership_idx = #{licensePartnershipIdx}
+        ORDER BY issue_date DESC
+        LIMIT 1
+    </select>
+
 </mapper>

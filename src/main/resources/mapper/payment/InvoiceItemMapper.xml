@@ -45,4 +45,22 @@ public class InvoiceItemVO {
         )
     </insert>
 
+    <select id="selectRecurringByInvoiceIdx" resultType="InvoiceItemVO">
+        SELECT
+            idx,
+            invoice_idx,
+            item_type_cd,
+            description,
+            quantity,
+            unit_price,
+            days,
+            amount,
+            related_event_idx,
+            meta,
+            create_date
+          FROM invoice_item
+         WHERE invoice_idx = #{invoiceIdx}
+           AND item_type_cd = 'ITC0001'
+    </select>
+
 </mapper>

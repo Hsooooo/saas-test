@@ -72,6 +72,11 @@ public enum ErrorCode {
     PROJECT_MEMBER_DUPLICATE(510, "중복되는 프로젝트 구성원이 존재합니다."),
 
     PROJECT_CATEGORY_INVALID_SORT_ORDER(550, "요청된 정렬 순서가 올바르지 않습니다."),
+
+    /**
+     * 라이센스
+     */
+    LICENSE_PARTNERSHIP_EMPTY(600, "구독 정보가 존재하지 않습니다"),
     ;
 
     private final int status;

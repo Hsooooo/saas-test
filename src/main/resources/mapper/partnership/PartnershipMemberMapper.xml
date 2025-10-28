@@ -155,4 +155,11 @@
         WHERE idx = #{idx}
     </update>
 
+    <select id="countByPartnershipIdxAndNotStateCd" resultType="int">
+        SELECT COUNT(*)
+        FROM partnership_member
+        WHERE partnership_idx = #{partnershipIdx}
+          AND state_cd != #{code}
+    </select>
+
 </mapper>

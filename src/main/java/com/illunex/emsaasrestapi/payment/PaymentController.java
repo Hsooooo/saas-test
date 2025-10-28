@@ -1,6 +1,7 @@
 package com.illunex.emsaasrestapi.payment;
 
 import com.illunex.emsaasrestapi.common.CurrentMember;
+import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.payment.dto.RequestPaymentDTO;
 import lombok.RequiredArgsConstructor;
@@ -25,5 +26,20 @@ public class PaymentController {
                                         @CurrentMember MemberVO memberVO) throws Exception {
         paymentService.registerPaymentMethodToss(request, memberVO);
         return "Payment method registered!";
+    }
+
+    @PostMapping("/subscription/change-event")
+    public String subscriptionChangeEvent(@RequestBody RequestPaymentDTO.SubscriptionChangeEvent request,
+                                          @CurrentMember MemberVO memberVO) throws Exception {
+//        paymentService.handleSubscriptionChangeEvent(request, memberVO);
+        return "Subscription change event handled!";
+    }
+
+    @PostMapping("/subscription/change-event/calc-proration")
+    public CustomResponse<?> calculateProration(@RequestBody RequestPaymentDTO.SubscriptionInfo subscriptionInfo,
+                                                @CurrentMember MemberVO memberVO) throws Exception {
+        return CustomResponse.builder()
+                .data(paymentService.calculateProrationAmount(subscriptionInfo, memberVO))
+                .build();
     }
 }

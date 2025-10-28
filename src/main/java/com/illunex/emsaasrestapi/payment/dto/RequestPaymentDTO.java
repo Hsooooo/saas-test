@@ -16,4 +16,18 @@ public class RequestPaymentDTO {
         private String expMonth;
     }
 
+    @Getter
+    public static class SubscriptionChangeEvent {
+        private Integer partnershipIdx;
+        private Integer licenseIdx;
+    }
+
+    @Getter
+    public static class SubscriptionInfo {
+        private Integer partnershipIdx;
+        private Integer licenseIdx;
+        private String action;
+        private String effective;
+
+    }
 }

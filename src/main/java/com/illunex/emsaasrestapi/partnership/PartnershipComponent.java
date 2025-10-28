@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.partnership;
 
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
@@ -11,6 +12,8 @@ import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -45,5 +48,14 @@ public class PartnershipComponent {
                 .orElseThrow(() -> new CustomException(ErrorCode.PROJECT_NOT_FOUND));
 
         return checkPartnershipMember(memberVO, projectVO.getPartnershipIdx());
+    }
+
+    /**
+     * 파트너쉽 활성 회원 수 조회
+     * @param partnershipIdx
+     * @return
+     */
+    public Integer getPartnershipActiveMemberCount(Integer partnershipIdx) {
+        return partnershipMemberMapper.countByPartnershipIdxAndNotStateCd(partnershipIdx, EnumCode.PartnershipMember.StateCd.Delete.getCode());
     }
 }

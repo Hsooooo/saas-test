@@ -14,4 +14,6 @@ public interface InvoiceMapper {
     int recalcTotals(Integer invoiceIdx, BigDecimal vatRate);
     int markOpen(Integer invoiceIdx);
     Optional<InvoiceVO> selectByIdx(Integer idx);
+    Optional<InvoiceVO> selectLastIssuedByLicensePartnershipIdx(Integer licensePartnershipIdx);
+
 }

@@ -1,17 +1,23 @@
 package com.illunex.emsaasrestapi.payment;
 
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.ErrorCode;
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.license.mapper.LicenseMapper;
 import com.illunex.emsaasrestapi.license.mapper.LicensePartnershipMapper;
+import com.illunex.emsaasrestapi.license.vo.LicensePartnershipVO;
 import com.illunex.emsaasrestapi.license.vo.LicenseVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import com.illunex.emsaasrestapi.payment.dto.RequestPaymentDTO;
-import com.illunex.emsaasrestapi.payment.mapper.InvoiceMapper;
-import com.illunex.emsaasrestapi.payment.mapper.InvoicePaymentViewMapper;
-import com.illunex.emsaasrestapi.payment.mapper.PartnershipPaymentMethodMapper;
-import com.illunex.emsaasrestapi.payment.mapper.PaymentMandateMapper;
+import com.illunex.emsaasrestapi.payment.dto.ResponsePaymentDTO;
+import com.illunex.emsaasrestapi.payment.mapper.*;
+import com.illunex.emsaasrestapi.payment.util.ProrationEngine;
+import com.illunex.emsaasrestapi.payment.util.ProrationInput;
+import com.illunex.emsaasrestapi.payment.util.ProrationResult;
 import com.illunex.emsaasrestapi.payment.vo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,8 +25,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.Map;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static java.math.RoundingMode.HALF_UP;
+import static java.time.temporal.ChronoUnit.DAYS;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +47,10 @@ public class PaymentService {
     private final PartnershipPaymentMethodMapper partnershipPaymentMethodMapper;
     private final TossPaymentService tossPaymentService;
     private final PaymentMandateMapper paymentMandateMapper;
+    private final PartnershipMapper partnershipMapper;
+    private final SubscriptionChangeEventMapper subscriptionChangeEventMapper;
+    private final InvoiceItemMapper invoiceItemMapper;
+    private final ProrationEngine prorationEngine;
 //    private final PaymentProviderClient providerClient;
 
     /** 인보이스에 대해 기본 결제수단으로 즉시 결제 시도 */
@@ -302,4 +320,404 @@ public class PaymentService {
         // 5) IMMEDIATE -> PRORATION 인보이스 + 결제
 
     }
+
+//    public Long calculateProrationAmount(Integer partnershipIdx, RequestPaymentDTO.SubscriptionInfo req, MemberVO memberVO) throws CustomException {
+//        PartnershipVO partnershipVO = partnershipMapper.selectByIdx(req.getPartnershipIdx())
+//                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+//        partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
+//        LicenseVO licenseVO = licenseMapper.selectByIdx(req.getPartnershipIdx())
+//                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+//
+//        // 없으면 베이직 라이센스
+//        Optional<LicensePartnershipVO> lpOpt = licensePartnershipMapper.selectByPartnershipIdx(req.getPartnershipIdx());
+//
+//        // 신규 구독이라 일할계산 필요 없음
+//        if (!lpOpt.isPresent()) {
+//            return 0L;
+//        } else {
+//            LicensePartnershipVO lp = lpOpt.get();
+//            // 현재 LP 잠금 조회
+//            Map<String, Object> currentLp = licensePartnershipMapper.selectActiveByPartnershipForUpdate(partnershipIdx);
+//
+//            // basic -> paid 전환 혹은 신규 생성
+//            int chargeSeats = lp.getUserCount();
+//
+//            LocalDate today = LocalDate.now();
+//            int anchorDay = lp.getBillingDay();
+//
+//            LocalDate nextAnchor = nextAnchorAfter(today, anchorDay);
+//            LocalDate periodStart = nextAnchor;
+//            LocalDate periodEnd   = nextAnchor.plusMonths(1);
+//
+//            // IMMEDIATE -> PRORATION 인보이스 + 결제
+//            int denominator = periodStart.lengthOfMonth();
+//            int numerator = (int) DAYS.between(today, nextAnchor);
+//            BigDecimal proration = lp.getPricePerUser()
+//                    .multiply(BigDecimal.valueOf(chargeSeats))
+//                    .multiply(BigDecimal.valueOf(numerator))
+//                    .divide(BigDecimal.valueOf(denominator), HALF_UP);
+//
+//            return proration.longValue();
+//        }
+//
+//    }
+
+    @Transactional(readOnly = true)
+    public Object calculateProrationAmount(RequestPaymentDTO.SubscriptionInfo req, MemberVO memberVO) throws CustomException {
+        ProrationInput input = buildInputForPreview(req, memberVO); // 아래 별도 메서드
+        ProrationResult result = prorationEngine.calculate(input);
+
+        // 2) DTO 매핑(현재 preview 응답 형식)
+        return result;
+//        int partnershipIdx = req.getPartnershipIdx();
+//
+//        // 0) 검증
+//        var p = partnershipMapper.selectByIdx(partnershipIdx)
+//                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+//        partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
+//
+//        final String action = req.getAction(); // UPGRADE | DOWNGRADE | CANCEL
+//        final String effective = (req.getEffective() == null) ? "NOW" : req.getEffective();
+//        final boolean isUpgrade = "UPGRADE".equals(action);
+//        final boolean isUpgradeNow = isUpgrade && !"PERIOD_END".equals(effective);
+//
+//        final ZonedDateTime occurredAt = ZonedDateTime.now();
+//        final LocalDate today = occurredAt.toLocalDate();
+//
+//        LicenseVO toPlan = null;
+//        if (!"CANCEL".equals(action)) {
+//            toPlan = licenseMapper.selectByIdx(req.getLicenseIdx())
+//                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+//        }
+//
+//        // 1) 현재 구독(필수)
+//        var lpOpt = licensePartnershipMapper.selectByPartnershipIdx(partnershipIdx);
+//        if (lpOpt.isEmpty()) return buildFreeToPaidPreview(partnershipIdx, toPlan); // 무료→유료 시작
+//        var lp = lpOpt.get();
+//        if (!List.of(EnumCode.LicensePartnership.StateCd.ACTIVE.getCode(),
+//                EnumCode.LicensePartnership.StateCd.PAUSED.getCode()).contains(lp.getStateCd())) {
+//            return emptyNoChargePreview(partnershipIdx, lp, "구독 비활성 상태입니다.");
+//        }
+//
+//        // 2) 기간/분모/분자
+//        LocalDate start = lp.getPeriodStartDate();  // inclusive
+//        LocalDate endExcl = lp.getPeriodEndDate();  // exclusive
+//        int D = (int) DAYS.between(start, endExcl);
+//        if (D <= 0) return emptyNoChargePreview(partnershipIdx, lp, "유효한 청구 주기가 아닙니다.");
+//
+//        int dRemain = Math.max(0, (int) DAYS.between(today, endExcl));
+//        final LocalDate capEnd = isUpgradeNow ? today : endExcl; // 업그레이드 NOW면 업그레이드 일자까지 캡
+//
+//        // 3) 플랜/좌석 스냅샷
+//        var fromPlan = licenseMapper.selectByIdx(lp.getLicenseIdx())
+//                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+//
+//        // 현재 과금 기준 좌석(현시점)
+//        int currentActiveSeats = partnershipComponent.getPartnershipActiveMemberCount(partnershipIdx);
+//        int minSeats = lp.getCurrentMinUserCount();
+//        int chargeSeatsNow = Math.max(currentActiveSeats, minSeats);
+//
+//        var items = new ArrayList<ResponsePaymentDTO.PreviewItem>();
+//        BigDecimal subTotal = BigDecimal.ZERO;
+//        final BigDecimal Dbd = BigDecimal.valueOf(D);
+//        final Function<BigDecimal, Long> KRW = bd -> bd.setScale(0, RoundingMode.HALF_UP).longValueExact();
+//
+//        // 직전 인보이스(선불 좌석 수 확인)
+//        var lastInv = invoiceMapper.selectLastIssuedByLicensePartnershipIdx(lp.getIdx()).orElse(null);
+//        int baseSeatsPrepaid = resolvePrepaidSeatsFromLastRecurring(lastInv, lp); // 없으면 minSeats로 폴백
+//
+//        // PERIOD_END 분기: 정보만
+//        if (!isUpgradeNow) {
+//            return infoOnlyPreview(partnershipIdx, lp, fromPlan, toPlan, start, endExcl, D, chargeSeatsNow,
+//                    isUpgrade ? "업그레이드는 NOW 적용 시에만 즉시 정산됩니다. PERIOD_END는 다음 결제일부터 새 플랜이 적용됩니다."
+//                            : ("DOWNGRADE".equals(action)
+//                            ? "다운그레이드는 다음 결제일부터 적용됩니다. 남은기간 크레딧은 다음 청구서에서 상계됩니다."
+//                            : "해지는 다음 결제일에 종료됩니다."));
+//        }
+//
+//        // 4) 세그먼트 기반 미청구 + 업그레이드 계산
+//        // 4-1) 세그먼트 경계
+//        LocalDate baseFrom = (lastInv != null) ? lastInv.getIssueDate().toLocalDate() : start;
+//        if (baseFrom.isBefore(start)) baseFrom = start; // 안전
+//        if (!capEnd.isAfter(baseFrom)) {
+//            // 업그레이드가 직전 인보이스 이전이면 미청구 없음
+//            baseFrom = capEnd;
+//        }
+//
+//        // 이벤트 로드: baseFrom ~ capEnd 사이 좌석 변동/플랜변경
+//        List<SubscriptionChangeEventVO> evts = subscriptionChangeEventMapper.selectByLpAndOccurredBetween(lp.getIdx(), baseFrom, capEnd);
+//        // deltaByDate 집계(동일일자 다건 합산)
+//        Map<LocalDate, Integer> deltaByDate = evts.stream()//                .collect(Collectors.groupingBy(e -> e.getOccurredDate().toLocalDate(), TreeMap::new,
+//                        Collectors.summingInt(SubscriptionChangeEventVO::getQtyDelta)));
+//
+//        // 브레이크포인트
+//        TreeSet<LocalDate> bps = new TreeSet<>();
+//        bps.add(baseFrom);
+//        bps.add(capEnd);
+//        deltaByDate.keySet().forEach(bps::add);
+//
+//        // 러닝 좌석 (baseFrom에서 시작). 선불 좌석을 베이스로 시작
+//        int runningSeats = baseSeatsPrepaid;
+//        BigDecimal unbilledOldPlan = BigDecimal.ZERO;
+//        int newPlanRemainDays = Math.max(0, (int) DAYS.between(today, endExcl)); // 업그레이드 이후 잔여 총일수
+//
+//        LocalDate[] pts = bps.toArray(new LocalDate[0]);
+//        for (int i = 0; i < pts.length - 1; i++) {
+//            LocalDate segStart = pts[i];
+//            LocalDate segEndExcl = pts[i + 1];
+//            int days = (int) DAYS.between(segStart, segEndExcl);
+//            if (days <= 0) continue;
+//
+//            // 세그먼트 시작에 이벤트가 있으면 먼저 적용(당일 00:00 효력)
+//            Integer dlt = deltaByDate.get(segStart);
+//            if (dlt != null) runningSeats += dlt;
+//
+//            int effectiveSeats = Math.max(runningSeats, minSeats);
+//
+//            // 업그레이드 이전 세그먼트: 미청구(ADD분만)
+//            if (segEndExcl.isAfter(today)) {
+//                // 업그레이드 이후 구간은 여기서 처리하지 않음 (신 플랜 전액은 아래에서 일괄 처리)
+//                continue;
+//            }
+//
+//            int addAbovePrepaid = Math.max(0, effectiveSeats - baseSeatsPrepaid);
+//            if (addAbovePrepaid > 0) {
+//                BigDecimal amt = fromPlan.getPricePerUser()
+//                        .multiply(BigDecimal.valueOf(addAbovePrepaid))
+//                        .multiply(BigDecimal.valueOf(days))
+//                        .divide(Dbd, 0, RoundingMode.HALF_UP);
+//                unbilledOldPlan = unbilledOldPlan.add(amt);
+//                items.add(item("PRORATION", "좌석 변경 미청구분(구 플랜)",
+//                        addAbovePrepaid, fromPlan.getPricePerUser().longValue(), days, KRW.apply(amt),
+//                        null, Map.of("numerator", days, "denominator", D,
+//                                "from", segStart.toString(), "to", segEndExcl.toString(),
+//                                "planCd", fromPlan.getPlanCd())));
+//            }
+//        }
+//
+//        // 4-2) 업그레이드 NOW: 신 플랜 잔여기간 전액(현좌석) - 구 플랜 잔여기간 크레딧(선불 좌석)
+//        if (dRemain > 0 && toPlan != null) {
+//            BigDecimal newRemainAll = toPlan.getPricePerUser()
+//                    .multiply(BigDecimal.valueOf(chargeSeatsNow))
+//                    .multiply(BigDecimal.valueOf(dRemain))
+//                    .divide(Dbd, 0, RoundingMode.HALF_UP);
+//            items.add(item("PRORATION", "신 플랜 잔여기간(업그레이드 NOW)",
+//                    chargeSeatsNow, toPlan.getPricePerUser().longValue(), dRemain, KRW.apply(newRemainAll),
+//                    null, Map.of("numerator", dRemain, "denominator", D, "planCd", toPlan.getPlanCd())));
+//            subTotal = subTotal.add(newRemainAll);
+//
+//            BigDecimal oldRemainCredit = fromPlan.getPricePerUser()
+//                    .multiply(BigDecimal.valueOf(baseSeatsPrepaid))
+//                    .multiply(BigDecimal.valueOf(dRemain))
+//                    .divide(Dbd, 0, RoundingMode.HALF_UP)
+//                    .negate();
+//            if (baseSeatsPrepaid > 0) {
+//                items.add(item("CREDIT", "구 플랜 남은기간 크레딧(선불 좌석)",
+//                        baseSeatsPrepaid, fromPlan.getPricePerUser().longValue(), dRemain, KRW.apply(oldRemainCredit),
+//                        null, Map.of("numerator", dRemain, "denominator", D, "planCd", fromPlan.getPlanCd())));
+//                subTotal = subTotal.add(oldRemainCredit);
+//            }
+//        }
+//
+//        // 4-3) 구 플랜 미청구 합산 반영
+//        subTotal = subTotal.add(unbilledOldPlan);
+//
+//        // 5) 합계
+//        long subtotal = KRW.apply(subTotal);
+//        long tax = 0L;
+//        long total = subtotal + tax;
+//        long creditCarry = (total < 0) ? Math.abs(total) : 0L;
+//
+//        return ResponsePaymentDTO.PaymentPreview.builder()
+//                .partnershipIdx(partnershipIdx)
+//                .licensePartnershipIdx(lp.getIdx())
+//                .currentPlan(planSnap(fromPlan))
+//                .targetPlan(toPlan != null ? planSnap(toPlan) : null)
+//                .periodStart(start)
+//                .periodEnd(endExcl)
+//                .denominatorDays(D)
+//                .occurredAt(occurredAt.toString())
+//                .chargeSeats(chargeSeatsNow)
+//                .roundingRule("HALF_UP")
+//                .currency("KRW")
+//                .items(items)
+//                .subTotal(subtotal)
+//                .tax(tax)
+//                .total(total)
+//                .willChargeNow(isUpgradeNow && total != 0)
+//                .creditCarryOver(creditCarry)
+//                .notes(List.of())
+//                .build();
+    }
+
+
+    private ResponsePaymentDTO.PreviewPlan planSnap(LicenseVO plan) {
+        ResponsePaymentDTO.PreviewPlan snap = new ResponsePaymentDTO.PreviewPlan();
+        snap.setIdx(plan.getIdx());
+        snap.setPlanCd(plan.getPlanCd());
+        snap.setName(plan.getName());
+        snap.setPricePerUser(plan.getPricePerUser().intValue());
+        snap.setMinUserCount(plan.getMinUserCount());
+        snap.setDataTotalLimit(plan.getDataTotalLimit());
+        snap.setProjectCountLimit(plan.getProjectCountLimit());
+        return snap;
+    }
+
+    private ResponsePaymentDTO.PreviewItem item(String type, String desc, int qty, long unit, int days, long amount,
+                                                Long relatedId, Map<String,Object> meta) {
+        var it = new ResponsePaymentDTO.PreviewItem();
+        it.setItemType(type); it.setDescription(desc);
+        it.setQuantity(qty); it.setUnitPrice(unit);
+        it.setDays(days); it.setAmount(amount);
+        it.setRelatedEventId(relatedId);
+        it.setMeta(meta);
+        return it;
+    }
+
+    private ResponsePaymentDTO.PaymentPreview emptyNoChargePreview(Integer partnershipIdx, LicensePartnershipVO lp, String note) {
+        return ResponsePaymentDTO.PaymentPreview.builder()
+                .partnershipIdx(partnershipIdx)
+                .licensePartnershipIdx(lp.getIdx())
+                .currentPlan(null)
+                .targetPlan(null)
+                .periodStart(lp.getPeriodStartDate())
+                .periodEnd(lp.getPeriodEndDate())
+                .denominatorDays((int) DAYS.between(lp.getPeriodStartDate(), lp.getPeriodEndDate()))
+                .occurredAt(ZonedDateTime.now().toString())
+                .chargeSeats(Math.max(lp.getCurrentSeatCount(), lp.getCurrentMinUserCount()))
+                .roundingRule("HALF_UP")
+                .currency("KRW")
+                .items(List.of())
+                .subTotal(0L).tax(0L).total(0L)
+                .willChargeNow(false)
+                .creditCarryOver(0L)
+                .notes((note == null) ? List.of() : List.of(note))
+                .build();
+    }
+
+    private ResponsePaymentDTO.PaymentPreview infoOnlyPreview(Integer partnershipIdx, LicensePartnershipVO lp,
+                                                              LicenseVO fromPlan, LicenseVO toPlan,
+                                                              LocalDate start, LocalDate endExcl, int D, int chargeSeats,
+                                                              String note) {
+        return ResponsePaymentDTO.PaymentPreview.builder()
+                .partnershipIdx(partnershipIdx)
+                .licensePartnershipIdx(lp.getIdx())
+                .currentPlan(fromPlan != null ? planSnap(fromPlan) : null)
+                .targetPlan(toPlan != null ? planSnap(toPlan) : null)
+                .periodStart(start)
+                .periodEnd(endExcl)
+                .denominatorDays(D)
+                .occurredAt(ZonedDateTime.now().toString())
+                .chargeSeats(chargeSeats)
+                .roundingRule("HALF_UP")
+                .currency("KRW")
+                .items(List.of())
+                .subTotal(0L).tax(0L).total(0L)
+                .willChargeNow(false)
+                .creditCarryOver(0L)
+                .notes(List.of(note))
+                .build();
+    }
+
+    private ResponsePaymentDTO.PaymentPreview buildFreeToPaidPreview(Integer partnershipIdx, LicenseVO toPlan) {
+        return ResponsePaymentDTO.PaymentPreview.builder()
+                .partnershipIdx(partnershipIdx)
+                .licensePartnershipIdx(null)
+                .currentPlan(null)
+                .targetPlan(toPlan != null ? planSnap(toPlan) : null)
+                .periodStart(null)
+                .periodEnd(null)
+                .denominatorDays(null)
+                .occurredAt(ZonedDateTime.now().toString())
+                .chargeSeats(toPlan != null ? toPlan.getMinUserCount() : 0)
+                .roundingRule("HALF_UP")
+                .currency("KRW")
+                .items(List.of())
+                .subTotal(0L).tax(0L).total(0L)
+                .willChargeNow(false)
+                .creditCarryOver(0L)
+                .notes(List.of("무료 → 유료 전환은 일할이 없고, 결제 시 다음 주기 선불로 청구됩니다."))
+                .build();
+    }
+
+    private int resolvePrepaidSeatsFromLastRecurring(InvoiceVO lastInv, LicensePartnershipVO lp) {
+        if (lastInv != null) {
+            var recurring = invoiceItemMapper.selectRecurringByInvoiceIdx(lastInv.getIdx()); // 구현 필요: 최신 인보이스의 item_type = RECURRING 1건 반환
+            if (recurring != null && recurring.getQuantity() != null && recurring.getQuantity() > 0) {
+                return recurring.getQuantity(); // ex) 3석
+            }
+        }
+        // 폴백: 직전 결제 당시 스냅샷이 없으면 최소 과금 인원 사용
+        return Math.max(lp.getCurrentMinUserCount(), partnershipComponent.getPartnershipActiveMemberCount(lp.getPartnershipIdx()));
+    }
+
+
+    private ProrationInput buildInputForPreview(RequestPaymentDTO.SubscriptionInfo req, MemberVO member) throws CustomException {
+        int partnershipIdx = req.getPartnershipIdx();
+        var lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+        var fromPlan = licenseMapper.selectByIdx(lp.getLicenseIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+        var toPlan   = licenseMapper.selectByIdx(req.getLicenseIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+
+        var lastInv  = invoiceMapper.selectLastIssuedByLicensePartnershipIdx(lp.getIdx()).orElse(null);
+        int prepaidSeats = resolvePrepaidSeatsFromLastRecurring(lastInv, lp);
+
+        LocalDate start = lp.getPeriodStartDate();
+        LocalDate endExcl = lp.getPeriodEndDate();
+        LocalDate today = ZonedDateTime.now().toLocalDate();
+
+        // baseFrom: lastInv.issueDate or periodStart
+        LocalDate baseFrom = (lastInv != null) ? lastInv.getIssueDate().toLocalDate() : start;
+        // capEnd: UPGRADE NOW → today, 배치/정기 → endExcl
+        boolean isUpgradeNow = "UPGRADE".equals(req.getAction()) && !"PERIOD_END".equals(req.getEffective());
+        LocalDate capEnd = isUpgradeNow ? today : endExcl;
+
+        // 좌석 이벤트
+        var evts = subscriptionChangeEventMapper.selectByLpAndOccurredBetween(lp.getIdx(), baseFrom, capEnd);
+        List<ProrationInput.SeatEvent> seatEvents = evts.stream()
+                .map(e -> ProrationInput.SeatEvent.builder()
+                        .date(e.getOccurredDate().toLocalDate())
+                        .delta(e.getQtyDelta())
+                        .relatedId(e.getIdx().longValue())
+                        .build())
+                .toList();
+
+        // 활성 좌석 & 스냅샷
+        int active = partnershipComponent.getPartnershipActiveMemberCount(partnershipIdx);
+        Integer snapshotSeats = lp.getCurrentSeatCount(); // null 가능
+
+        return ProrationInput.builder()
+                .periodStart(start)
+                .periodEndExcl(endExcl)
+                .today(today)
+                .denominatorDays((int) DAYS.between(start, endExcl)) // 보통 31
+                .roundingMode(RoundingMode.HALF_UP)
+                .currency("KRW")
+                .fromPlan(ProrationInput.Plan.builder()
+                        .idx(fromPlan.getIdx())
+                        .planCd(fromPlan.getPlanCd())
+                        .pricePerUser(fromPlan.getPricePerUser())
+                        .minUserCount(fromPlan.getMinUserCount())
+                        .build())
+                .toPlan(ProrationInput.Plan.builder()
+                        .idx(toPlan.getIdx())
+                        .planCd(toPlan.getPlanCd())
+                        .pricePerUser(toPlan.getPricePerUser())
+                        .minUserCount(toPlan.getMinUserCount())
+                        .build())
+                .prepaidSeats(prepaidSeats)
+                .minChargeSeats(fromPlan.getMinUserCount())
+                .currentActiveSeats(active)
+                .useSnapshotSeatsFirst(true)  // 프리뷰 재현성 ↑
+                .snapshotSeats(snapshotSeats)
+                .action(ProrationInput.Action.valueOf(req.getAction()))
+                .effective("NOW".equals(req.getEffective()) ? ProrationInput.Effective.NOW : ProrationInput.Effective.PERIOD_END)
+                .seatEvents(seatEvents)
+                .baseFrom(baseFrom)
+                .capEnd(capEnd)
+                .build();
+    }
+
 }

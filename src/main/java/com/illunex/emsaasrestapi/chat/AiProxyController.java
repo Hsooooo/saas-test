@@ -27,7 +27,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
@@ -323,7 +322,7 @@ public class AiProxyController {
             ChatHistoryVO professionalMsg = chatHistoryMapper.selectByChatRoomIdxAndCategoryTypeOrderByCreateDateDesc(chatRoomIdx, EnumCode.ChatHistory.CategoryType.PROFESSIONAL.getCode()).get(0);
 
             // 5) 외부 API 호출 + S3 업로드 + DB 인서트 (블로킹 작업 → boundedElastic)
-            Mono.fromCallable(() -> {
+            reactor.core.publisher.Mono.fromCallable(() -> {
                 Map<String, Object> result = new java.util.HashMap<>();
 
                 if (needPpt) {

@@ -3,27 +3,56 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
+<!--
+public class LicensePartnershipVO {
+    private Integer idx;
+    private Integer partnershipIdx;
+    private Integer licenseIdx;
+    private Integer billingDay;
+    private LocalDate periodStartDate;
+    private LocalDate periodEndDate;
+    private LocalDate nextBillingDate;
+    private Integer currentSeatCount;
+    private BigDecimal currentUnitPrice;
+    private Integer currentMinUserCount;
+    private Boolean cancelAtPeriodEnd;
+    private String stateCd;
+    private ZonedDateTime updateDate;
+    private ZonedDateTime createDate;
+}
+
+-->
 <mapper namespace="com.illunex.emsaasrestapi.license.mapper.LicensePartnershipMapper">
 
     <insert id="insertByLicensePartnership" parameterType="LicensePartnershipVO" useGeneratedKeys="true" keyProperty="idx">
         INSERT INTO license_partnership(
-           license_idx,
-           partnership_idx,
-           state_cd,
-           start_date,
-           end_date,
-           pause_date,
-           update_date,
-           create_date
+            partnership_idx,
+            license_idx,
+            billing_day,
+            period_start_date,
+            period_end_date,
+            next_billing_date,
+            current_seat_count,
+            current_unit_price,
+            current_min_user_count,
+            cancel_at_period_end,
+            state_cd,
+            create_date,
+            update_date
         ) VALUES (
-            #{licenseIdx},
             #{partnershipIdx},
+            #{licenseIdx},
+            #{billingDay},
+            #{periodStartDate},
+            #{periodEndDate},
+            #{nextBillingDate},
+            #{currentSeatCount},
+            #{currentUnitPrice},
+            #{currentMinUserCount},
+            #{cancelAtPeriodEnd},
             #{stateCd},
-            #{startDate},
-            #{endDate},
-            #{pauseDate},
-            now(),
-            now()
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -52,5 +81,15 @@
             update_date       = CURRENT_TIMESTAMP
         WHERE idx = #{idx}
     </update>
+
+    <select id="selectByPartnershipIdx" resultType="LicensePartnershipVO">
+        SELECT
+            *
+        FROM license_partnership
+        WHERE partnership_idx = #{partnershipIdx}
+          AND state_cd = 'LPS0002'
+        ORDER BY create_date DESC
+        LIMIT 1
+    </select>
 
 </mapper>

@@ -21,4 +21,6 @@ public interface PartnershipMemberMapper {
     void updatePartnershipMemberManagerCdByIdx(Integer idx, String managerCd);
     List<PartnershipMemberVO> selectAllByPartnershipIdx(Integer partnershipIdx);
     List<PartnershipMemberVO> selectByProjectIdx(Integer projectIdx);
+
+    Integer countByPartnershipIdxAndNotStateCd(Integer partnershipIdx, String code);
 }

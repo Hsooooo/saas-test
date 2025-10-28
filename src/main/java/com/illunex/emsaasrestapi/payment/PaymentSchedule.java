@@ -88,7 +88,7 @@ public class PaymentSchedule {
         // === 2) PRORATION 항목 생성 ===
         List<SubscriptionChangeEventVO> events =
                 eventMapper.selectByLpAndOccurredBetween(lp.getIdx(),
-                        periodStart.atStartOfDay(), periodEnd.atStartOfDay());
+                        periodStart.atStartOfDay().toLocalDate(), periodEnd.atStartOfDay().toLocalDate());
 
         for (SubscriptionChangeEventVO ev : events) {
             InvoiceItemVO item = ProrationCalculator.buildProrationItem(lp, ev, periodStart, periodEnd);

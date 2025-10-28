@@ -10,6 +10,7 @@ import com.illunex.emsaasrestapi.common.aws.AwsSESComponent;
 import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.license.mapper.LicensePartnershipMapper;
+import com.illunex.emsaasrestapi.license.vo.LicensePartnershipVO;
 import com.illunex.emsaasrestapi.member.mapper.EmailHistoryMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
@@ -20,6 +21,7 @@ import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.*;
 import com.illunex.emsaasrestapi.partnership.vo.*;
+import com.illunex.emsaasrestapi.payment.vo.SubscriptionChangeEventVO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
 import jakarta.validation.Valid;
@@ -128,6 +130,10 @@ public class PartnershipService {
         if (!loginPartnershipMemberVO.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
             throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
         }
+
+        // 초대 가능한 라이센스 여부 확인
+        LicensePartnershipVO lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
 
         List<ResponsePartnershipDTO.InviteResult> validList = new ArrayList<>();
         List<ResponsePartnershipDTO.InviteResult> invalidList = new ArrayList<>();
@@ -490,27 +496,22 @@ public class PartnershipService {
         // 초대링크 유효성 체크
         Optional<PartnershipInviteLinkVO> inviteLinkOpt = partnershipInviteLinkMapper.selectByInviteTokenHash(request.getInviteToken());
 
+        LicensePartnershipVO lp = null;
         if (inviteLinkOpt.isEmpty()) {
-//            final String INVITE_MAIL_TYPE = AwsSESComponent.EmailType.invite.getValue();
-//            final String INVITE_PROJECT_MAIL_TYPE = AwsSESComponent.EmailType.inviteProject.getValue();
             // 인증키 유효성 체크
             JSONObject data = certComponent.verifyCertData(request.getInviteToken());
+            PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByIdx(data.getInt("partnershipMemberIdx"))
+                    .orElseThrow(() -> new Exception("존재하지 않는 파트너쉽 회원입니다."));
+            // 초대 승인 가능한 라이센스 구독여부 확인
+
+            lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipMemberVO.getPartnershipIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
 
             certComponent.approvePartnershipMember(data, memberVO);
-            // 파트너쉽 초대 승인 로직
-//            if (emailType.equals(INVITE_MAIL_TYPE)) {
-//                certComponent.approvePartnershipMember(data, memberVO);
-//            }
-//
-//            // 프로젝트 초대 승인 로직
-//            if (emailType.equals(INVITE_PROJECT_MAIL_TYPE)) {
-//                // TODO
-//            }
 
             // 이메일 인증 완료 처리
             certComponent.markEmailHistoryAsUsed(request.getInviteToken());
 
-            return null;
         } else {
             PartnershipInviteLinkVO linkVO = inviteLinkOpt.get();
             if (linkVO.getExpireDate() != null && linkVO.getExpireDate().isBefore(ZonedDateTime.now())) {
@@ -520,6 +521,9 @@ public class PartnershipService {
             if (!linkVO.getStateCd().equals(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode())) {
                 throw new CustomException(ErrorCode.COMMON_INVALID);
             }
+
+            lp = licensePartnershipMapper.selectByPartnershipIdx(linkVO.getPartnershipIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
 
             String infoJsonString = linkVO.getInviteInfoJson();
             if (infoJsonString == null || infoJsonString.isBlank()) {
@@ -562,7 +566,6 @@ public class PartnershipService {
             } else {
                 PartnershipInvitedMemberVO invitedMemberVO = new PartnershipInvitedMemberVO();
 
-
                 invitedMemberVO.setEmail(memberVO.getEmail());
                 invitedMemberVO.setPartnershipIdx(linkVO.getPartnershipIdx());
                 invitedMemberVO.setInvitedByPartnershipMemberIdx(linkVO.getCreatedByPartnershipMemberIdx());
@@ -598,8 +601,16 @@ public class PartnershipService {
             linkVO.setUsedCount(linkVO.getUsedCount() == null ? 1 : linkVO.getUsedCount() + 1);
             partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
 
-            return null;
         }
+
+        SubscriptionChangeEventVO eventVO = new SubscriptionChangeEventVO();
+        eventVO.setLicensePartnershipIdx(lp.getIdx());
+        eventVO.setOccurredDate(ZonedDateTime.now());
+        eventVO.setTypeCd( EnumCode.SubscriptionChangeEvent.TypeCd.ADD_SEAT.getCode());
+        eventVO.setQtyDelta(1);
+        // TODO 구독 변경 이벤트 저장
+
+        return null;
 
     }
 
