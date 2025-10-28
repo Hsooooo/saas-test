@@ -99,5 +99,5 @@ webhook:
 #  mode: ${debug_mode}
 
 toss:
-  client-key: ${toss-client-key}
-  secret-key: ${toss-secret-key}
+  client-key: ${TOSS_CLIENT_KEY}
+  secret-key: ${TOSS_SECRET_KEY}
