@@ -75,8 +75,8 @@ docker run -d -p ${PORT}:${PORT} \
     -e "spring.cloud.aws.region.static=${REGION}" \
     -e "spring.cloud.aws.ses.region=${REGION}" \
     -e "spring.cloud.aws.ses.manager-email=${MANAGER_EMAIL}" \
-    -e "TOSS_SECRET_KEY=${TOSS_SECRET_KEY}" \
-    -e "TOSS_CLIENT_KEY=${TOSS_CLIENT_KEY}" \
+    -e "toss.secret-key=${TOSS_SECRET_KEY}" \
+    -e "toss.client-key=${TOSS_CLIENT_KEY}" \
     -e "ai.url=${AI_URL}" \
     -e "front-end.url=${FRONT_URL}" \
     -e "debug.mode=${DEBUG_MODE}" \
