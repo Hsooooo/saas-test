@@ -120,12 +120,13 @@ public class AwsSESComponent {
 
         // 이메일 인증을 위한 암호화 - AES256 -> Base64
         String certData = Utils.AES256.encrypt(encryptKey, certJson.toString());
+        String certPasswordUrl = frontEndUrl + "/auth/find-password";
 
         final SendEmailDTO senderDto = SendEmailDTO.builder()
                 .senderAddress(managerEmail)
                 .receiverAddress(email)
                 .subject(EmailType.findPassword.getSubject())
-//                .certUrl(certPasswordUrl)
+                .certUrl(certPasswordUrl)
                 .certData(certData)
                 .build();
 

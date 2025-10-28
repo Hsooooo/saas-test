@@ -18,6 +18,7 @@ public interface PartnershipMemberMapper {
     void updateProfileImageByIdx(PartnershipMemberVO partnershipMember);
     Optional<PartnershipMemberVO> selectByIdx(int partnershipMemberIdx);
     void updatePartnershipMemberStateByIdx(Integer idx, String stateCd);
+    void updatePartnershipMemberManagerCdByIdx(Integer idx, String managerCd);
     List<PartnershipMemberVO> selectAllByPartnershipIdx(Integer partnershipIdx);
     List<PartnershipMemberVO> selectByProjectIdx(Integer projectIdx);
 }

@@ -63,4 +63,14 @@ public class RequestPartnershipDTO {
         private Integer partnershipIdx;
         private String searchString;
     }
+
+    @Getter
+    @Setter
+    public static class PatchPartnershipMember {
+        private Integer partnershipMemberIdx;
+        private Integer transferPartnershipMemberIdx; // 권한 이전 대상 멤버 idx
+        private String managerCd;
+        private String stateCd;
+        private String password;
+    }
 }

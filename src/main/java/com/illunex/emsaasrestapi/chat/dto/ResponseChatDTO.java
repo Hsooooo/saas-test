@@ -28,6 +28,7 @@ public class ResponseChatDTO {
         private ZonedDateTime createDate;
         private ZonedDateTime updateDate;
         private List<ToolResult> toolResults;
+        private List<String> chatMcpNames;
         private List<ChatFileResult> chatFiles;
         private List<ChatNetwork> chatNetworks;
 

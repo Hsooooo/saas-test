@@ -17,8 +17,8 @@
                pm.partnership_team_idx,
                mm.name as invite_member_name,
                pim.invited_by_partnership_member_idx,
-               pim.joined_date,
-               pim.invited_date
+               m.create_date as joined_date,
+               pim.joined_date as invited_date
         from partnership_member pm
          join member m on pm.member_idx = m.idx
          left join partnership_invited_member pim on pm.idx = pim.partnership_member_idx

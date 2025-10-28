@@ -454,6 +454,7 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_room` (
     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅방 번호',
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원번호',
     `title` VARCHAR(255) NULL DEFAULT NULL COMMENT '채팅방 제목' COLLATE 'utf8mb4_general_ci',
+    `delete_date` DATETIME NULL DEFAULT NULL COMMENT '삭제일',
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
     PRIMARY KEY (`idx`) USING BTREE,
@@ -577,3 +578,16 @@ COMMENT='LLM 채팅 노드 정보'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS `em_saas`.`chat_mcp` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 링크 번호',
+     `chat_history_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 관계망 번호',
+     `name` VARCHAR(255) NULL DEFAULT NULL COMMENT '링크 유형' COLLATE 'utf8mb4_general_ci',
+     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_chat_mcp_chat_history_idx` (`chat_history_idx`) USING BTREE,
+     CONSTRAINT `fk_chat_mcp_chat_history_idx` FOREIGN KEY (`chat_history_idx`) REFERENCES `chat_history` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='LLM 채팅 MCP 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;

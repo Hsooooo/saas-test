@@ -42,6 +42,8 @@ public class ResponseProjectDTO {
         private List<ProjectNodeContent> projectNodeContentList;    // 속성정보
         private List<ProjectFile> projectFileList;                  // 업로드 파일
         private Integer totalDataCount;                           // 엑셀 총 데이터 수
+        private String projectMemberTypeCd;                              // 프로젝트 권한 코드
+        private String projectMemberTypeCdDesc;                       // 프로젝트 권한 코드 설명
 
         private Excel projectExcel;
         private ZonedDateTime updateDate;
@@ -51,6 +53,11 @@ public class ResponseProjectDTO {
         public void setStatusCd(String statusCd) {
             this.statusCd = statusCd;
             this.statusCdDesc = EnumCode.getCodeDesc(statusCd);
+        }
+
+        public void setProjectMemberTypeCd(String projectMemberTypeCd) {
+            this.projectMemberTypeCd = projectMemberTypeCd;
+            this.projectMemberTypeCdDesc = EnumCode.getCodeDesc(projectMemberTypeCd);
         }
     }
 

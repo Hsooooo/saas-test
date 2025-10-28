@@ -55,9 +55,16 @@ public class ResponsePartnershipDTO {
     public static class MyInfoPartnershipMember {
         private Integer idx;
         private String phone;
+        private String managerCd;
+        private String managerCdDesc;
         private PartnershipPositionInfo positionInfo;
         private String profileImageUrl;
         private String profileImagePath;
+
+        public void setManagerCd(String managerCd) {
+            this.managerCd = managerCd;
+            this.managerCdDesc = EnumCode.getCodeDesc(managerCd);
+        }
     }
 
     @Builder

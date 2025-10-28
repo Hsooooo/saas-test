@@ -133,6 +133,8 @@ public class AiProxyController {
 
         // 툴 결과 즉시 upsert된 row들의 id 모음 → 완료 시 history_idx로 연결
         final List<Long> toolResultIds = new CopyOnWriteArrayList<>();
+        final Set<ObjectNode> toolResults = new HashSet<>();
+        final Set<String> mcpResultSet = new HashSet<>();
 
         // 업스트림 구독 (SSE 텍스트 조각을 그대로 흘려보내며, 동시에 파싱)
         Flux<String> stream = upstream.stream(aiGptBase, "/v2/api/report-generate", payload).share();
@@ -182,13 +184,16 @@ public class AiProxyController {
                                 completed = (ObjectNode) (n instanceof ObjectNode ? n : om.valueToTree(n));
 
                             normalizeForPersist(completed, om); // 결과 슬림화/타임스탬프
-                            List<Long> ids = toolSvc.upsertToolPayload(completed.toString());
-                            if (ids != null && !ids.isEmpty()) toolResultIds.addAll(ids);
-                        } else if (isTerminalForOtherTools(n)) {
-                            Long id = toolSvc.insertToolPayloadSingle(n);
-                            List<Long> ids = new ArrayList<>();
-                            ids.add(id);
-                            toolResultIds.addAll(ids);
+//                            List<Long> ids = toolSvc.upsertToolPayload(completed.toString());
+
+                            toolResults.clear();
+                            toolResults.add(completed);
+                        }
+                    }
+                    if (isMcpResult(n)) {
+                        for (JsonNode item : n.get("mcp")) {
+                            if (item == null || item.isNull()) continue;
+                            mcpResultSet.add(item.asText());
                         }
                     }
                 } catch (Exception ex) {
@@ -249,8 +254,13 @@ public class AiProxyController {
             );
 
             // 2) tool_result ↔ history 링크
-            if (!toolResultIds.isEmpty()) {
-                try { toolSvc.linkResultsToHistory(toolResultIds, historyIdx); }
+            if (!toolResults.isEmpty()) {
+                try { chatService.insertChatToolByHistoryIdx(toolResults.stream().findFirst().get().toString(), historyIdx); }
+                catch (Exception e) { log.error("linkResultsToHistory failed", e); }
+            }
+
+            if(!mcpResultSet.isEmpty()) {
+                try { toolSvc.insertChatMcpArray(mcpResultSet, historyIdx); }
                 catch (Exception e) { log.error("linkResultsToHistory failed", e); }
             }
 
@@ -386,10 +396,8 @@ public class AiProxyController {
         return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
     }
 
-    private boolean isTerminalForOtherTools(JsonNode n) {
-        if (!n.hasNonNull("tool")) return false;
-        String toolName = n.get("tool").asText();
-        return !toolName.equalsIgnoreCase("get_search_result_by_query_tool");
+    private boolean isMcpResult(JsonNode n) {
+        return n.hasNonNull("mcp") && n.get("mcp").isArray();
     }
 
     private JsonNode callDocxGenerate(String mdText, Integer pmIdx, Integer historyIdx) {

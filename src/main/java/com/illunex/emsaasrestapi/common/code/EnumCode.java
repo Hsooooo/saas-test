@@ -127,10 +127,10 @@ public class EnumCode {
         @Getter
         @AllArgsConstructor
         public enum StateCd implements BaseCodeEnum {
-            Normal("PMS0001", "정상"),
-            Stop("PMS0002", "정지"),
+            Normal("PMS0001", "활성"),
+            Stop("PMS0002", "비활성"),
             Delete("PMS0003", "삭제"),
-            Wait("PMS0004", "대기");
+            Wait("PMS0004", "대기중");
 
             private final String code;
             private final String value;

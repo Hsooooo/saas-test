@@ -55,7 +55,7 @@ create table if not exists em_saas.member
     ENGINE=InnoDB;;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`member_term` (
-                                                       `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '약관번호',
+   `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '약관번호',
     `subject` VARCHAR(255) NULL DEFAULT NULL COMMENT '약관 제목' COLLATE 'utf8mb4_general_ci',
     `content` TEXT NULL DEFAULT NULL COMMENT '약관 내용' COLLATE 'utf8mb4_general_ci',
     `active` BIT(1) NULL DEFAULT NULL COMMENT '활성화여부(1:활성화, 0:비활성화)',
@@ -63,13 +63,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`member_term` (
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
     PRIMARY KEY (`idx`) USING BTREE
-    )
-    COMMENT='약관 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='약관 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`member_term_agree` (
-                                                             `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '약관 동의 정보 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '약관 동의 정보 번호',
     `member_idx` INT(11) NULL DEFAULT NULL COMMENT '회원번호',
     `member_term_idx` INT(11) NULL DEFAULT NULL COMMENT '약관번호',
     `agree` BIT(1) NULL DEFAULT NULL COMMENT '동의여부(1:동의, 0:미동의)',
@@ -78,19 +78,19 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`member_term_agree` (
     PRIMARY KEY (`idx`) USING BTREE,
     CONSTRAINT `fk_member_term_agree_member_idx` FOREIGN KEY (`member_idx`) REFERENCES `member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
     CONSTRAINT `fk_member_term_agree_member_term_idx` FOREIGN KEY (`member_term_idx`) REFERENCES `member_term` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='약관 동의 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='약관 동의 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 create table if not exists em_saas.member_login_history
 (
     idx         int auto_increment comment '로그인이력번호'
     primary key,
     member_idx  int                                  not null comment '회원번호',
-    browser     varchar(255)                         null comment '접속 브라우저' COLLATE 'utf8mb4_general_ci',
-    platform    varchar(255)                         null comment '접속 환경' COLLATE 'utf8mb4_general_ci',
-    ip          varchar(15)                          null comment '접속 ip' COLLATE 'utf8mb4_general_ci',
+    browser     varchar(255)                         null comment '접속 브라우저',
+    platform    varchar(255)                         null comment '접속 환경',
+    ip          varchar(15)                          null comment '접속 ip',
     create_date datetime default current_timestamp() not null comment '접속일',
     constraint member_login_history_member_idx_fk
     foreign key (member_idx) references em_saas.member (idx)
@@ -99,9 +99,9 @@ create table if not exists em_saas.member_login_history
     comment '로그인 이력 정보';
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`member_email_history` (
-                                                                `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '이메일전송이력번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '이메일전송이력번호',
     `member_idx` INT(11) NULL DEFAULT NULL COMMENT '회원번호',
-    `cert_data` VARCHAR(255) NULL DEFAULT NULL COMMENT '인증키' COLLATE 'utf8mb4_general_ci',
+    `cert_data` VARCHAR(500) NULL DEFAULT NULL COMMENT '인증키' COLLATE 'utf8mb4_general_ci',
     `used` BIT(1) NULL DEFAULT NULL COMMENT '인증여부(1:인증, 0:미인증)',
     `email_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '메일구분(code)' COLLATE 'utf8mb4_general_ci',
     `expire_date` DATETIME NULL DEFAULT NULL COMMENT '만료일',
@@ -110,20 +110,20 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`member_email_history` (
     INDEX `email_type` (`email_type`) USING BTREE,
     INDEX `fk_project_file_member_idx` (`member_idx`) USING BTREE,
     CONSTRAINT `fk_project_file_member_idx` FOREIGN KEY (`member_idx`) REFERENCES `member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='회원 이메일 전송 이력 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='회원 이메일 전송 이력 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 create table if not exists em_saas.partnership
 (
     idx         int auto_increment comment '파트너쉽 번호'
     primary key,
-    name        varchar(255)                         not null comment '파트너쉽명' COLLATE 'utf8mb4_general_ci',
-    domain      varchar(255)                         not null comment '파트너쉽도메인' COLLATE 'utf8mb4_general_ci',
-    image_url   varchar(255)                         null comment '파트너쉽 이미지 url' COLLATE 'utf8mb4_general_ci',
-    image_path  varchar(255)                         null comment '파트너쉽 이미지 위치' COLLATE 'utf8mb4_general_ci',
-    comment     varchar(100)                         null comment '파트너쉽 간략 소개' COLLATE 'utf8mb4_general_ci',
+    name        varchar(255)                         not null comment '파트너쉽명',
+    domain      varchar(255)                         not null comment '파트너쉽도메인',
+    image_url   varchar(255)                         null comment '파트너쉽 이미지 url',
+    image_path  varchar(255)                         null comment '파트너쉽 이미지 위치',
+    comment     varchar(100)                         null comment '파트너쉽 간략 소개',
     update_date datetime                             null comment '수정일',
     create_date datetime default current_timestamp() not null comment '생성일',
     constraint partnership_domain_uindex
@@ -218,6 +218,43 @@ create table if not exists em_saas.partnership_member
     )
     comment '파트너쉽 회원정보';
 
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_invite_link` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너십 초대 링크 번호',
+     `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 번호',
+     `created_by_partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '초대링크 생성자 파트너십 회원 번호',
+     `invite_token_hash` VARCHAR(255) NULL DEFAULT NULL COMMENT '링크 토큰' COLLATE 'utf8mb4_general_ci',
+     `used_count` INT(11) NULL DEFAULT 0 COMMENT '사용된 횟수',
+     `state_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '링크 상태 코드' COLLATE 'utf8mb4_general_ci',
+     `invite_info_json` JSON NULL DEFAULT NULL COMMENT '초대 정보 json' COLLATE 'utf8mb4_general_ci',
+     `expire_date` DATETIME NULL DEFAULT NULL COMMENT '링크 만료일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_partnership_invite_link_partnership_idx` (`partnership_idx`) USING BTREE,
+     INDEX `fk_partnership_invite_link_created_by_partnership_member_idx` (`created_by_partnership_member_idx`) USING BTREE,
+     UNIQUE INDEX `ui_partnership_invite_link_invite_token_hash` (`invite_token_hash`) USING BTREE,
+     CONSTRAINT `fk_partnership_invite_link_partnership_idx` FOREIGN KEY (`partnership_idx`) REFERENCES `partnership` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+     CONSTRAINT `fk_partnership_invite_link_created_by_partnership_member_idx` FOREIGN KEY (`created_by_partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='파트너쉽 초대 링크 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_member_product_grant` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너십 회원 제품 권한 번호',
+     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원 번호',
+     `product_code` VARCHAR(7) NULL DEFAULT NULL COMMENT '제품 코드' COLLATE 'utf8mb4_general_ci',
+     `permission_code` VARCHAR(7) NULL DEFAULT NULL COMMENT '제품 권한 코드' COLLATE 'utf8mb4_general_ci',
+     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_partnership_member_product_grant_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
+     CONSTRAINT `fk_partnership_member_product_grant_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='파트너십 회원 제품 권한'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
 create table if not exists em_saas.partnership_invited_member
 (
     idx                               int auto_increment
@@ -252,7 +289,7 @@ create index if not exists partnership_member_idx
     on em_saas.partnership_invited_member (partnership_member_idx);
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_additional` (
-                                                                  `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너쉽 부가정보 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '파트너쉽 부가정보 번호',
     `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 번호',
     `attr_key` VARCHAR(255) NULL DEFAULT NULL COMMENT '파트너쉽 부가정보 속성 키' COLLATE 'utf8mb4_general_ci',
     `attr_value` VARCHAR(255) NULL DEFAULT NULL COMMENT '파트너쉽 부가정보 속성 값' COLLATE 'utf8mb4_general_ci',
@@ -262,13 +299,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`partnership_additional` (
     INDEX `fk_partnership_additional_partnership_idx` (`partnership_idx`) USING BTREE,
     CONSTRAINT `fk_partnership_additional_partnership_idx` FOREIGN KEY (`partnership_idx`) REFERENCES `partnership` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
     UNIQUE INDEX `partnership_idx_attr_key` (`partnership_idx`, `attr_key`) USING BTREE
-    )
-    COMMENT='파트너쉽 부가정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='파트너쉽 부가정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`project_category` (
-                                                            `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '카테고리번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '카테고리번호',
     `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽번호',
     `name` VARCHAR(255) NULL DEFAULT NULL COMMENT '카테고리명' COLLATE 'utf8mb4_general_ci',
     `sort` INT(11) NULL DEFAULT NULL COMMENT '정렬순서',
@@ -277,13 +314,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_category` (
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `fk_project_category_partnership_idx` (`partnership_idx`) USING BTREE,
     CONSTRAINT `fk_project_category_partnership_idx` FOREIGN KEY (`partnership_idx`) REFERENCES `partnership` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='프로젝트 카테고리 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='프로젝트 카테고리 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`project` (
-                                                   `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트번호',
     `project_category_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 카테고리번호',
     `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 번호',
     `title` VARCHAR(50) NULL DEFAULT NULL COMMENT '제목' COLLATE 'utf8mb4_general_ci',
@@ -300,13 +337,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project` (
     INDEX `status_cd` (`status_cd`) USING BTREE,
     INDEX `fk_project_project_category_idx` (`project_category_idx`) USING BTREE,
     CONSTRAINT `fk_project_project_category_idx` FOREIGN KEY (`project_category_idx`) REFERENCES `project_category` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='프로젝트 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='프로젝트 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`project_member` (
-                                                          `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로제거트 구성원 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로제거트 구성원 번호',
     `project_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 번호',
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 회원번호',
     `type_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '사용자 구분(code테이블)' COLLATE 'utf8mb4_general_ci',
@@ -322,13 +359,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_member` (
     UNIQUE INDEX `ui_project_member_project_idx_partnership_member_idx_active_flag` (`project_idx`, `partnership_member_idx`, `delete_date`) USING BTREE,
     CONSTRAINT `fk_project_member_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
     CONSTRAINT `fk_project_member_project_idx` FOREIGN KEY (`project_idx`) REFERENCES `project` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='프로젝트 구성원'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='프로젝트 구성원'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`project_file` (
-                                                        `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 파일번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 파일번호',
     `project_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 번호',
     `file_name` VARCHAR(255) NULL DEFAULT NULL COMMENT '파일명' COLLATE 'utf8mb4_general_ci',
     `file_url` VARCHAR(512) NULL DEFAULT NULL COMMENT '파일URL' COLLATE 'utf8mb4_general_ci',
@@ -341,13 +378,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_file` (
     INDEX `file_cd` (`file_cd`) USING BTREE,
     INDEX `fk_project_file_project_idx` (`project_idx`) USING BTREE,
     CONSTRAINT `fk_project_file_project_idx` FOREIGN KEY (`project_idx`) REFERENCES `project` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='프로젝트 업로드 파일'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='프로젝트 업로드 파일'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`project_table` (
-                                                         `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 테이블번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 테이블번호',
     `project_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 번호',
     `title` VARCHAR(512) NULL DEFAULT NULL COMMENT '테이블명' COLLATE 'utf8mb4_general_ci',
     `data_count` INT(11) NULL DEFAULT NULL COMMENT '데이터개수',
@@ -357,13 +394,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_table` (
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `fk_project_table_project_idx` (`project_idx`) USING BTREE,
     CONSTRAINT `fk_project_table_project_idx` FOREIGN KEY (`project_idx`) REFERENCES `project` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='프로젝트 테이블 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='프로젝트 테이블 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`project_table_auth` (
-                                                              `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 테이블 사용자 권한 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 테이블 사용자 권한 번호',
     `project_table_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 테이블 번호',
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원번호',
     `auth_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '권한 구분(code)' COLLATE 'utf8mb4_general_ci',
@@ -374,13 +411,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_table_auth` (
     INDEX `fk_project_table_auth_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
     CONSTRAINT `fk_project_table_auth_project_table_idx` FOREIGN KEY (`project_table_idx`) REFERENCES `project_table` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
     CONSTRAINT `fk_project_table_auth_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='프로젝트 테이블 사용자 권한 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='프로젝트 테이블 사용자 권한 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`project_query_category` (
-                                                                  `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 쿼리 카테고리 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 쿼리 카테고리 번호',
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원번호',
     `project_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 번호',
     `name` VARCHAR(512) NULL DEFAULT NULL COMMENT '쿼리 카테고리명' COLLATE 'utf8mb4_general_ci',
@@ -392,13 +429,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_query_category` (
     INDEX `fk_project_query_category_project_idx` (`project_idx`) USING BTREE,
     CONSTRAINT `fk_project_query_category_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
     CONSTRAINT `fk_project_query_category_project_idx` FOREIGN KEY (`project_idx`) REFERENCES `project` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='프로젝트 쿼리 카테고리 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='프로젝트 쿼리 카테고리 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`project_query` (
-                                                         `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 쿼리 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '프로젝트 쿼리 번호',
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원번호',
     `project_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 번호',
     `project_query_category_idx` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 쿼리 카테고리 번호',
@@ -414,14 +451,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`project_query` (
     CONSTRAINT `fk_project_query_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
     CONSTRAINT `fk_project_query_project_idx` FOREIGN KEY (`project_idx`) REFERENCES `project` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION,
     CONSTRAINT `fk_project_query_project_query_category_idx` FOREIGN KEY (`project_query_category_idx`) REFERENCES `project_query_category` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='프로젝트 쿼리 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
-
+)
+COMMENT='프로젝트 쿼리 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`chat_room` (
-                                                     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅방 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅방 번호',
     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원번호',
     `title` VARCHAR(255) NULL DEFAULT NULL COMMENT '채팅방 제목' COLLATE 'utf8mb4_general_ci',
     `delete_date` DATETIME NULL DEFAULT NULL COMMENT '삭제일',
@@ -430,13 +466,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_room` (
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `fk_chat_room_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
     CONSTRAINT `fk_chat_room_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='LLM 채팅방 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='LLM 채팅방 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`chat_history` (
-                                                        `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 이력 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 이력 번호',
     `chat_room_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅방 번호',
     `message` LONGTEXT NULL DEFAULT NULL COMMENT '채팅 메세지' COLLATE 'utf8mb4_general_ci',
     `sender_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '보낸이 타입' COLLATE 'utf8mb4_general_ci',
@@ -446,13 +482,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_history` (
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `fk_chat_history_chat_room_idx` (`chat_room_idx`) USING BTREE,
     CONSTRAINT `fk_chat_history_chat_room_idx` FOREIGN KEY (`chat_room_idx`) REFERENCES `chat_room` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='LLM 채팅 이력'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='LLM 채팅 이력'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`chat_tool_result` (
-                                                            `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 외부 도구 결과 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 외부 도구 결과 번호',
     `chat_history_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 이력 번호',
     `tool_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '채팅 도구 타입' COLLATE 'utf8mb4_general_ci',
     `title` VARCHAR(255) NULL DEFAULT NULL COMMENT '검색 결과 제목' COLLATE 'utf8mb4_general_ci',
@@ -462,14 +498,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_tool_result` (
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `fk_chat_tool_result_chat_history_idx` (`chat_history_idx`) USING BTREE,
     CONSTRAINT `fk_chat_tool_result_chat_history_idx` FOREIGN KEY (`chat_history_idx`) REFERENCES `chat_history` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='LLM 채팅 외부 도구 결과'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
-
+)
+COMMENT='LLM 채팅 외부 도구 결과'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`chat_file` (
-                                                     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 파일번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 파일번호',
     `chat_history_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 이력 번호',
     `file_name` VARCHAR(255) NULL DEFAULT NULL COMMENT '파일명' COLLATE 'utf8mb4_general_ci',
     `file_url` VARCHAR(512) NULL DEFAULT NULL COMMENT '파일URL' COLLATE 'utf8mb4_general_ci',
@@ -482,28 +517,28 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_file` (
     INDEX `file_cd` (`file_cd`) USING BTREE,
     INDEX `fk_chat_file_chat_history_idx` (`chat_history_idx`) USING BTREE,
     CONSTRAINT `fk_chat_file_chat_history_idx` FOREIGN KEY (`chat_history_idx`) REFERENCES `chat_history` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='채팅 관련 파일'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='채팅 관련 파일'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`chat_file_slide` (
-                                                           `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 ppt 슬라이드 번호',
-    `chat_file_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 파일 번호',
-    `content` LONGTEXT NULL DEFAULT NULL COMMENT '슬라이드 내용' COLLATE 'utf8mb4_general_ci',
-    `page` INT(11) NULL DEFAULT NULL COMMENT '페이지번호',
-    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
-    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
-    PRIMARY KEY (`idx`) USING BTREE,
-    INDEX `fk_chat_file_slide_chat_file_idx` (`chat_file_idx`) USING BTREE,
-    CONSTRAINT `fk_chat_file_slide_chat_file_idx` FOREIGN KEY (`chat_file_idx`) REFERENCES `chat_file` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='채팅 파일 슬라이드 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 ppt 슬라이드 번호',
+     `chat_file_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 파일 번호',
+     `content` LONGTEXT NULL DEFAULT NULL COMMENT '슬라이드 내용' COLLATE 'utf8mb4_general_ci',
+     `page` INT(11) NULL DEFAULT NULL COMMENT '페이지번호',
+     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_chat_file_slide_chat_file_idx` (`chat_file_idx`) USING BTREE,
+     CONSTRAINT `fk_chat_file_slide_chat_file_idx` FOREIGN KEY (`chat_file_idx`) REFERENCES `chat_file` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='채팅 파일 슬라이드 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`chat_network` (
-                                                        `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 관계망 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 관계망 번호',
     `chat_history_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 이력 번호',
     `title` VARCHAR(255) NULL DEFAULT NULL COMMENT '관계망 제목' COLLATE 'utf8mb4_general_ci',
     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
@@ -511,13 +546,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_network` (
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `fk_chat_network_chat_history_idx` (`chat_history_idx`) USING BTREE,
     CONSTRAINT `fk_chat_network_chat_history_idx` FOREIGN KEY (`chat_history_idx`) REFERENCES `chat_history` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='LLM 채팅 관계망 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='LLM 채팅 관계망 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`chat_node` (
-                                                     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 노드 번호',
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 노드 번호',
     `chat_network_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 관계망 번호',
     `id` VARCHAR(255) NULL DEFAULT NULL COMMENT '노드 아이디' COLLATE 'utf8mb4_general_ci',
     `labels` VARCHAR(50) NULL DEFAULT NULL COMMENT '노드 라벨' COLLATE 'utf8mb4_general_ci',
@@ -527,26 +562,38 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_node` (
     PRIMARY KEY (`idx`) USING BTREE,
     INDEX `fk_chat_node_chat_network_idx` (`chat_network_idx`) USING BTREE,
     CONSTRAINT `fk_chat_node_chat_network_idx` FOREIGN KEY (`chat_network_idx`) REFERENCES `chat_network` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='LLM 채팅 노드 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+)
+COMMENT='LLM 채팅 노드 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `em_saas`.`chat_link` (
-                                                     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 링크 번호',
-    `chat_network_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 관계망 번호',
-    `type` VARCHAR(255) NULL DEFAULT NULL COMMENT '링크 유형' COLLATE 'utf8mb4_general_ci',
-    `start` VARCHAR(255) NULL DEFAULT NULL COMMENT '시작' COLLATE 'utf8mb4_general_ci',
-    `end` VARCHAR(255) NULL DEFAULT NULL COMMENT '끝' COLLATE 'utf8mb4_general_ci',
-    `properties` JSON NULL DEFAULT NULL COMMENT '링크 속성' COLLATE 'utf8mb4_general_ci',
-    `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
-    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
-    PRIMARY KEY (`idx`) USING BTREE,
-    INDEX `fk_chat_link_chat_network_idx` (`chat_network_idx`) USING BTREE,
-    CONSTRAINT `fk_chat_link_chat_network_idx` FOREIGN KEY (`chat_network_idx`) REFERENCES `chat_network` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
-    )
-    COMMENT='LLM 채팅 노드 정보'
-    COLLATE='utf8mb4_general_ci'
-    ENGINE=InnoDB;
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 링크 번호',
+     `chat_network_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 관계망 번호',
+     `type` VARCHAR(255) NULL DEFAULT NULL COMMENT '링크 유형' COLLATE 'utf8mb4_general_ci',
+     `start` VARCHAR(255) NULL DEFAULT NULL COMMENT '시작' COLLATE 'utf8mb4_general_ci',
+     `end` VARCHAR(255) NULL DEFAULT NULL COMMENT '끝' COLLATE 'utf8mb4_general_ci',
+     `properties` JSON NULL DEFAULT NULL COMMENT '링크 속성' COLLATE 'utf8mb4_general_ci',
+     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_chat_link_chat_network_idx` (`chat_network_idx`) USING BTREE,
+     CONSTRAINT `fk_chat_link_chat_network_idx` FOREIGN KEY (`chat_network_idx`) REFERENCES `chat_network` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='LLM 채팅 노드 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
 
-
+CREATE TABLE IF NOT EXISTS `em_saas`.`chat_mcp` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '채팅 링크 번호',
+     `chat_history_idx` INT(11) NULL DEFAULT NULL COMMENT '채팅 관계망 번호',
+     `name` VARCHAR(255) NULL DEFAULT NULL COMMENT '링크 유형' COLLATE 'utf8mb4_general_ci',
+     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_chat_mcp_chat_history_idx` (`chat_history_idx`) USING BTREE,
+     CONSTRAINT `fk_chat_mcp_chat_history_idx` FOREIGN KEY (`chat_history_idx`) REFERENCES `chat_history` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='LLM 채팅 MCP 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
