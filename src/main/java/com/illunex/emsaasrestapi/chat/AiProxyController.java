@@ -27,6 +27,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
@@ -91,7 +92,8 @@ public class AiProxyController {
 
         final String raw = String.valueOf(body.get("query"));
         final String query = raw == null ? "" : raw.trim();
-        final var sseBuf = new java.util.concurrent.atomic.AtomicReference<>(new StringBuilder(8192));
+        final var sseBuf = new AtomicReference<>(new StringBuilder(8192));
+        final var proxyBuf = new StringBuilder(8192);
         if (query.isBlank()) return ResponseEntity.badRequest().build();
 
         final int chatRoomIdx = (roomIdx == null)
@@ -139,19 +141,27 @@ public class AiProxyController {
         // 업스트림 구독 (SSE 텍스트 조각을 그대로 흘려보내며, 동시에 파싱)
         Flux<String> stream = upstream.stream(aiGptBase, "/v2/api/report-generate", payload).share();
 
-        // 4-1) 다운스트림으로 프록시 + tee 에 기록
-        Disposable dProxy = stream.subscribe(chunk -> {
-            try {
-                tee.write(chunk.getBytes(StandardCharsets.UTF_8));
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
-            // 그대로 클라이언트에게 흘려보냄
-            try { emitter.send(chunk); } catch (Exception ignore) {}
-        }, e -> {
-            try { emitter.send("event: error\ndata: " + (e.getMessage() == null ? "" : e.getMessage()) + "\n\n"); } catch (Exception ignore) {}
-            emitter.complete();
-        });
+        // 4-1) 다운스트림 프록시: ★ 완결 JSON만 클라로 보냄
+        Disposable dProxy = stream
+                .publishOn(Schedulers.single()) // 파서 단일 스레드 보장
+                .doOnNext(chunk -> { // tee는 원문 그대로 유지
+                    try { tee.write(chunk.getBytes(StandardCharsets.UTF_8)); } catch (IOException ex) { throw new RuntimeException(ex); }
+                })
+                .map(chunk -> {
+                    // ★ data: 라인만 뽑고 기존 drainSseDataJsons로 루트 JSON 경계 추출
+                    String norm = normalizeSseDataLines(chunk);
+                    return drainSseDataJsons(proxyBuf, norm); // 기존 함수 재사용 (buf 타입만 StringBuilder로 교체)
+                })
+                .flatMapIterable(list -> list)
+                .subscribe(js -> {
+                    try {
+                        // ★ 프론트에는 항상 "완결 JSON 한 건"만 보냄
+                        emitter.send(SseEmitter.event().name("message").data(js));
+                    } catch (Exception ignore) {}
+                }, e -> {
+                    try { emitter.send(SseEmitter.event().name("error").data(e.getMessage() == null ? "" : e.getMessage())); } catch (Exception ignore) {}
+                    emitter.complete();
+                });
 
         // 4-2) 즉시 처리 파이프: “tool” 필드 포함된 이벤트 → tool_result upsert
         Disposable dTool = stream.subscribe(chunk -> {
@@ -313,7 +323,7 @@ public class AiProxyController {
             ChatHistoryVO professionalMsg = chatHistoryMapper.selectByChatRoomIdxAndCategoryTypeOrderByCreateDateDesc(chatRoomIdx, EnumCode.ChatHistory.CategoryType.PROFESSIONAL.getCode()).get(0);
 
             // 5) 외부 API 호출 + S3 업로드 + DB 인서트 (블로킹 작업 → boundedElastic)
-            reactor.core.publisher.Mono.fromCallable(() -> {
+            Mono.fromCallable(() -> {
                 Map<String, Object> result = new java.util.HashMap<>();
 
                 if (needPpt) {
@@ -881,5 +891,17 @@ public class AiProxyController {
         }
 
         return out;
+    }
+
+    private static String normalizeSseDataLines(String chunk) {
+        if (chunk == null || chunk.isEmpty()) return "";
+        if (chunk.indexOf("data:") < 0 && chunk.indexOf("event:") < 0) return chunk; // 그냥 원문 텍스트
+        StringBuilder sb = new StringBuilder(chunk.length());
+        for (String line : chunk.split("\n")) {
+            if (line.startsWith("data:")) {
+                sb.append(line.substring(5).trim()).append('\n'); // NDJSON/루트 JSON 모두 지원
+            }
+        }
+        return sb.toString();
     }
 }
