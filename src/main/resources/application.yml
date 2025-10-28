@@ -1,6 +1,6 @@
 jwt:
   secret: ${jwt-secret}
-  access-token-expiration: ${jwt-access-seconds:1800}                  # accessToken 유효시간(초)
+  access-token-expiration: ${jwt-access-seconds:28800}                  # accessToken 유효시간(초)
   refresh-token-expiration: ${jwt-refresh-seconds:86400}               # refreshToken 유효시간(초)
 
 server:
@@ -38,8 +38,8 @@ spring:
     password: ${rds-pass}
   servlet:
     multipart:
-      max-file-size: 20MB
-      max-request-size: 20MB
+      max-file-size: 30MB
+      max-request-size: 30MB
       enabled: true
   jpa:
     hibernate:
