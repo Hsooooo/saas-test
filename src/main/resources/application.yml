@@ -97,3 +97,7 @@ webhook:
     use: false
 #debug:
 #  mode: ${debug_mode}
+
+toss:
+  client-key: ${toss-client-key}
+  secret-key: ${toss-secret-key}
