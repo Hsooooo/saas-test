@@ -131,9 +131,9 @@ public class PartnershipService {
             throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
         }
 
-        // 초대 가능한 라이센스 여부 확인
-        LicensePartnershipVO lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipIdx)
-                .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
+        //TODO 초대 가능한 라이센스 여부 확인
+//        LicensePartnershipVO lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipIdx)
+//                .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
 
         List<ResponsePartnershipDTO.InviteResult> validList = new ArrayList<>();
         List<ResponsePartnershipDTO.InviteResult> invalidList = new ArrayList<>();
@@ -502,10 +502,10 @@ public class PartnershipService {
             JSONObject data = certComponent.verifyCertData(request.getInviteToken());
             PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByIdx(data.getInt("partnershipMemberIdx"))
                     .orElseThrow(() -> new Exception("존재하지 않는 파트너쉽 회원입니다."));
-            // 초대 승인 가능한 라이센스 구독여부 확인
 
-            lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipMemberVO.getPartnershipIdx())
-                    .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
+            //TODO 초대 승인 가능한 라이센스 구독여부 확인
+//            lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipMemberVO.getPartnershipIdx())
+//                    .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
 
             certComponent.approvePartnershipMember(data, memberVO);
 
@@ -521,9 +521,9 @@ public class PartnershipService {
             if (!linkVO.getStateCd().equals(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode())) {
                 throw new CustomException(ErrorCode.COMMON_INVALID);
             }
-
-            lp = licensePartnershipMapper.selectByPartnershipIdx(linkVO.getPartnershipIdx())
-                    .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
+//TODO 초대 승인 가능한 라이센스 구독여부 확인
+//            lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipMemberVO.getPartnershipIdx())
+//                    .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
 
             String infoJsonString = linkVO.getInviteInfoJson();
             if (infoJsonString == null || infoJsonString.isBlank()) {
