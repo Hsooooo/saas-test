@@ -11,6 +11,7 @@ import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
+import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberViewMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
@@ -73,6 +74,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.illunex.emsaasrestapi.common.ErrorCode.PROJECT_EMPTY_DATA;
 import static com.illunex.emsaasrestapi.common.ErrorCode.PROJECT_INVALID_FILE_DATA_COLUMN_EMPTY;
@@ -733,11 +735,8 @@ public class ProjectService {
 
         for(ResponseProjectDTO.ProjectListItem projectListItem : response){
             // 프로젝트 구성원 조회
-//            List<PartnershipMemberVO> projectMemberList = partnershipMemberMapper.selectByProjectIdx(projectListItem.getIdx());
-//            List<ResponsePartnershipDTO.PartnershipMember> members = projectMemberList.stream()
-//                    .map(vo -> modelMapper.map(vo, ResponsePartnershipDTO.PartnershipMember.class))
-//                    .collect(Collectors.toList());
-//            projectListItem.setMembers(members);
+            List<ResponseProjectDTO.ProjectMember> memberList = getProjectMemberList(memberVO, projectListItem.getIdx());
+            projectListItem.setMembers(memberList);
         }
 
         return CustomResponse.builder()

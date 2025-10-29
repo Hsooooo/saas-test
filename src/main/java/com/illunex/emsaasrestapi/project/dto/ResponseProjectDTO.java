@@ -266,7 +266,7 @@ public class ResponseProjectDTO {
         private Integer edgeCnt;
         private ZonedDateTime updateDate;
         private ZonedDateTime createDate;
-        private List<ResponsePartnershipDTO.PartnershipMember> members;  // 프로젝트 구성원
+        private List<ResponseProjectDTO.ProjectMember> members;  // 프로젝트 구성원
     }
 
     @Getter
