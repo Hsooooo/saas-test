@@ -13,15 +13,9 @@ import com.illunex.emsaasrestapi.project.document.project.Project;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectCategoryDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
-import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
-import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
-import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
-import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
+import com.illunex.emsaasrestapi.project.mapper.*;
 import com.illunex.emsaasrestapi.project.session.ProjectDraft;
-import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
-import com.illunex.emsaasrestapi.project.vo.ProjectFileVO;
-import com.illunex.emsaasrestapi.project.vo.ProjectMemberVO;
-import com.illunex.emsaasrestapi.project.vo.ProjectVO;
+import com.illunex.emsaasrestapi.project.vo.*;
 import com.mongodb.lang.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,10 +43,10 @@ public class ProjectComponent {
     private final ProjectMemberMapper projectMemberMapper;
     private final ProjectFileMapper projectFileMapper;
     private final ProjectCategoryMapper projectCategoryMapper;
+    private final ProjectMemberViewMapper projectMemberViewMapper;
 
     private final ModelMapper modelMapper;
     private final MongoTemplate mongoTemplate;
-    private final ProjectService projectService;
 
     /**
      * 프로젝트 카테고리 타입
@@ -430,7 +424,7 @@ public class ProjectComponent {
 
             // 프로젝트 아이템 생성 및 추가
             ResponseProjectDTO.ProjectListItem projectItem = modelMapper.map(projectVO, ResponseProjectDTO.ProjectListItem.class);
-            projectItem.setMembers(projectService.getProjectMemberList(memberVO, projectItem.getIdx()));
+            projectItem.setMembers(getProjectMemberList(projectItem.getIdx()));
             categoryItem.getProjectItemList().add(projectItem);
         }
 
@@ -478,4 +472,16 @@ public class ProjectComponent {
 
     }
 
+    public List<ResponseProjectDTO.ProjectMember> getProjectMemberList(int projectIdx) {
+        List<ResponseProjectDTO.ProjectMember> result = new ArrayList<>();
+        List<ProjectMemberViewVO> memberViewList = projectMemberViewMapper.selectAllByProjectIdx(projectIdx);
+        for (ProjectMemberViewVO pmv : memberViewList) {
+            ResponseProjectDTO.ProjectMember member = modelMapper.map(pmv, ResponseProjectDTO.ProjectMember.class);
+            member.setStateCd(pmv.getStateCd());
+            member.setTypeCd(pmv.getTypeCd());
+            result.add(member);
+        }
+
+        return result;
+    }
 }

@@ -1439,16 +1439,7 @@ public class ProjectService {
         // 프로젝트 구성원 여부 체크
         projectComponent.checkProjectMember(projectIdx, partnershipMemberVO.getIdx());
 
-        List<ResponseProjectDTO.ProjectMember> result = new ArrayList<>();
-        List<ProjectMemberViewVO> memberViewList = projectMemberViewMapper.selectAllByProjectIdx(projectIdx);
-        for (ProjectMemberViewVO pmv : memberViewList) {
-            ResponseProjectDTO.ProjectMember member = modelMapper.map(pmv, ResponseProjectDTO.ProjectMember.class);
-            member.setStateCd(pmv.getStateCd());
-            member.setTypeCd(pmv.getTypeCd());
-            result.add(member);
-        }
-
-        return result;
+        return projectComponent.getProjectMemberList(projectIdx);
     }
 
     /**
