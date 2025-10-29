@@ -4,7 +4,6 @@ package com.illunex.emsaasrestapi.project;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
-import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.document.database.Column;
@@ -52,7 +51,6 @@ public class ProjectComponent {
 
     private final ModelMapper modelMapper;
     private final MongoTemplate mongoTemplate;
-    private final ProjectService projectService;
 
     /**
      * 프로젝트 카테고리 타입
@@ -395,7 +393,7 @@ public class ProjectComponent {
      * @return
      * @throws CustomException
      */
-    public ResponseProjectDTO.ProjectDropdown createResponseProjectDropdown(MemberVO memberVO, RequestProjectDTO.SearchProject searchProject, PartnershipMemberVO partnershipMemberVO) throws CustomException {
+    public ResponseProjectDTO.ProjectDropdown createResponseProjectDropdown(RequestProjectDTO.SearchProject searchProject, PartnershipMemberVO partnershipMemberVO) throws CustomException {
         // 파트너쉽 구성원에 포함된 프로젝트 목록 조회
         List<ProjectVO> projectList = projectMapper.selectAllBySearchProjectListAndPartnershipMemberIdxNotPaging(searchProject, partnershipMemberVO.getIdx());
 
@@ -430,7 +428,6 @@ public class ProjectComponent {
 
             // 프로젝트 아이템 생성 및 추가
             ResponseProjectDTO.ProjectListItem projectItem = modelMapper.map(projectVO, ResponseProjectDTO.ProjectListItem.class);
-            projectItem.setMembers(projectService.getProjectMemberList(memberVO, projectItem.getIdx()));
             categoryItem.getProjectItemList().add(projectItem);
         }
 

@@ -754,7 +754,7 @@ public class ProjectService {
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(memberVO, searchProject.getPartnershipIdx());
         return CustomResponse.builder()
-                .data(projectComponent.createResponseProjectDropdown(memberVO, searchProject, partnershipMemberVO))
+                .data(projectComponent.createResponseProjectDropdown(searchProject, partnershipMemberVO))
                 .build();
     }
 
