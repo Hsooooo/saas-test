@@ -54,4 +54,17 @@ public class PartnershipPaymentMethodVO {
         )
     </insert>
 
+    <select id="selectDefaultByPartnershipIdx" resultType="PartnershipPaymentMethodVO">
+        SELECT *
+        FROM partnership_payment_method
+        WHERE partnership_idx = #{partnershipIdx}
+        AND is_default = true
+    </select>
+
+    <select id="selectByCustomerKey" resultType="PartnershipPaymentMethodVO">
+        SELECT *
+        FROM partnership_payment_method
+        WHERE customer_key = #{customerKey}
+    </select>
+
 </mapper>

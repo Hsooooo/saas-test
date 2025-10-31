@@ -20,6 +20,9 @@ public class RequestPaymentDTO {
     public static class SubscriptionChangeEvent {
         private Integer partnershipIdx;
         private Integer licenseIdx;
+        private String action;
+        private String effective;
+        private String orderNumber;
     }
 
     @Getter
@@ -28,6 +31,7 @@ public class RequestPaymentDTO {
         private Integer licenseIdx;
         private String action;
         private String effective;
+        private String orderNumber;
 
     }
 }

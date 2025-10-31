@@ -429,6 +429,26 @@ public class EnumCode {
     }
 
     /**
+     * 청구서 관련 코드
+     */
+    public static class Invoice {
+        /**
+         * 청구서 상태 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum StateCd implements BaseCodeEnum {
+            DRAFT("ISC0001", "임시"),
+            ISSUED("ISC0002", "발행"),
+            PAID("ISC0003", "결제완료"),
+            CANCELLED("ISC0004", "취소");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    /**
      * 청구 항목 관련 코드
      */
     public static class InvoiceItem {
@@ -442,6 +462,73 @@ public class EnumCode {
             PRORATION("ITC0002", "일할요금"),
             FIX("ITC0003", "보정액"),
             ADJUST("ITC0004", "조정항목");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    public static class PaymentAttempt {
+        /**
+         * 결제 시도 상태 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum StateCd implements BaseCodeEnum {
+            SUCCESS("PAS0001", "성공"),
+            FAILED("PAS0002", "실패"),
+            PENDING("PAS0003", "대기중");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    public static class PaymentMethod {
+        /**
+         * 결제 수단 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum MethodTypeCd implements BaseCodeEnum {
+            CARD("PMC0001", "신용/체크카드"),
+            BANK("PMC0002", "계좌이체");
+
+            private final String code;
+            private final String value;
+        }
+
+        @Getter
+        @AllArgsConstructor
+        public enum StateCd implements BaseCodeEnum {
+            ACTIVE("PSC0001", "ACTIVE"),
+            INACTIVE("PSC0002", "INACTIVE"),
+            DELETED("PSC0003", "DELETED");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    public static class PaymentMandate {
+        /**
+         * PG사 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum ProviderCd implements BaseCodeEnum {
+            TOSS("PGC0001", "Toss Payments");
+
+            private final String code;
+            private final String value;
+        }
+
+        @Getter
+        @AllArgsConstructor
+        public enum StatusCd implements BaseCodeEnum {
+            ACTIVE("MDS0001", "ACTIVE"),
+            REVOKED("MDS0001", "REVOKED"),
+            EXPIRED("MDS0001", "EXPIRED"),;
 
             private final String code;
             private final String value;

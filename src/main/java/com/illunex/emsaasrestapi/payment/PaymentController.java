@@ -21,25 +21,68 @@ public class PaymentController {
         return "Payment API is working!";
     }
 
+    /**
+     * customerKey 발급
+     * @param memberVO
+     * @return
+     * @throws Exception
+     */
+    @GetMapping("/customer-key/generate")
+    public CustomResponse<?> generateCustomerKey(@CurrentMember MemberVO memberVO) throws Exception {
+        return CustomResponse.builder()
+                .data(paymentService.createCustomerKey())
+                .build();
+    }
+
+    /**
+     * 자동결제용 빌링키 등록
+     * @param request
+     * @param memberVO
+     * @return
+     * @throws Exception
+     */
     @PostMapping("/toss/method/register")
-    public String registerPaymentMethod(@RequestBody RequestPaymentDTO.MethodRegister request,
+    public CustomResponse<?> registerPaymentMethod(@RequestBody RequestPaymentDTO.MethodRegister request,
                                         @CurrentMember MemberVO memberVO) throws Exception {
-        paymentService.registerPaymentMethodToss(request, memberVO);
-        return "Payment method registered!";
+        return CustomResponse.builder()
+                .data(paymentService.registerPaymentMethodToss(request, memberVO))
+                .build();
     }
 
-    @PostMapping("/subscription/change-event")
-    public String subscriptionChangeEvent(@RequestBody RequestPaymentDTO.SubscriptionChangeEvent request,
-                                          @CurrentMember MemberVO memberVO) throws Exception {
-//        paymentService.handleSubscriptionChangeEvent(request, memberVO);
-        return "Subscription change event handled!";
+    @GetMapping("/toss/method")
+    public CustomResponse<?> getPaymentMethod(@RequestParam Integer partnershipIdx,
+                                              @CurrentMember MemberVO memberVO) throws Exception {
+        return CustomResponse.builder()
+                .data(paymentService.getPaymentMethodToss(partnershipIdx, memberVO))
+                .build();
     }
 
+    /**
+     * 구독 변경 이벤트 청구 금액 계산
+     * @param subscriptionInfo
+     * @param memberVO
+     * @return
+     * @throws Exception
+     */
     @PostMapping("/subscription/change-event/calc-proration")
     public CustomResponse<?> calculateProration(@RequestBody RequestPaymentDTO.SubscriptionInfo subscriptionInfo,
                                                 @CurrentMember MemberVO memberVO) throws Exception {
         return CustomResponse.builder()
                 .data(paymentService.calculateProrationAmount(subscriptionInfo, memberVO))
                 .build();
+    }
+
+    /**
+     * 구독 변경 이벤트 즉시 청구 적용
+     * @param request
+     * @param memberVO
+     * @return
+     * @throws Exception
+     */
+    @PostMapping("/subscription/change-event/apply")
+    public String applySubscriptionChangeEvent(@RequestBody RequestPaymentDTO.SubscriptionChangeEvent request,
+                                               @CurrentMember MemberVO memberVO) throws Exception {
+        paymentService.chargeNow(request, memberVO);
+        return "Subscription change event applied!";
     }
 }

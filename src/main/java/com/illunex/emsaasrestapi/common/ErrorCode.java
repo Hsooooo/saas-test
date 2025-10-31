@@ -77,6 +77,17 @@ public enum ErrorCode {
      * 라이센스
      */
     LICENSE_PARTNERSHIP_EMPTY(600, "구독 정보가 존재하지 않습니다"),
+
+    /**
+     * 결제
+     */
+    PAYMENT_NO_DEFAULT_METHOD(700, "기본 결제 수단이 없습니다."),
+    PAYMENT_INVALID_BILLING_KEY(701, "유효하지 않은 빌링키입니다."),
+
+    /**
+     * PG
+     */
+    PG_TOSS_PAYMENT_FAIL(900, "토스페이먼츠 결제에 실패했습니다.")
     ;
 
     private final int status;

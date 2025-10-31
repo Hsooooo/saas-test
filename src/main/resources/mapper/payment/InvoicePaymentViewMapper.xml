@@ -42,7 +42,9 @@ public class InvoiceVO {
         SELECT
             pm.idx AS paymentMethodIdx,
             md.idx AS paymentMandateIdx,
-            md.provider_cd AS providerCd
+            md.provider_cd AS providerCd,
+            md.mandate_id AS mandateId,
+            pm.customer_key AS customerKey
         FROM partnership_payment_method pm
                  JOIN payment_mandate md
                       ON md.partnership_idx = pm.partnership_idx
@@ -50,7 +52,7 @@ public class InvoiceVO {
                           AND md.status_cd = 'MDS0001' /* ACTIVE */
         WHERE pm.partnership_idx = #{partnershipIdx}
           AND pm.is_default = 1
-          AND pm.state_cd = 'PSC0001' /* ACTIVE */
+          AND pm.state_cd = 'PMS0001' /* ACTIVE */
         ORDER BY md.create_date DESC
             LIMIT 1
     </select>

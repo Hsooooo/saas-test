@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+@Getter
+@Setter
+@Alias("PaymentAttemptVO")
+public class PaymentAttemptVO {
+    private Integer idx;
+    private Integer invoiceIdx;
+    private Integer partnershipIdx;
+    private String providerCd;
+    private Integer paymentMethodIdx;
+    private Integer paymentMandateIdx;
+    private Integer attemptNo;
+    private BigDecimal amount;
+    private String unitCd;
+    private String statusCd;
+    private String orderNumber;
+    private String failureCode;
+    private String failureMessage;
+    private ZonedDateTime requestDate;
+    private ZonedDateTime respondDate;
+    private String meta;
+}
+
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.payment.mapper.PaymentAttemptMapper">
+    <insert id="insertByPaymentAttemptVO" parameterType="PaymentAttemptVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO payment_attempt(
+           invoice_idx,
+           partnership_idx,
+           provider_cd,
+           payment_method_idx,
+           payment_mandate_idx,
+           attempt_no,
+           amount,
+           unit_cd,
+           status_cd,
+           order_number,
+           failure_code,
+           failure_message,
+           request_date,
+           respond_date,
+           meta
+        ) VALUES (
+            #{invoiceIdx},
+            #{partnershipIdx},
+            #{providerCd},
+            #{paymentMethodIdx},
+            #{paymentMandateIdx},
+            #{attemptNo},
+            #{amount},
+            #{unitCd},
+            #{statusCd},
+            #{orderNumber},
+            #{failureCode},
+            #{failureMessage},
+            NOW(),
+            #{respondDate},
+            #{meta}
+        )
+    </insert>
+
+    <select id="selectByOrderNumber" resultType="PaymentAttemptVO" parameterType="String">
+        SELECT *
+        FROM payment_attempt
+        WHERE order_number = #{orderNumber}
+    </select>
+
+    <update id="updateByPaymentAttemptVO" parameterType="PaymentAttemptVO">
+        UPDATE payment_attempt
+        SET
+            status_cd = #{statusCd},
+            failure_code = #{failureCode},
+            failure_message = #{failureMessage},
+            respond_date = #{respondDate},
+            meta = #{meta}
+        WHERE idx = #{idx}
+    </update>
+
+</mapper>

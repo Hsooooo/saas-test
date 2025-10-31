@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+@Getter
+@Setter
+@Alias("PaymentAttemptVO")
+public class PaymentAttemptVO {
+    private Integer idx;
+    private Integer invoiceIdx;
+    private Integer partnershipIdx;
+    private String providerCd;
+    private Integer paymentMethodIdx;
+    private Integer paymentMandateIdx;
+    private Integer attemptNo;
+    private BigDecimal amount;
+    private String unitCd;
+    private String statusCd;
+    private String orderNumber;
+    private String failureCode;
+    private String failureMessage;
+    private ZonedDateTime requestDate;
+    private ZonedDateTime respondDate;
+    private String meta;
+}
+
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.payment.mapper.PaymentMethodViewMapper">
+
+    <select id="selectPaymentMethodsByPartnershipIdx" resultType="PaymentMethodViewVO">
+        SELECT
+            pm.partnership_idx   AS partnershipIdx,
+            pm.idx                 AS paymentMethodIdx,
+            md_pick.idx            AS recentMandateIdx,
+            md_pick.provider_cd    AS providerCd,
+            md_pick.mandate_id     AS mandateId,
+            pm.customer_key        AS customerKey,
+            pm.is_default         AS isDefaultMethod
+        FROM partnership_payment_method pm
+                 LEFT JOIN (
+            SELECT
+                md.*,
+                ROW_NUMBER() OVER (
+            PARTITION BY md.partnership_idx, md.payment_method_idx
+            ORDER BY
+                CASE WHEN md.status_cd = 'MDS0001' THEN 0 ELSE 1 END,
+                md.create_date DESC
+            ) AS rn
+            FROM payment_mandate md
+            WHERE md.provider_cd = 'PGC0001'
+        ) md_pick
+                           ON md_pick.partnership_idx = pm.partnership_idx
+                               AND md_pick.payment_method_idx = pm.idx
+                               AND md_pick.rn = 1
+        WHERE pm.partnership_idx = #{partnershipIdx}
+        ORDER BY (md_pick.create_date IS NULL), md_pick.create_date DESC
+    </select>
+
+</mapper>

@@ -62,9 +62,9 @@ public class InvoiceVO {
     <select id="selectActiveByPeriod" resultType="InvoiceVO">
         SELECT *
         FROM invoice
-        WHERE license_partnership_idx = #{licensePartnershipIdx}
-        AND period_start = #{start}
-        AND period_end   = #{end}
+        WHERE license_partnership_idx = #{lpIdx}
+        AND period_start = #{periodStart}
+        AND period_end   = #{periodEnd}
         AND status_cd <![CDATA[<>]]> 'ICS0004' -- VOID 제외
         LIMIT 1
     </select>
@@ -105,5 +105,13 @@ public class InvoiceVO {
         ORDER BY issue_date DESC
         LIMIT 1
     </select>
+
+    <update id="markPaid">
+        UPDATE invoice
+        SET status_cd = 'ICS0003',  -- PAID
+            update_date = CURRENT_TIMESTAMP
+        WHERE idx = #{invoiceIdx}
+          AND status_cd = 'ICS0002' -- OPEN 에서만 PAID
+    </update>
 
 </mapper>

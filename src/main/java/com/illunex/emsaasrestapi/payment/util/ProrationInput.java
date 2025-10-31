@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.payment.util;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.Singular;
 
 import java.math.BigDecimal;
@@ -9,16 +10,20 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
+@Setter
 @Getter
 @Builder
 public class ProrationInput {
-    // 기간
+    private Integer partnershipIdx; // 파트너쉽 번호
+    private Integer licensePartnershipIdx; // 파트너쉽 구독 번호
+    private Integer licenseIdx; // 라이센스 번호
+    // 기존 구독 기간
     private LocalDate periodStart;   // inclusive
     private LocalDate periodEndExcl; // exclusive
     private LocalDate today;         // NOW 업그레이드 기준일(= occurredAt.toLocalDate)
 
     // 분모/반올림/통화
-    private int denominatorDays;     // 31 등
+    private int denominatorDays;     // 분모 31 등
     private RoundingMode roundingMode; // HALF_UP
     private String currency;         // KRW
 
@@ -29,6 +34,7 @@ public class ProrationInput {
     public static class Plan {
         private int idx;
         private String planCd;
+        private String name;
         private BigDecimal pricePerUser;
         private Integer minUserCount;
     }
@@ -39,12 +45,21 @@ public class ProrationInput {
     private int currentActiveSeats; // 현재 활성 멤버 수 스냅샷
     private boolean useSnapshotSeatsFirst; // true면 LP의 current_seat_count 우선
     private Integer snapshotSeats;  // LP.current_seat_count
+    // NEW: 두 개의 분모를 구분(선택)
+    private Integer denominatorDaysOld; // 미청구(구플랜) 계산용 분모
+    private Integer denominatorDaysNew; // 신규 주기 RECURRING 표시용(선택)
+
+    // NEW: 신규 주기 기간 (내일~)
+    private LocalDate nextPeriodStart;   // tomorrow (inclusive)
+    private LocalDate nextPeriodEndExcl; // nextPeriodStart + 1개월(또는 anchor 계산)
 
     // 액션
     private Action action;          // UPGRADE | DOWNGRADE | CANCEL
     private Effective effective;    // NOW | PERIOD_END
+    private ActivationMode activationMode; // NOW | TOMORROW
     public enum Action { UPGRADE, DOWNGRADE, CANCEL }
     public enum Effective { NOW, PERIOD_END }
+    public enum ActivationMode { NOW, TOMORROW }
 
     // 이벤트(좌석)
     @Singular

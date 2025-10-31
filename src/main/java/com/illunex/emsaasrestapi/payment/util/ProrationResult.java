@@ -13,6 +13,7 @@ import java.util.Map;
 public class ProrationResult {
     @Singular
     private List<Item> items;
+    private String planName;
     private long subTotal;
     private long tax;
     private long total;

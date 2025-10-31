@@ -1,9 +1,9 @@
 package com.illunex.emsaasrestapi.payment.dto;
 
 import com.illunex.emsaasrestapi.common.code.EnumCode;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import com.illunex.emsaasrestapi.payment.vo.InvoiceVO;
+import com.illunex.emsaasrestapi.payment.vo.PaymentAttemptVO;
+import lombok.*;
 import org.springframework.cglib.core.Local;
 
 import java.time.LocalDate;
@@ -12,8 +12,19 @@ import java.util.List;
 import java.util.Map;
 
 public class ResponsePaymentDTO {
+
     @Getter
-    @Builder
+    @Setter
+    public static class RegisterPaymentMethod {
+        private Integer paymentMethodIdx;
+        private String method;
+        private Map<String, Object> card;
+        private String requestedAt;
+    }
+
+
+    @Getter
+    @Setter
     public static class PaymentPreview {
         private Integer partnershipIdx;
         private Integer licensePartnershipIdx;
@@ -64,5 +75,47 @@ public class ResponsePaymentDTO {
         private Long amount;           // +/-
         private Long relatedEventId;   // null 가능
         private Map<String, Object> meta;
+    }
+
+
+    @Getter
+    @Setter
+    public static class PaymentChargeResult {
+        private String paymentKey;
+        private String orderId;
+        private String orderName;
+        private Long amount;
+        private String currency;
+        private String requestedAt;
+        private String status;
+        private String method;
+        private Map<String, Object> customer;
+        private Map<String, Object> card;
+        private String errorCode;
+        private String errorMessage;
+
+        public static PaymentChargeResult zero() {
+            PaymentChargeResult result = new PaymentChargeResult();
+            result.amount = 0L;
+            result.status = "SUCCESS";
+            return result;
+        }
+
+        public static PaymentChargeResult failed(String errorCode, String errorMessage) {
+            PaymentChargeResult result = new PaymentChargeResult();
+            result.errorCode = errorCode;
+            result.errorMessage = errorMessage;
+            result.amount = 0L;
+            result.status = "FAILED";
+            return result;
+        }
+
+        public static PaymentChargeResult ok(InvoiceVO inv, PaymentAttemptVO attempt) {
+            PaymentChargeResult result = new PaymentChargeResult();
+            result.orderId = attempt.getOrderNumber();
+            result.amount = inv.getTotal().longValue();
+            result.status = "SUCCESS";
+            return result;
+        }
     }
 }

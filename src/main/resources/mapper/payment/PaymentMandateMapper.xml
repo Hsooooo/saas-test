@@ -45,4 +45,12 @@ public class PaymentMandateVO {
         )
     </insert>
 
+    <select id="selectLastOneByPaymentMethodIdx" parameterType="Integer" resultType="PaymentMandateVO">
+        SELECT *
+        FROM payment_mandate
+        WHERE payment_method_idx = #{paymentMethodIdx}
+        ORDER BY create_date DESC
+        LIMIT 1
+    </select>
+
 </mapper>

@@ -1,5 +1,6 @@
 INSERT INTO `partnership` (`idx`, `name`, `domain`, `image_url`, `image_path`, `comment`, `update_date`, `create_date`) VALUES (1, '1', '1', NULL, NULL, NULL, NULL, '2025-04-21 18:45:53');
 INSERT INTO `partnership` (`idx`, `name`, `domain`, `image_url`, `image_path`, `comment`, `update_date`, `create_date`) VALUES (2, '2', '2', NULL, NULL, NULL, NULL, '2025-04-21 18:45:53');
+INSERT INTO `partnership` (`idx`, `name`, `domain`, `image_url`, `image_path`, `comment`, `update_date`, `create_date`) VALUES (3, '3', '3', NULL, NULL, NULL, NULL, '2025-04-21 18:45:53');
 INSERT INTO `project_category` (`idx`, `partnership_idx`, `name`, `sort`, `update_date`, `create_date`) VALUES (1, 1, '미분류', 1, now(), now());
 INSERT INTO `project_category` (`idx`, `partnership_idx`, `name`, `sort`, `update_date`, `create_date`) VALUES (2, 1, '피카츄', 2, now(), now());
 INSERT INTO `project_category` (`idx`, `partnership_idx`, `name`, `sort`, `update_date`, `create_date`) VALUES (3, 1, '라이츄', 3, now(), now());
@@ -23,6 +24,9 @@ INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, me
 INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(7, 'PST0002', 'PMS0001', 1, 7);
 INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(8, 'PST0002', 'PMS0001', 1, 8);
 INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(9, 'PST0001', 'PMS0001', 2, 9);
+INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(10, 'PST0001', 'PMS0001', 2, 1);
+INSERT INTO `partnership_member` (idx, manager_cd, state_cd, partnership_idx, member_idx) VALUES(11, 'PST0001', 'PMS0001', 3, 1);
+
 
 INSERT INTO `partnership_invited_member` (idx, email, partnership_idx, invited_by_partnership_member_idx, member_idx, partnership_member_idx, invited_date, joined_date) VALUES(1, 'test3@test.com', 1, 1, 3, 3, now(), now());
 INSERT INTO `partnership_invited_member` (idx, email, partnership_idx, invited_by_partnership_member_idx, member_idx, partnership_member_idx, invited_date, joined_date) VALUES(2, 'test3@test.com', 1, 2, 4, 4, now(), now());
@@ -55,31 +59,91 @@ VALUES
     (2, 'PLC0002', 'Advanced Plan', 'advanced license', 10000, 3,  200000, 50, 1, 1, NOW(), NOW()),
     (3, 'PLC0003', 'Premium Plan', 'premium license', 20000, 5,  500000, 100, 1, 1, NOW(), NOW());
 
-
--- 오늘 기준으로 청구일 세팅
-SET @today = CURDATE();
-SET @start = DATE_SUB(@today, INTERVAL 1 MONTH);
-
+-- -- 오늘 기준으로 청구일 세팅
+-- -- SET @today = CURDATE();
+-- SET @today = DATE_ADD(CURDATE(), INTERVAL +15 DAY);
+-- SET @start = DATE_SUB(@today, INTERVAL 1 MONTH);
+--
+-- INSERT INTO license_partnership (
+--     idx, partnership_idx, license_idx, billing_day,
+--     period_start_date, period_end_date, next_billing_date,
+--     current_seat_count, current_unit_price, current_min_user_count,
+--     cancel_at_period_end, state_cd, update_date, create_date
+-- ) VALUES (
+--              1, 1, 2, DAY(@today),
+--              @start, @today, @today,
+--              3, 100000, 3,
+--              0, 'LPS0002', NOW(), NOW()
+-- );
+--
+-- -- 이벤트 여러 개 (전 달부터 오늘 사이)
+-- INSERT INTO subscription_change_event (license_partnership_idx, occurred_date, type_cd, qty_delta, note, create_date)
+-- VALUES
+--     (1, DATE_ADD(@start, INTERVAL 3 DAY), 'CET0001', 1, '좌석 추가 +1', NOW()),
+--     (1, DATE_ADD(@start, INTERVAL 10 DAY), 'CET0002', -1, '좌석 감소 -1', NOW()),
+--     (1, DATE_ADD(@start, INTERVAL 15 DAY), 'CET0001', 1, '좌석 추가 +1', NOW()),
+SET @today     = CURDATE();                      -- 업그레이드(NOW) 평가 시점
+SET @start     = DATE_SUB(@today, INTERVAL 15 DAY);   -- 현재 주기 시작(포함)
+SET @endExcl   = DATE_ADD(@start,  INTERVAL 31 DAY);  -- 현재 주기 종료(배타)
+SET @prevStart = DATE_SUB(@start,  INTERVAL 31 DAY);  -- 이전 주기 시작
+-- 고정 분모(재현성을 위해 31일로 가정)
+SET @DAYS = 31;
+-- ===== 현재 구독 상태: ADVANCED(2) =====
+-- current_seat_count: 현재 시점 예상 좌석(예: 5)
 INSERT INTO license_partnership (
     idx, partnership_idx, license_idx, billing_day,
     period_start_date, period_end_date, next_billing_date,
     current_seat_count, current_unit_price, current_min_user_count,
     cancel_at_period_end, state_cd, update_date, create_date
-) VALUES (
-             1, 1, 2, DAY(@today),
-             @start, @today, @today,
-             3, 100000, 3,
-             0, 'LPS0002', NOW(), NOW()
-         );
+) VALUES
+    (1, 1, 2, DAY(@start),
+     @start, @endExcl, @endExcl,
+     5, (SELECT price_per_user FROM license WHERE idx=2),
+     (SELECT COALESCE(min_user_count,0) FROM license WHERE idx=2),
+     0, 'LPS0002', NOW(), NOW());
 
--- 이벤트 여러 개 (전 달부터 오늘 사이)
-INSERT INTO subscription_change_event (license_partnership_idx, occurred_date, type_cd, qty_delta, note, create_date)
-VALUES
-    (1, DATE_ADD(@start, INTERVAL 3 DAY), 'CET0001', 2, '좌석 추가 +2', NOW()),
-    (1, DATE_ADD(@start, INTERVAL 10 DAY), 'CET0002', -1, '좌석 감소 -1', NOW()),
-    (1, DATE_ADD(@start, INTERVAL 15 DAY), 'CET0001', 3, '좌석 추가 +3', NOW()),
-    (1, DATE_ADD(@start, INTERVAL 20 DAY), 'CET0002', -2, '좌석 감소 -2', NOW());
+-- ===== 이전 주기 인보이스 (선불 스냅샷) =====
+-- 지난달 선불 좌석 수 = 3석 (RECURRING)
+INSERT INTO invoice (
+    partnership_idx, license_partnership_idx,
+    period_start, period_end, issue_date, due_date,
+    subtotal, tax, total, status_cd, unit_cd,
+    create_date
+) VALUES
+    (1, 1, @prevStart, @start, @start, NULL,
+     0, 0, 0, 'ICS0002', 'KRW', NOW());
 
-INSERT INTO partnership_payment_method (idx, partnership_idx, method_type_cd, brand, last4, exp_year, exp_month, customer_key, auth_key, holder_name, state_cd, is_default, delete_date, update_date, create_date)
-VALUES (1, 1, 'PMC0001', 'CBC0001', '1234', '2029', '12', 'bQk1hIGGl8PzpsiQwL9CH', 'bln_9Z60wpWYn5o', 'dd', 'PSC0001', 1, null, now(), now());
-INSERT INTO em_saas.payment_mandate (idx, partnership_idx, payment_method_idx, provider_cd, mandate_id, status_cd, agree_date, revoke_date, meta, update_date, create_date) VALUES (1, 1, 1, 'TOSS', 'oZxgD-eck57eRbhay2cz0q6VGHYwlxvv2lyoQeJGT_c=', 'MDS0001', '2025-10-22 09:21:49', null, null, '2025-10-22 09:23:01', '2025-10-22 09:21:49');
+INSERT INTO invoice_item (
+    invoice_idx, item_type_cd, description,
+    quantity, unit_price, days, amount,
+    related_event_idx, meta, create_date
+) VALUES
+    (LAST_INSERT_ID(), 'ITC0001', '정기결제 선불 스냅샷(ADVANCED)', 6,
+     (SELECT price_per_user FROM license WHERE idx=2), @DAYS, 0, NULL,
+     JSON_OBJECT('planIdx',2,'planCd',(SELECT plan_cd FROM license WHERE idx=2),'snapshot','prev_recurring'), NOW());
+
+-- ===== 현재 주기 좌석 이벤트 (ADD/REMOVE만, 업그레이드 이벤트 없음) =====
+-- 구간: @start ~ @today 사이에만 존재하도록 구성
+-- 예시 흐름(최종 today 시점 seats=5를 만들 의도):
+--   day+3  : ADD +2  => 3선불 → 5
+--   day+9  : REMOVE -1 => 4
+--   day+12 : ADD +1  => 5
+INSERT INTO subscription_change_event (license_partnership_idx, occurred_date, type_cd, qty_delta, from_license_idx, to_license_idx, note, create_date) VALUES
+                                                                                                                                                            (1, DATE_ADD(@start, INTERVAL 3  DAY), 'CET0001',  2, NULL, NULL, 'ADD +2', NOW()),
+                                                                                                                                                            (1, DATE_ADD(@start, INTERVAL 9  DAY), 'CET0002', -1, NULL, NULL, 'REMOVE -1', NOW()),
+                                                                                                                                                            (1, DATE_ADD(@start, INTERVAL 12 DAY), 'CET0001',  1, NULL, NULL, 'ADD +1', NOW());
+
+COMMIT;
+
+-- ===== 검증 가이드 =====
+-- calculateProrationAmount 호출 예:
+-- partnershipIdx=1, action='UPGRADE', effective='NOW', licenseIdx=3
+-- 기대 항목:
+--  - PRORATION(좌석 추가 미청구분 / 구 플랜=ADVANCED): @start~@today 사이 세그먼트에 대해
+--    * (effectiveSeats - baseSeatsPrepaid=3)+ 를 days에 곱해서 합산
+--  - PRORATION(신 플랜 잔여기간 / PREMIUM): today~@endExcl 총일수
+--  - CREDIT(구 플랜 잔여기간 / ADVANCED, 선불 3석): today~@endExcl 총일수
+
+
+INSERT INTO em_saas.partnership_payment_method (idx, partnership_idx, method_type_cd, brand, last4, exp_year, exp_month, customer_key, auth_key, holder_name, state_cd, is_default, delete_date, update_date, create_date) VALUES (3, 2, 'PMC0001', '신한', null, null, null, 'SAAS-CK-20251030-1FDBBF6C3623', 'bln_q5Gg6m7m9OR', null, 'PMS0001', 1, null, '2025-10-30 05:51:17', '2025-10-30 05:51:17');
+INSERT INTO em_saas.payment_mandate (idx, partnership_idx, payment_method_idx, provider_cd, mandate_id, status_cd, agree_date, revoke_date, meta, update_date, create_date) VALUES (3, 2, 3, 'PGC0001', 'I81alwBj7AgEaTbpBjOaYpzK2Rcju3XsFIHFVCF9FgU=', 'MDS0001', '2025-10-30 05:51:17', null, null, '2025-10-30 05:51:17', '2025-10-30 05:51:17');

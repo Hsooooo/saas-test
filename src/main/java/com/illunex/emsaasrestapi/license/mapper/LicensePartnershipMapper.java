@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.license.mapper;
 import com.illunex.emsaasrestapi.license.vo.LicensePartnershipVO;
 import org.apache.ibatis.annotations.Mapper;
 
+import javax.swing.text.html.Option;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,4 +22,6 @@ public interface LicensePartnershipMapper {
     void updatePeriod(LicensePartnershipVO lp);
 
     Optional<LicensePartnershipVO> selectByPartnershipIdx(Integer partnershipIdx);
+
+    Optional<LicensePartnershipVO> selectByIdx(Integer idx);
 }

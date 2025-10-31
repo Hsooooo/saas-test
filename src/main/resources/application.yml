@@ -99,5 +99,6 @@ webhook:
 #  mode: ${debug_mode}
 
 toss:
+  url: ${TOSS_URL}
   client-key: ${TOSS_CLIENT_KEY}
   secret-key: ${TOSS_SECRET_KEY}

@@ -13,7 +13,8 @@ public interface InvoiceMapper {
     InvoiceVO selectActiveByPeriod(Integer lpIdx, LocalDate periodStart, LocalDate periodEnd);
     int recalcTotals(Integer invoiceIdx, BigDecimal vatRate);
     int markOpen(Integer invoiceIdx);
-    Optional<InvoiceVO> selectByIdx(Integer idx);
+    InvoiceVO selectByIdx(Integer idx);
     Optional<InvoiceVO> selectLastIssuedByLicensePartnershipIdx(Integer licensePartnershipIdx);
+    void markPaid(Integer invoiceIdx);
 
 }

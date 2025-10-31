@@ -92,4 +92,26 @@ public class LicensePartnershipVO {
         LIMIT 1
     </select>
 
+    <select id="selectByIdx" resultType="LicensePartnershipVO">
+        SELECT
+            *
+        FROM license_partnership
+        WHERE idx = #{idx}
+    </select>
+
+    <update id="updateByLicensePartnershipVO">
+        UPDATE license_partnership
+        SET
+            license_idx         = #{licenseIdx},
+            period_start_date    = #{periodStartDate},
+            period_end_date      = #{periodEndDate},
+            next_billing_date   = #{nextBillingDate},
+            current_seat_count   = #{currentSeatCount},
+            current_unit_price   = #{currentUnitPrice},
+            current_min_user_count = #{currentMinUserCount},
+            state_cd             = #{stateCd},
+            update_date          = CURRENT_TIMESTAMP
+        WHERE idx = #{idx}
+    </update>
+
 </mapper>

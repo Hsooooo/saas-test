@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+public class LicensePaymentHistoryVO {
+    private Integer idx;
+    private Integer invoiceIdx;
+    private String providerCd;
+    private String orderNumber;
+    private BigDecimal amount;
+    private String unitCd;
+    private String meta;
+    private ZonedDateTime paidDate;
+    private ZonedDateTime createDate;
+}
+
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.license.mapper.LicensePaymentHistoryMapper">
+    <insert id="insertByLicensePaymentHistoryVO" parameterType="LicensePaymentHistoryVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO license_payment_history(
+           invoice_idx,
+           provider_cd,
+           order_number,
+           amount,
+           unit_cd,
+           meta,
+           paid_date,
+           create_date
+        ) VALUES (
+            #{invoiceIdx},
+            #{providerCd},
+            #{orderNumber},
+            #{amount},
+            #{unitCd},
+            #{meta},
+            #{paidDate},
+            NOW()
+        )
+    </insert>
+
+</mapper>

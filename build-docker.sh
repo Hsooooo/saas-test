@@ -80,6 +80,7 @@ docker run -d -p ${PORT}:${PORT} \
     -e "debug.mode=${DEBUG_MODE}" \
     -e TOSS_SECRET_KEY="${TOSS_SECRET_KEY}" \
     -e TOSS_CLIENT_KEY="${TOSS_CLIENT_KEY}" \
+    -e TOSS_URL="${TOSS_URL}" \
     --restart unless-stopped \
     --network ${NETWORK} \
     --name ${APP_NAME} \
