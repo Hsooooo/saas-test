@@ -3,6 +3,7 @@ package com.illunex.emsaasrestapi.payment.dto;
 import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
+import lombok.Setter;
 
 public class RequestPaymentDTO {
     @Getter
@@ -26,6 +27,7 @@ public class RequestPaymentDTO {
     }
 
     @Getter
+    @Setter
     public static class SubscriptionInfo {
         private Integer partnershipIdx;
         private Integer licenseIdx;

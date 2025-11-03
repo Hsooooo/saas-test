@@ -12,4 +12,11 @@
         WHERE idx = #{idx}
     </select>
 
+    <select id="selectAllByActive" resultType="LicenseVO">
+        SELECT
+            *
+        FROM license
+        WHERE active = true
+    </select>
+
 </mapper>

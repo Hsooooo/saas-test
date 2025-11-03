@@ -701,7 +701,7 @@ public class PaymentService {
                 .currentActiveSeats(active)
                 .useSnapshotSeatsFirst(true)  // 프리뷰 재현성 ↑
                 .snapshotSeats(snapshotSeats)
-                .action(ProrationInput.Action.valueOf(req.getAction()))
+                .action(getLicenseChangeAction(fromPlan.getIdx(), toPlan.getIdx()))
                 .effective("NOW".equals(req.getEffective()) ? ProrationInput.Effective.NOW : ProrationInput.Effective.PERIOD_END)
                 .seatEvents(seatEvents)
                 .baseFrom(baseFrom)
@@ -912,7 +912,7 @@ public class PaymentService {
                 .currentActiveSeats(seatsForRecurring)
                 .snapshotSeats(seatsForRecurring)    // 프리뷰 스냅샷 = 산정 좌석
                 .useSnapshotSeatsFirst(true)
-                .action(ProrationInput.Action.UPGRADE) // 엔진 재사용을 위해 UPGRADE로 통일(NEW 액션이 없다면)
+                .action(getLicenseChangeAction(null, toPlan.getIdx())) // 엔진 재사용을 위해 UPGRADE로 통일(NEW 액션이 없다면)
                 .effective(ProrationInput.Effective.NOW)
                 .activationMode(ProrationInput.ActivationMode.TOMORROW)
                 .seatEvents(java.util.List.of())     // 이벤트 없음
@@ -921,5 +921,24 @@ public class PaymentService {
                 .nextPeriodStart(nextPeriod.start())
                 .nextPeriodEndExcl(nextPeriod.endExcl())
                 .build();
+    }
+
+    private ProrationInput.Action getLicenseChangeAction(Integer currentLicenseIdx, Integer targetLicenseIdx) throws CustomException {
+        LicenseVO targetLicense = licenseMapper.selectByIdx(targetLicenseIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        LicenseVO currentLicense = null;
+        if (currentLicenseIdx == null) {
+            return ProrationInput.Action.UPGRADE;
+        } else if (!currentLicenseIdx.equals(targetLicenseIdx)) {
+            currentLicense = licenseMapper.selectByIdx(currentLicenseIdx)
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+            if (targetLicense.getPricePerUser().compareTo(currentLicense.getPricePerUser()) > 0) {
+                return ProrationInput.Action.UPGRADE;
+            } else {
+                return ProrationInput.Action.DOWNGRADE;
+            }
+        } else {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
     }
 }
