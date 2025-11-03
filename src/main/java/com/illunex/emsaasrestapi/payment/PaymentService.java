@@ -540,6 +540,11 @@ public class PaymentService {
         JSONObject resp = tossPaymentService.issueBillingKey(request.getCustomerKey(), request.getAuthKey());
         JSONObject card = resp.getJSONObject("card");
 
+        partnershipPaymentMethodMapper.selectDefaultByPartnershipIdx(request.getPartnershipIdx()).ifPresent(existingDefault -> {
+            existingDefault.setIsDefault(false);
+            partnershipPaymentMethodMapper.updateByPartnershipPaymentMethodVO(existingDefault);
+        });
+
         PartnershipPaymentMethodVO methodVO = new PartnershipPaymentMethodVO();
         methodVO.setPartnershipIdx(request.getPartnershipIdx());
         methodVO.setAuthKey(request.getAuthKey());

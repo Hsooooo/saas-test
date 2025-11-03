@@ -67,4 +67,22 @@ public class PartnershipPaymentMethodVO {
         WHERE customer_key = #{customerKey}
     </select>
 
+    <update id="updateByPartnershipPaymentMethodVO">
+        UPDATE partnership_payment_method
+        SET
+            method_type_cd = #{methodTypeCd},
+            brand = #{brand},
+            last4 = #{last4},
+            exp_year = #{expYear},
+            exp_month = #{expMonth},
+            customer_key = #{customerKey},
+            auth_key = #{authKey},
+            holder_name = #{holderName},
+            state_cd = #{stateCd},
+            is_default = #{isDefault},
+            delete_date = #{deleteDate},
+            update_date = now()
+        WHERE idx = #{idx}
+    </update>
+
 </mapper>

@@ -12,4 +12,6 @@ public interface PartnershipPaymentMethodMapper {
     Optional<PartnershipPaymentMethodVO> selectDefaultByPartnershipIdx(int partnershipIdx);
 
     Optional<PartnershipPaymentMethodVO> selectByCustomerKey(String customerKey);
+
+    void updateByPartnershipPaymentMethodVO(PartnershipPaymentMethodVO methodVO);
 }
