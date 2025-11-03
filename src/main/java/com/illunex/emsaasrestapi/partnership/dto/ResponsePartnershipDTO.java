@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -40,6 +41,23 @@ public class ResponsePartnershipDTO {
         private PartnershipInfo partnership;
         private MyInfoMember member;
         private MyInfoPartnershipMember partnershipMember;
+        private MyInfoLicense license;
+    }
+
+    @Builder
+    @Getter
+    public static class MyInfoLicense {
+        private Integer idx;
+        private String planCd;
+        private String planCdDesc;
+        private String name;
+        private LocalDate periodStartDate;
+        private LocalDate periodEndDate;
+        
+        public void setPlanCd(String planCd) {
+            this.planCd = planCd;
+            this.planCdDesc = EnumCode.getCodeDesc(planCd);
+        }
     }
 
     @Builder

@@ -113,7 +113,7 @@ public final class ProrationEngine {
 
                     items.add(ProrationResult.Item.builder()
                             .itemType("PRORATION")
-                            .description("좌석 변경 미청구분(구 플랜)")
+                            .description("좌석 변경 미청구분")
                             .quantity(addAbovePrepaid)
                             .unitPrice(fromUnit.setScale(0, RM).longValueExact())
                             .days(days)
@@ -149,7 +149,7 @@ public final class ProrationEngine {
 
                 items.add(ProrationResult.Item.builder()
                         .itemType("PRORATION")
-                        .description("신 플랜 잔여기간(업그레이드 NOW)")
+                        .description("신 플랜 잔여기간 과금")
                         .quantity(chargeSeatsNow)
                         .unitPrice(toUnit.setScale(0, RM).longValueExact())
                         .days(dRemain)
@@ -168,7 +168,7 @@ public final class ProrationEngine {
 
                     items.add(ProrationResult.Item.builder()
                             .itemType("CREDIT")
-                            .description("구 플랜 남은기간 크레딧(선불 좌석)")
+                            .description("구 플랜 남은기간 크레딧")
                             .quantity(prepaidSeats)
                             .unitPrice(fromUnit.setScale(0, RM).longValueExact())
                             .days(dRemain)
@@ -199,7 +199,7 @@ public final class ProrationEngine {
 
             items.add(ProrationResult.Item.builder()
                     .itemType("RECURRING")
-                    .description("정기결제 선불(신 플랜, 내일부터 시작)")
+                    .description("정기결제 선불")
                     .quantity(seatsForRecurring)
                     .unitPrice(toUnit.setScale(0, RM).longValueExact())
                     .days(D_NEW) // 표시용
