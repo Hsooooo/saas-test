@@ -58,6 +58,6 @@ public class ProrationInput {
     private final String currency;           // KRW
 
     // 케이스
-    public enum CaseType { NEW_TO_PAID, UPGRADE, DOWNGRADE }
+    public enum CaseType { NEW_TO_PAID, UPGRADE, DOWNGRADE, CANCEL }
     private final CaseType caseType;
 }

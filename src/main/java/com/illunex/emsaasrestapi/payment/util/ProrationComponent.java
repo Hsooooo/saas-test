@@ -123,10 +123,12 @@ public class ProrationComponent {
             final int cmp = targetPlan.getPricePerUser().compareTo(currentPlan.getPricePerUser());
             if (cmp > 0) {
                 caseType = ProrationInput.CaseType.UPGRADE;
-            } else if (cmp < 0 || !currentPlan.getIdx().equals(targetPlan.getIdx())) {
+            } else if (cmp < 0 || !currentPlan.getIdx().equals(targetPlan.getIdx()) || !isFreePlan(targetPlan)) {
                 caseType = ProrationInput.CaseType.DOWNGRADE;
+            } else if (isFreePlan(targetPlan)) {
+                caseType = ProrationInput.CaseType.CANCEL;
             } else {
-                throw new CustomException(ErrorCode.COMMON_INVALID); // 동일 플랜
+                throw new CustomException(ErrorCode.COMMON_INVALID);
             }
             fromPlan = planOf(currentPlan);
             toPlan   = planOf(targetPlan);

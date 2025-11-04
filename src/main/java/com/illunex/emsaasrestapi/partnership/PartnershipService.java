@@ -9,8 +9,10 @@ import com.illunex.emsaasrestapi.common.aws.AwsS3Component;
 import com.illunex.emsaasrestapi.common.aws.AwsSESComponent;
 import com.illunex.emsaasrestapi.common.aws.dto.AwsS3ResourceDTO;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
+import com.illunex.emsaasrestapi.license.mapper.LicenseMapper;
 import com.illunex.emsaasrestapi.license.mapper.LicensePartnershipMapper;
 import com.illunex.emsaasrestapi.license.vo.LicensePartnershipVO;
+import com.illunex.emsaasrestapi.license.vo.LicenseVO;
 import com.illunex.emsaasrestapi.member.mapper.EmailHistoryMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
@@ -71,6 +73,7 @@ public class PartnershipService {
     private final PartnershipComponent partnershipComponent;
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
+    private final LicenseMapper licenseMapper;
 
     /**
      * 파트너십 생성 (기본 라이센스)
@@ -269,6 +272,24 @@ public class PartnershipService {
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
         PartnershipMemberVO partnershipMember = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+        LicensePartnershipVO lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipIdx).orElse(null);
+        ResponsePartnershipDTO.MyInfoLicense licenseInfo = null;
+        if (lp != null) {
+            LicenseVO license = licenseMapper.selectByIdx(lp.getLicenseIdx()).orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
+            licenseInfo = ResponsePartnershipDTO.MyInfoLicense.builder()
+                    .idx(license.getIdx())
+                    .planCd(license.getPlanCd())
+                    .name(license.getName())
+                    .periodStartDate(lp.getPeriodStartDate())
+                    .periodEndDate(lp.getPeriodEndDate())
+                    .build();
+            licenseInfo.setPlanCd(license.getPlanCd());
+        } else {
+            licenseInfo = ResponsePartnershipDTO.MyInfoLicense.builder()
+                    .idx(null)
+                    .build();
+            licenseInfo.setPlanCd(EnumCode.License.PlanCd.BASIC.getCode());
+        }
 
         ResponsePartnershipDTO.PartnershipPositionInfo positionInfo = null;
         if (partnershipMember.getPartnershipPositionIdx() != null) {
@@ -303,6 +324,7 @@ public class PartnershipService {
                         .email(memberVO.getEmail())
                         .name(memberVO.getName())
                         .build())
+                .license(licenseInfo)
                 .build();
     }
 

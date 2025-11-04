@@ -86,7 +86,6 @@ public class PaymentService {
      */
     public ResponsePaymentDTO.PaymentChargeResult chargeNow(RequestPaymentDTO.SubscriptionInfo req, MemberVO member) throws CustomException {
         final PaymentPreviewResult preview = paymentPreviewResultForCharge(req, member); // 결제수단 검증 목적
-        preview.setPartnershipIdx(req.getPartnershipIdx());
 
         // A) TX-1: 인보이스 준비 + 시도기록(PENDING) 생성
         Tx1Context tx1 = tx1_prepareInvoiceAndBeginAttemptByPaymentPreviewResult(req, preview);
@@ -119,6 +118,7 @@ public class PaymentService {
         preview.setCustomerName(member.getName());
         preview.setCustomerEmail(member.getEmail());
         preview.setOrderName(input.getToPlan().getName() + " 외 " + (preview.getItems().size() -1) + "건");
+        preview.setPartnershipIdx(req.getPartnershipIdx());
         return preview;
     }
 
@@ -566,13 +566,18 @@ public class PaymentService {
         // 1) 프리뷰 입력 생성
         final ProrationInput input = prorationComponent.buildInputForPreview(req, memberVO);
 
-        // 2) 프리뷰 금액 산출 (NEW_TO_PAID 분기 포함)
-        final PaymentPreviewResult preview = paymentPreviewResult(input); // 이전에 다듬은 메서드 사용
+        if (input.getCaseType() == ProrationInput.CaseType.NEW_TO_PAID || input.getCaseType() == ProrationInput.CaseType.UPGRADE) {
+            // 2) 프리뷰 금액 산출 (NEW_TO_PAID 분기 포함)
+            final PaymentPreviewResult preview = paymentPreviewResult(input); // 이전에 다듬은 메서드 사용
 
-        // 3) DTO 매핑 + 세금/총액/크레딧 처리
-        ResponsePaymentDTO.PaymentPreview resp = buildPreviewResponse(input, preview);
-        resp.setPartnershipIdx(req.getPartnershipIdx());
-        return buildPreviewResponse(input, preview);
+            // 3) DTO 매핑 + 세금/총액/크레딧 처리
+            ResponsePaymentDTO.PaymentPreview resp = buildPreviewResponse(input, preview);
+            resp.setPartnershipIdx(req.getPartnershipIdx());
+            return buildPreviewResponse(input, preview);
+        }
+
+        return null;
+
     }
 
     private ResponsePaymentDTO.PaymentPreview buildPreviewResponse(ProrationInput input,
