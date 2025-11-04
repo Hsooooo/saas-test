@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+@Getter
+@Setter
+@Alias("InvoiceVO")
+public class InvoiceVO {
+    private Integer idx;
+    private Integer partnershipIdx;
+    private Integer licensePartnershipIdx;
+    private LocalDate periodStart;
+    private LocalDate periodEnd;
+    private ZonedDateTime issueDate;
+    private ZonedDateTime dueDate;
+    private Double subtotal;
+    private Double tax;
+    private Double total;
+    private String statusCd;
+    private String unitCd;
+    private String meta;
+    private ZonedDateTime createDate;
+    private ZonedDateTime updateDate;
+}
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.payment.mapper.PaymentCleanupMapper">
+    <!-- 1) license_payment_history -->
+    <delete id="deleteLicensePaymentHistoryByPartnership" parameterType="int">
+        DELETE lph
+        FROM license_payment_history lph
+        JOIN invoice i ON lph.invoice_idx = i.idx
+        WHERE i.partnership_idx = #{partnershipIdx}
+    </delete>
+
+    <!-- 2) invoice_item -->
+    <delete id="deleteInvoiceItemsByPartnership" parameterType="int">
+        DELETE ii
+        FROM invoice_item ii
+        JOIN invoice i ON ii.invoice_idx = i.idx
+        WHERE i.partnership_idx = #{partnershipIdx}
+    </delete>
+
+    <!-- 3) payment_attempt (invoice FK 때문에 invoice 삭제 전) -->
+    <delete id="deletePaymentAttemptsByPartnership" parameterType="int">
+        DELETE FROM payment_attempt
+        WHERE partnership_idx = #{partnershipIdx}
+    </delete>
+
+    <!-- 4) invoice -->
+    <delete id="deleteInvoicesByPartnership" parameterType="int">
+        DELETE FROM invoice
+        WHERE partnership_idx = #{partnershipIdx}
+    </delete>
+
+    <!-- 5) subscription_change_event -->
+    <delete id="deleteSubscriptionEventsByPartnership" parameterType="int">
+        DELETE sce
+        FROM subscription_change_event sce
+        JOIN license_partnership lp ON sce.license_partnership_idx = lp.idx
+        WHERE lp.partnership_idx = #{partnershipIdx}
+    </delete>
+
+    <!-- 6) license_partnership -->
+    <delete id="deleteLicensePartnershipsByPartnership" parameterType="int">
+        DELETE FROM license_partnership
+        WHERE partnership_idx = #{partnershipIdx}
+    </delete>
+
+    <!-- 7) payment_mandate -->
+    <delete id="deletePaymentMandatesByPartnership" parameterType="int">
+        DELETE pm
+        FROM payment_mandate pm
+        JOIN partnership_payment_method ppm ON pm.payment_method_idx = ppm.idx
+        WHERE ppm.partnership_idx = #{partnershipIdx}
+    </delete>
+
+    <!-- 8) partnership_payment_method -->
+    <delete id="deletePaymentMethodsByPartnership" parameterType="int">
+        DELETE FROM partnership_payment_method
+        WHERE partnership_idx = #{partnershipIdx}
+    </delete>
+</mapper>

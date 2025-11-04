@@ -85,4 +85,10 @@ public class PaymentController {
         paymentService.chargeNow(request, memberVO);
         return "Subscription change event applied!";
     }
+
+    @DeleteMapping("/test/cleanup")
+    public String testCleanup(@RequestParam Integer partnershipIdx) throws Exception {
+        paymentService.testCleanup(partnershipIdx);
+        return "Test data cleaned up!";
+    }
 }

@@ -59,6 +59,7 @@ public class PaymentService {
     private final InvoicePaymentViewMapper invoicePaymentViewMapper;
     private final PaymentMethodViewMapper paymentMethodViewMapper;
 
+    private final PaymentCleanupMapper paymentCleanupMapper;
 
     private final ModelMapper modelMapper;
 
@@ -474,6 +475,18 @@ public class PaymentService {
         lp.setPeriodStartDate(input.getNextPeriodStart());
         lp.setPeriodEndDate(input.getNextPeriodEndExcl());
         licensePartnershipMapper.updateByLicensePartnershipVO(lp);
+    }
+
+    @Transactional
+    public void testCleanup(Integer partnershipIdx) {
+        paymentCleanupMapper.deleteLicensePaymentHistoryByPartnership(partnershipIdx);
+        paymentCleanupMapper.deleteInvoiceItemsByPartnership(partnershipIdx);
+        paymentCleanupMapper.deletePaymentAttemptsByPartnership(partnershipIdx);
+        paymentCleanupMapper.deleteInvoicesByPartnership(partnershipIdx);
+        paymentCleanupMapper.deleteSubscriptionEventsByPartnership(partnershipIdx);
+        paymentCleanupMapper.deleteLicensePartnershipsByPartnership(partnershipIdx);
+        paymentCleanupMapper.deletePaymentMandatesByPartnership(partnershipIdx);
+        paymentCleanupMapper.deletePaymentMethodsByPartnership(partnershipIdx);
     }
 
     // ===================== DTO/VO 보조 구조체 =====================
