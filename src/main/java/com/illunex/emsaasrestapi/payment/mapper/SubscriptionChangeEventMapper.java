@@ -12,7 +12,7 @@ import java.util.List;
 @Mapper
 public interface SubscriptionChangeEventMapper {
 
-    List<SubscriptionChangeEventVO> selectByLicensePartnershipIdxAndOccurredDate(Integer licensePartnershipIdx, LocalDateTime startDate, LocalDateTime endDate);
+    List<SubscriptionChangeEventVO> selectByLicensePartnershipIdxAndOccurredDate(Integer licensePartnershipIdx, ZonedDateTime startDate, ZonedDateTime endDate);
 
     List<SubscriptionChangeEventVO> selectByLpAndOccurredBetween(Integer lpIdx, LocalDate start, LocalDate end);
 

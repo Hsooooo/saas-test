@@ -36,4 +36,13 @@ public class InvoiceVO {
         ORDER BY occurred_date ASC, idx ASC
     </select>
 
+    <select id="selectByLicensePartnershipIdxAndOccurredDate" resultType="SubscriptionChangeEventVO">
+        SELECT
+            *
+        FROM subscription_change_event
+        WHERE license_partnership_idx = #{licensePartnershipIdx}
+          AND occurred_date >= #{startDate}
+          AND occurred_date <![CDATA[<]]>  #{endDate}
+    </select>
+
 </mapper>

@@ -2,76 +2,62 @@ package com.illunex.emsaasrestapi.payment.util;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
-import lombok.Singular;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 
-@Setter
+
 @Getter
 @Builder
 public class ProrationInput {
-    private Integer partnershipIdx; // 파트너쉽 번호
-    private Integer licensePartnershipIdx; // 파트너쉽 구독 번호
-    private Integer licenseIdx; // 라이센스 번호
-    // 기존 구독 기간
-    private LocalDate periodStart;   // inclusive
-    private LocalDate periodEndExcl; // exclusive
-    private LocalDate today;         // NOW 업그레이드 기준일(= occurredAt.toLocalDate)
+    private final int paidSeat;               // 선불 결제된 좌석 수
+    private final int currentSeat;            // 현재 좌석 수 (파트너쉽 멤버 상태 != DELETE 수)
+    private final LocalDate paidDate;
 
-    // 분모/반올림/통화
-    private int denominatorDays;     // 분모 31 등
-    private RoundingMode roundingMode; // HALF_UP
-    private String currency;         // KRW
+    // 현재 주기
+    private final LocalDate periodStart;     // inclusive
+    private final LocalDate periodEndExcl;   // exclusive
 
-    // 계획(플랜)
-    private Plan fromPlan;  // 현재 플랜 스냅샷
-    private Plan toPlan;    // 목표 플랜 스냅샷 (UPGRADE/DOWNGRADE 시)
+    // 계산 기준 시각
+    private final ZonedDateTime paymentTime; // T
+    private final ZoneId zone;               // 테넌트 존
+
+    // 요금(원/좌석)
+    private final Plan fromPlan;             // 기구독 플랜(없으면 null)
+    private final Plan toPlan;               // 타깃 플랜(케이스 1/2/3에 따라 필요)
+
     @Getter @Builder
     public static class Plan {
-        private int idx;
-        private String planCd;
-        private String name;
-        private BigDecimal pricePerUser;
-        private Integer minUserCount;
+        private final int idx;
+        private final String planCd;
+        private final String name;
+        private final BigDecimal pricePerUser;
+        private final Integer minUserCount;
     }
 
-    // 좌석
-    private int prepaidSeats;       // 직전 RECURRING quantity (선불 좌석 수)
-    private int minChargeSeats;     // 현재 구독의 min_user_count 스냅샷
-    private int currentActiveSeats; // 현재 활성 멤버 수 스냅샷
-    private boolean useSnapshotSeatsFirst; // true면 LP의 current_seat_count 우선
-    private Integer snapshotSeats;  // LP.current_seat_count
-    // NEW: 두 개의 분모를 구분(선택)
-    private Integer denominatorDaysOld; // 미청구(구플랜) 계산용 분모
-    private Integer denominatorDaysNew; // 신규 주기 RECURRING 표시용(선택)
+    // 좌석/이벤트
+    private final Integer snapshotSeats;     // LP.current_seat_count (nullable)
+    private final int activeSeats;           // 현재 활성 멤버 수
+    private final boolean useSnapshotFirst;  // 프리뷰 재현성 위해 true 권장
+    private final int startingSeatsForAccrual; // 미청구 구간 시작 시 좌석(기본: 직전 RECURRING 수량; 없으면 min(from))
+    private final List<SeatEvent> seatEvents;  // 좌석 이벤트(기-내일자정 사이 전체)
 
-    // NEW: 신규 주기 기간 (내일~)
-    private LocalDate nextPeriodStart;   // tomorrow (inclusive)
-    private LocalDate nextPeriodEndExcl; // nextPeriodStart + 1개월(또는 anchor 계산)
-
-    // 액션
-    private Action action;          // UPGRADE | DOWNGRADE | CANCEL
-    private Effective effective;    // NOW | PERIOD_END
-    private ActivationMode activationMode; // NOW | TOMORROW
-    public enum Action { UPGRADE, DOWNGRADE, CANCEL }
-    public enum Effective { NOW, PERIOD_END }
-    public enum ActivationMode { NOW, TOMORROW }
-
-    // 이벤트(좌석)
-    @Singular
-    private List<SeatEvent> seatEvents; // baseFrom ~ capEnd 사이 ADD/REMOVE
     @Getter @Builder
     public static class SeatEvent {
-        private LocalDate date;   // 이벤트 적용일(00:00)
-        private int delta;        // +2, -1 등
-        private Long relatedId;   // optional
+        private final LocalDate occurredAt; // ZonedDateTime 원본
+        private final int delta;                // +2, -1
+        private final Long relatedId;
     }
 
-    // 계산 범위 제어
-    private LocalDate baseFrom; // 미청구 정산 시작(직전 인보이스 issue_date vs periodStart)
-    private LocalDate capEnd;   // 업그레이드 NOW면 today, 배치면 periodEndExcl
+    // 통화/반올림
+    private final RoundingMode roundingMode; // HALF_UP
+    private final String currency;           // KRW
+
+    // 케이스
+    public enum CaseType { NEW_TO_PAID, UPGRADE, DOWNGRADE }
+    private final CaseType caseType;
 }

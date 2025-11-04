@@ -10,4 +10,5 @@ import java.util.Optional;
 @Mapper
 public interface LicensePaymentHistoryMapper {
     void insertByLicensePaymentHistoryVO(LicensePaymentHistoryVO licensePaymentHistoryVO);
+    Optional<LicensePaymentHistoryVO> selectByInvoiceIdxAndLastPaidDate(Integer invoiceIdx);
 }
