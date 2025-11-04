@@ -415,27 +415,6 @@ public class PaymentService {
         }
     }
 
-    /**
-     * 정책: “오늘 결제, 내일부터 적용”
-     * 다음 주기(period_start/end)를 input에 이미 계산해두었고,
-     * 성공 시 LP 스냅샷/기간을 내일자 주기로 갱신하는 메서드
-     */
-    @Transactional
-    protected void applySubscriptionActivationAfterPaymentSuccess_TOMORROW(ProrationInput input) throws CustomException {
-        // 예시: license_partnership의 period_start/end/next_billing_date, current_* 스냅샷 갱신
-        // - input.getNextPeriodStart(), input.getNextPeriodEndExcl()
-        // - input.getChargeSeats(), input.getUnitPriceSnapshot(), input.getMinUserCountSnapshot()
-        LicensePartnershipVO lp = licensePartnershipMapper.selectByIdx(input.getLicensePartnershipIdx())
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
-        lp.setNextBillingDate(input.getNextPeriodEndExcl());
-        lp.setCurrentUnitPrice(input.getToPlan().getPricePerUser());
-        lp.setStateCd(EnumCode.LicensePartnership.StateCd.ACTIVE.getCode());
-        lp.setCurrentSeatCount(input.getCurrentActiveSeats());
-        lp.setPeriodStartDate(input.getNextPeriodStart());
-        lp.setPeriodEndDate(input.getNextPeriodEndExcl());
-        licensePartnershipMapper.updateByLicensePartnershipVO(lp);
-    }
-
     @Transactional
     public void testCleanup(Integer partnershipIdx) {
         paymentCleanupMapper.deleteLicensePaymentHistoryByPartnership(partnershipIdx);

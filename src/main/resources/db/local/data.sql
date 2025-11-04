@@ -145,5 +145,5 @@ COMMIT;
 --  - CREDIT(구 플랜 잔여기간 / ADVANCED, 선불 3석): today~@endExcl 총일수
 
 
-INSERT INTO em_saas.partnership_payment_method (idx, partnership_idx, method_type_cd, brand, last4, exp_year, exp_month, customer_key, auth_key, holder_name, state_cd, is_default, delete_date, update_date, create_date) VALUES (3, 2, 'PMC0001', '신한', null, null, null, 'SAAS-CK-20251030-1FDBBF6C3623', 'bln_q5Gg6m7m9OR', null, 'PMS0001', 1, null, '2025-10-30 05:51:17', '2025-10-30 05:51:17');
+INSERT INTO em_saas.partnership_payment_method (idx, partnership_idx, method_type_cd, brand, last4, exp_year, exp_month, customer_key, auth_key, holder_name, state_cd, is_default, delete_date, update_date, create_date) VALUES (3, 2, 'PMC0001', '신한', null, null, null, 'SAAS-CK-20251030-1FDBBF6C3623', 'bln_q5Gg6m7m9OR', null, 'PSC0001', 1, null, '2025-10-30 05:51:17', '2025-10-30 05:51:17');
 INSERT INTO em_saas.payment_mandate (idx, partnership_idx, payment_method_idx, provider_cd, mandate_id, status_cd, agree_date, revoke_date, meta, update_date, create_date) VALUES (3, 2, 3, 'PGC0001', 'I81alwBj7AgEaTbpBjOaYpzK2Rcju3XsFIHFVCF9FgU=', 'MDS0001', '2025-10-30 05:51:17', null, null, '2025-10-30 05:51:17', '2025-10-30 05:51:17');
