@@ -39,4 +39,12 @@ public class LicensePaymentHistoryVO {
         )
     </insert>
 
+    <select id="selectByInvoiceIdxAndLastPaidDate" resultType="LicensePaymentHistoryVO">
+        SELECT *
+        FROM license_payment_history
+        WHERE invoice_idx = #{invoiceIdx}
+        ORDER BY paid_date DESC
+        LIMIT 1
+    </select>
+
 </mapper>

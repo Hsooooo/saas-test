@@ -58,19 +58,4 @@ public class PartnershipComponent {
     public Integer getPartnershipActiveMemberCount(Integer partnershipIdx) {
         return partnershipMemberMapper.countByPartnershipIdxAndNotStateCd(partnershipIdx, EnumCode.PartnershipMember.StateCd.Delete.getCode());
     }
-
-    /**
-     * 파트너쉽 매니저 여부 체크
-     * @param memberVO
-     * @param partnershipIdx
-     * @return
-     * @throws CustomException
-     */
-    public PartnershipMemberVO checkPartnershipMemberAndManager(MemberVO memberVO, Integer partnershipIdx) throws CustomException {
-        PartnershipMemberVO partnershipMemberVO = checkPartnershipMember(memberVO, partnershipIdx);
-        if (!partnershipMemberVO.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
-            throw new CustomException(ErrorCode.COMMON_FAIL_AUTHENTICATION);
-        }
-        return partnershipMemberVO;
-    }
 }

@@ -118,7 +118,7 @@ INSERT INTO invoice_item (
     quantity, unit_price, days, amount,
     related_event_idx, meta, create_date
 ) VALUES
-    (LAST_INSERT_ID(), 'ITC0001', '정기결제 선불 스냅샷(ADVANCED)', 6,
+    (LAST_INSERT_ID(), 'ITC0001', '정기결제 선불 스냅샷(ADVANCED)', 3,
      (SELECT price_per_user FROM license WHERE idx=2), @DAYS, 0, NULL,
      JSON_OBJECT('planIdx',2,'planCd',(SELECT plan_cd FROM license WHERE idx=2),'snapshot','prev_recurring'), NOW());
 
@@ -131,7 +131,7 @@ INSERT INTO invoice_item (
 INSERT INTO subscription_change_event (license_partnership_idx, occurred_date, type_cd, qty_delta, from_license_idx, to_license_idx, note, create_date) VALUES
                                                                                                                                                             (1, DATE_ADD(@start, INTERVAL 3  DAY), 'CET0001',  2, NULL, NULL, 'ADD +2', NOW()),
                                                                                                                                                             (1, DATE_ADD(@start, INTERVAL 9  DAY), 'CET0002', -1, NULL, NULL, 'REMOVE -1', NOW()),
-                                                                                                                                                            (1, DATE_ADD(@start, INTERVAL 12 DAY), 'CET0001',  1, NULL, NULL, 'ADD +1', NOW());
+                                                                                                                                                            (1, DATE_ADD(@start, INTERVAL 12 DAY), 'CET0001',  4, NULL, NULL, 'ADD +4', NOW());
 
 COMMIT;
 

@@ -80,10 +80,11 @@ public class PaymentController {
      * @throws Exception
      */
     @PostMapping("/subscription/change-event/apply")
-    public String applySubscriptionChangeEvent(@RequestBody RequestPaymentDTO.SubscriptionChangeEvent request,
+    public CustomResponse<?> applySubscriptionChangeEvent(@RequestBody RequestPaymentDTO.SubscriptionInfo request,
                                                @CurrentMember MemberVO memberVO) throws Exception {
-        paymentService.chargeNow(request, memberVO);
-        return "Subscription change event applied!";
+        return CustomResponse.builder()
+                .data(paymentService.chargeNow(request, memberVO))
+                .build();
     }
 
     @DeleteMapping("/test/cleanup")

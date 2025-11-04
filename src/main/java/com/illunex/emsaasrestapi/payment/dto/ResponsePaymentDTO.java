@@ -46,6 +46,19 @@ public class ResponsePaymentDTO {
         private List<String> notes;
     }
 
+    @Setter
+    @Getter
+    public static class PreviewItem {
+        private String itemType;       // RECURRING/PRORATION/CREDIT/ADJUSTMENT
+        private String description;
+        private Integer quantity;      // seats
+        private Long unitPrice;
+        private Integer days;          // numerator
+        private Long amount;           // +/-
+        private Long relatedEventId;   // null 가능
+        private Map<String, Object> meta;
+    }
+
     @Getter
     @Setter
     public static class PreviewPlan {
@@ -64,18 +77,7 @@ public class ResponsePaymentDTO {
         }
     }
 
-    @Setter
-    @Getter
-    public static class PreviewItem {
-        private String itemType;       // RECURRING/PRORATION/CREDIT/ADJUSTMENT
-        private String description;
-        private Integer quantity;      // seats
-        private Long unitPrice;
-        private Integer days;          // numerator
-        private Long amount;           // +/-
-        private Long relatedEventId;   // null 가능
-        private Map<String, Object> meta;
-    }
+
 
 
     @Getter
