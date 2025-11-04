@@ -133,17 +133,17 @@ public class PaymentService {
 
     protected Tx1Context tx1_prepareInvoiceAndBeginAttemptByPaymentPreviewResult(RequestPaymentDTO.SubscriptionInfo req, PaymentPreviewResult preview) throws CustomException {
         // (A) LP 보장: 없으면 DRAFT로 생성
-        Integer lpIdx = ensureLicensePartnershipForNewIfAbsent(req, preview);
+        LicensePartnershipVO lp = ensureLicensePartnershipForNewIfAbsent(req, preview);
 
         // 1) 멱등 – orderNumber 중복 체크
         PaymentAttemptVO dup = paymentAttemptMapper.selectByOrderNumber(preview.getOrderId());
         if (dup != null) {
             log.info("[tx1] duplicate orderNumber exists. attemptIdx={}", dup.getIdx());
             InvoiceVO inv = invoiceMapper.selectByIdx(dup.getInvoiceIdx());
-            return Tx1Context.fromExistingAttempt(dup, inv, readDefaultMethodMandate(req.getPartnershipIdx()));
+            return Tx1Context.fromExistingAttempt(dup, inv, readDefaultMethodMandate(req.getPartnershipIdx()), lp);
         }
 
-        InvoiceVO invoice = upsertDraftOpenInvoice(lpIdx, preview);
+        InvoiceVO invoice = upsertDraftOpenInvoice(lp.getIdx(), preview);
 
         // 3) 기본 결제수단 + 활성 Mandate 조회
         DefaultMethodMandate mm = readDefaultMethodMandate(preview.getPartnershipIdx());
@@ -166,12 +166,12 @@ public class PaymentService {
 //        attempt.setMeta(buildAttemptMeta(input, result));
         paymentAttemptMapper.insertByPaymentAttemptVO(attempt);
 
-        return new Tx1Context(invoice, attempt, mm);
+        return new Tx1Context(invoice, attempt, mm, lp);
     }
 
-    private Integer ensureLicensePartnershipForNewIfAbsent(RequestPaymentDTO.SubscriptionInfo req, PaymentPreviewResult preview) throws CustomException {
+    private LicensePartnershipVO ensureLicensePartnershipForNewIfAbsent(RequestPaymentDTO.SubscriptionInfo req, PaymentPreviewResult preview) throws CustomException {
         var lpOpt = licensePartnershipMapper.selectByPartnershipIdx(preview.getPartnershipIdx());
-        if (lpOpt.isPresent()) return lpOpt.get().getIdx();
+        if (lpOpt.isPresent()) return lpOpt.get();
         var license = licenseMapper.selectByIdx(req.getLicenseIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
 
@@ -188,7 +188,7 @@ public class PaymentService {
         lp.setCancelAtPeriodEnd(false);
         lp.setStateCd(EnumCode.LicensePartnership.StateCd.DRAFT.getCode()); // DRAFT
         licensePartnershipMapper.insertByLicensePartnership(lp);  // useGeneratedKeys=true
-        return lp.getIdx();
+        return lp;
     }
 
     /**
@@ -359,9 +359,18 @@ public class PaymentService {
         }
 
         // 5) 정책: “오늘 결제, 내일부터 적용”
-//        applySubscriptionActivationAfterPaymentSuccess_TOMORROW(input);
+        applyChangeLicensePartnership(tx1.lp, preview);
 
         return ResponsePaymentDTO.PaymentChargeResult.ok(tx1.invoice(), attempt);
+    }
+
+    @Transactional
+    protected void applyChangeLicensePartnership(LicensePartnershipVO lp, PaymentPreviewResult preview) throws CustomException {
+        // 예시: license_partnership의 period_start/end/next_billing_date, current_* 스냅샷 갱신
+        // - input.getNextPeriodStart(), input.getNextPeriodEndExcl()
+        // - input.getChargeSeats(), input.getUnitPriceSnapshot(), input.getMinUserCountSnapshot()
+        lp.setStateCd(EnumCode.LicensePartnership.StateCd.ACTIVE.getCode());
+        licensePartnershipMapper.updateByLicensePartnershipVO(lp);
     }
 
     // ===================== 유틸리티/검증/매핑 =====================
@@ -432,9 +441,9 @@ public class PaymentService {
     /**
      * TX-1 결과 컨텍스트
      */
-    protected record Tx1Context(InvoiceVO invoice, PaymentAttemptVO attempt, DefaultMethodMandate mandate) {
-        static Tx1Context fromExistingAttempt(PaymentAttemptVO attempt, InvoiceVO invoice, DefaultMethodMandate mm) {
-            return new Tx1Context(invoice, attempt, mm);
+    protected record Tx1Context(InvoiceVO invoice, PaymentAttemptVO attempt, DefaultMethodMandate mandate, LicensePartnershipVO lp) {
+        static Tx1Context fromExistingAttempt(PaymentAttemptVO attempt, InvoiceVO invoice, DefaultMethodMandate mm, LicensePartnershipVO lp) {
+            return new Tx1Context(invoice, attempt, mm, lp);
         }
     }
 
