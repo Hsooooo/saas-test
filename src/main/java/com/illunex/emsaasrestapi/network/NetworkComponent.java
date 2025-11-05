@@ -50,13 +50,10 @@ public class NetworkComponent {
 
         // 노드 없을 경우 예외처리
         if (nodes.isEmpty()) return response;
-        StopWatch stopWatch = new StopWatch();
 
         String mainLabel = projectDoc.getProjectNodeContentList().get(0).getLabelContentCellName();
 
         // 1) 노드들의 엣지 조회 (projectIdx 필수)
-        stopWatch.start("노드들의 엣지조회");
-
         Map<String, List<Object>> typeToIds = nodes.stream()
                 .collect(Collectors.groupingBy(
                         n -> (String) n.getLabel(),
@@ -78,8 +75,6 @@ public class NetworkComponent {
                 .toList();
 
         if (orEdge.isEmpty()) {
-            stopWatch.stop();
-            log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());
             return response;
         }
 
@@ -88,7 +83,6 @@ public class NetworkComponent {
         Query edgeQuery = new Query(project).addCriteria(new Criteria().orOperator(orEdge.toArray(new Criteria[0])));
 
         List<Edge> edgeList = mongoTemplate.find(edgeQuery, Edge.class);
-        stopWatch.stop();
 
         // 2) 엣지 -> response 변환
         List<ResponseNetworkDTO.EdgeInfo> edgeInfoList = edgeList.stream().map(t ->
@@ -254,10 +248,6 @@ public class NetworkComponent {
                               int projectIdx,
                               int depth) {
         if (nodes.isEmpty() || depth <= 0) return;
-        StopWatch stopWatch = new StopWatch();
-
-        // 1. 해당 노드들의 엣지 검색
-        stopWatch.start("노드들의 엣지조회");
 
         Map<String, List<Node>> typeNodeList = nodes.stream()
                 .collect(Collectors.groupingBy(node -> (String) node.getLabel()));
@@ -276,7 +266,6 @@ public class NetworkComponent {
         Query edgeQuery = new Query(projectScope).addCriteria(edgeOr);
 
         List<Edge> edgeList = mongoTemplate.find(edgeQuery, Edge.class);
-        stopWatch.stop();
 
         // 2. 엣지 → response
         List<ResponseNetworkDTO.EdgeInfo> edgeInfoList = edgeList.stream().map(target ->
@@ -297,7 +286,6 @@ public class NetworkComponent {
         response.setLinks(mutableLinkList);
 
         // 4. 해당 엣지들로 노드 검색
-        stopWatch.start("엣지들의 노드조회");
         if (mutableLinkList.isEmpty()) return;
 
         Map<String, List<Object>> typeEdgeInfoList = new HashMap<>();
@@ -314,7 +302,6 @@ public class NetworkComponent {
         Query nodeQuery = new Query(projectScope).addCriteria(nodeOr);
 
         List<Node> nodeList = mongoTemplate.find(nodeQuery, Node.class);
-        stopWatch.stop();
 
         // 5. 노드 → response
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodeList.stream().map(target ->
@@ -330,8 +317,6 @@ public class NetworkComponent {
         mutableNodeList.addAll(nodeInfoList);
         mutableNodeList = mutableNodeList.stream().distinct().toList();
         response.setNodes(mutableNodeList);
-
-        log.info("쿼리별 실행 시간:\n{}", stopWatch.prettyPrint());
 
         // 7. 재귀 호출 (projectIdx 전달 필수)
         networkSearch(response, nodeList, projectIdx, depth - 1);

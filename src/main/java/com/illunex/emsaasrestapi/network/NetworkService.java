@@ -46,6 +46,8 @@ public class NetworkService {
      * @throws CustomException
      */
     public CustomResponse<?> getNetworkAll(MemberVO memberVO, Integer projectIdx) throws CustomException {
+        long start = System.currentTimeMillis();
+        log.info("Get Network All Service called");
         // 파트너쉽 회원 여부 체크
         PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMemberAndProject(memberVO, projectIdx);
         // 프로젝트 구성원 여부 체크
@@ -57,6 +59,8 @@ public class NetworkService {
         if(response.getNodes() != null) response.setNodeSize(response.getNodes().size());
         if(response.getLinks() != null) response.setLinkSize(response.getLinks().size());
 
+        long end = System.currentTimeMillis();
+        log.info("Get Network All Service finished in {} ms", (end - start));
         return CustomResponse.builder()
                 .data(response)
                 .build();
@@ -79,7 +83,7 @@ public class NetworkService {
         // 노드검색
         Query query = Query.query(Criteria.where("_id.projectIdx").is(selectNode.getProjectIdx())
                         .and("_id.nodeIdx").is(selectNode.getNodeIdx())
-                        .and("label").is(selectNode.getLabel()));
+                        .and("_id.type").is(selectNode.getLabel()));
         List<Node> nodes = mongoTemplate.find(query, Node.class);
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
                 ResponseNetworkDTO.NodeInfo.builder()
@@ -114,7 +118,7 @@ public class NetworkService {
         Query query = Query.query(
                 Criteria.where("_id.projectIdx").is(multiExtendSearch.getProjectIdx())
                         .and("_id.nodeIdx").in(multiExtendSearch.getIdxList())
-                        .and("label").is(multiExtendSearch.getLabel())
+                        .and("_id.type").is(multiExtendSearch.getLabel())
         ).limit(10000);
         List<Node> nodes = mongoTemplate.find(query, Node.class);
         List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
@@ -155,7 +159,7 @@ public class NetworkService {
         // 1. 노드 검색
         Query query1 = Query.query(Criteria.where("_id.projectIdx").is(selectNode.getProjectIdx())
                 .and("_id.nodeIdx").is(selectNode.getNodeIdx())
-                .and("label").is(selectNode.getLabel()));
+                .and("_id.type").is(selectNode.getLabel()));
         Node node = mongoTemplate.findOne(query1, Node.class);
 
         // 노드 정보가 없을 경우 예외처리
@@ -241,7 +245,7 @@ public class NetworkService {
                         && t.getNodeType() != null && !t.getNodeType().isBlank())
                 .map(t -> new Criteria().andOperator(
                         Criteria.where("properties." + t.getLabelTitleCellName()).regex(kwPattern),
-                        Criteria.where("label").is(t.getNodeType())
+                        Criteria.where("_id.type").is(t.getNodeType())
                 ))
                 .toList();
 
