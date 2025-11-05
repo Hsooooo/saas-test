@@ -31,36 +31,39 @@ public class NetworkComponent {
      * @return
      */
     public ResponseNetworkDTO.SearchNetwork networkSearchAll(Integer projectIdx, Integer limit) {
+        long startAll = System.currentTimeMillis();
+        log.info("전체 관계망 조회 시작 - projectIdx: {}, limit: {}", projectIdx, limit);
+
         ResponseNetworkDTO.SearchNetwork response = new ResponseNetworkDTO.SearchNetwork();
 
-        // 프로젝트 정보 없을 경우 예외처리
+        // 프로젝트 조회
+        long t1 = System.currentTimeMillis();
         Project projectDoc = mongoTemplate.findById(projectIdx, Project.class);
+        long t2 = System.currentTimeMillis();
+        log.info("프로젝트 문서 조회 완료 - 소요시간: {}ms", (t2 - t1));
+
         if (projectDoc == null) return response;
 
         limit = projectDoc.getMaxNodeSize() != null ? projectDoc.getMaxNodeSize() : limit;
+
+        // 노드 조회
+        t1 = System.currentTimeMillis();
         Query query = Query.query(Criteria.where("_id.projectIdx").is(projectIdx)).limit(limit);
         List<Node> nodes = mongoTemplate.find(query, Node.class);
-        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
-                ResponseNetworkDTO.NodeInfo.builder()
-                        .nodeId(target.getNodeId())
-                        .label(target.getLabel())
-                        .properties(target.getProperties())
-                        .build()
-        ).toList();
+        t2 = System.currentTimeMillis();
+        log.info("노드 조회 완료 - 소요시간: {}ms, 노드개수: {}", (t2 - t1), nodes.size());
 
-        // 노드 없을 경우 예외처리
         if (nodes.isEmpty()) return response;
 
         String mainLabel = projectDoc.getProjectNodeContentList().get(0).getLabelContentCellName();
 
-        // 1) 노드들의 엣지 조회 (projectIdx 필수)
+        // 엣지 조건 생성
+        t1 = System.currentTimeMillis();
         Map<String, List<Object>> typeToIds = nodes.stream()
                 .collect(Collectors.groupingBy(
                         n -> (String) n.getLabel(),
                         Collectors.mapping(Node::getId, Collectors.toList())
                 ));
-
-        // start와 end에 노드번호가 포함되어 있는것
         List<Criteria> orEdge = typeToIds.entrySet().stream()
                 .flatMap(e -> Stream.of(
                         new Criteria().andOperator(
@@ -73,18 +76,28 @@ public class NetworkComponent {
                         )
                 ))
                 .toList();
+        t2 = System.currentTimeMillis();
+        log.info("엣지 조건 생성 완료 - 소요시간: {}ms, 조건개수: {}", (t2 - t1), orEdge.size());
 
-        if (orEdge.isEmpty()) {
-            return response;
-        }
+        if (orEdge.isEmpty()) return response;
 
-        // AND projectIdx
+        // 엣지 조회
+        t1 = System.currentTimeMillis();
         Criteria project = Criteria.where("_id.projectIdx").is(projectIdx);
         Query edgeQuery = new Query(project).addCriteria(new Criteria().orOperator(orEdge.toArray(new Criteria[0])));
-
         List<Edge> edgeList = mongoTemplate.find(edgeQuery, Edge.class);
+        t2 = System.currentTimeMillis();
+        log.info("엣지 조회 완료 - 소요시간: {}ms, 엣지개수: {}", (t2 - t1), edgeList.size());
 
-        // 2) 엣지 -> response 변환
+        // DTO 변환 및 중복 제거
+        t1 = System.currentTimeMillis();
+        List<ResponseNetworkDTO.NodeInfo> nodeInfoList = nodes.stream().map(target ->
+                ResponseNetworkDTO.NodeInfo.builder()
+                        .nodeId(target.getNodeId())
+                        .label(target.getLabel())
+                        .properties(target.getProperties())
+                        .build()
+        ).toList();
         List<ResponseNetworkDTO.EdgeInfo> edgeInfoList = edgeList.stream().map(t ->
                 ResponseNetworkDTO.EdgeInfo.builder()
                         .edgeId(t.getEdgeId())
@@ -95,14 +108,11 @@ public class NetworkComponent {
                         .properties(t.getProperties())
                         .build()
         ).toList();
+        t2 = System.currentTimeMillis();
+        log.info("DTO 변환 완료 - 소요시간: {}ms", (t2 - t1));
 
-        // 3) 링크 중복 제거
-        List<ResponseNetworkDTO.EdgeInfo> newLinks = new ArrayList<>(response.getLinks());
-        newLinks.addAll(edgeInfoList);
-        newLinks = newLinks.stream().distinct().toList();
-        response.setLinks(newLinks);
-
-        // 메인 노드 컨텐츠 기준 정렬 + 1만개 제한
+        // 정렬 및 최종 세팅
+        t1 = System.currentTimeMillis();
         nodeInfoList = nodeInfoList.stream()
                 .distinct()
                 .sorted(Comparator.comparing(
@@ -111,12 +121,23 @@ public class NetworkComponent {
                             Object v = n.getProperties().get(mainLabel);
                             if (v == null) return null;
                             String s = v.toString().trim();
-                            return s.isEmpty() ? null : s; // 공백 문자열도 null 취급
+                            return s.isEmpty() ? null : s;
                         },
                         Comparator.nullsLast(Comparator.naturalOrder())
                 ))
                 .toList();
+        t2 = System.currentTimeMillis();
+        log.info("노드 정렬 및 중복제거 완료 - 소요시간: {}ms", (t2 - t1));
+
         response.setNodes(nodeInfoList);
+        response.setLinks(edgeInfoList.stream().distinct().toList());
+
+        long endAll = System.currentTimeMillis();
+        log.info("전체 관계망 조회 완료 - 총 소요시간: {}ms, 노드: {}, 엣지: {}",
+                (endAll - startAll),
+                nodeInfoList.size(),
+                edgeInfoList.size()
+        );
 
         return response;
     }
