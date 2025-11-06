@@ -220,10 +220,16 @@ public class AiProxyController {
             if (lastOkOpt.isEmpty()) {
                 // 최종 OK 이벤트가 없으면 안전 종료 (히스토리 저장/후처리 수행 안 함)
                 try {
+                    final int historyIdx = chatService.saveHistory(
+                            chatRoomIdx,
+                            EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
+                            EnumCode.ChatHistory.CategoryType.ERROR.getCode(),
+                            "죄송합니다. 답변 생성에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
+                    );
                     emitter.send(SseEmitter.event().name("final").data(
                             Map.of(
                                     "status", "no_ok_event",
-                                    "reason", "최종 OK(status=200) 이벤트를 찾지 못했습니다."
+                                    "reason", "죄송합니다. 답변 생성에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
                             )
                     ));
                     emitter.send(SseEmitter.event().name("done").data(Map.of("status", "ok")));
