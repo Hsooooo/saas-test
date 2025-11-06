@@ -30,6 +30,7 @@ import com.alibaba.excel.EasyExcel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
+import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.mongodb.core.BulkOperations;
@@ -348,6 +349,7 @@ public class ProjectProcessingService {
 
         // 스트리밍 정제
         wipeAndBuildAllStreamed(projectIdx, tmp.toFile(), excelMeta.getExcelSheetList(), project);
+        postProcessDeduplicateEdges(projectIdx, project.getProjectEdgeList()); // 엣지 중복 후처리
 
         vo.setStatusCd(EnumCode.Project.StatusCd.Complete.getCode());
         vo.setNodeCnt(draft.getNodeCnt());
@@ -507,4 +509,198 @@ public class ProjectProcessingService {
             if (edgeCnt[0] % BATCH != 0) { silentExecute(edgeBulk[0]); logFlush("edge:" + sheetNameFinal, edgeCnt[0], ++edgeFlushSeq[0]); }
         }
     }
+
+    private void postProcessDeduplicateEdges(int projectIdx, List<ProjectEdge> edgeDefs) {
+        if (edgeDefs == null || edgeDefs.isEmpty()) return;
+
+        final int BATCH = 1000;
+
+        for (ProjectEdge def : edgeDefs) {
+            if (!Boolean.TRUE.equals(def.getDuplicate())) continue; // deduplicate=false는 스킵
+
+            final boolean useDir = Boolean.TRUE.equals(def.getUseDirection());
+            final String edgeType = def.getEdgeType();
+            final String labelKey = def.getLabelEdgeCellName(); // 예: "weight"
+
+            // 파이프라인 구성: 중복 그룹 추출
+            // match → addFields(s,t,w) → addFields(u1,u2) → group → match(count>1) → project(삭제대상 id 목록)
+            List<Document> pipeline = new ArrayList<>();
+            // 1) 대상 한정
+            pipeline.add(new Document("$match", new Document()
+                    .append("_id.projectIdx", projectIdx)
+                    .append("type", edgeType)
+            ));
+            // 2) 문자열 키 및 라벨 추출
+            Document add1 = new Document();
+            add1.put("s", new Document("$toString", "$start"));
+            add1.put("t", new Document("$toString", "$end"));
+            if (useDir && labelKey != null && !labelKey.isEmpty()) {
+                add1.put("w", "$properties." + labelKey);
+            } else {
+                add1.put("w", null); // 라벨 무시
+            }
+            pipeline.add(new Document("$addFields", add1));
+            // 3) 무방향 정규화(u1<=u2)
+            Document cond = new Document("$lte", Arrays.asList("$s", "$t"));
+            pipeline.add(new Document("$addFields", new Document()
+                    .append("u1", new Document("$cond", Arrays.asList(cond, "$s", "$t")))
+                    .append("u2", new Document("$cond", Arrays.asList(cond, "$t", "$s")))
+            ));
+            // 4) 그룹(무방향쌍 + label(useDir=true일 때만 반영))
+            Document groupId = new Document()
+                    .append("pj", "$_id.projectIdx")
+                    .append("type", "$type")
+                    .append("u1", "$u1")
+                    .append("u2", "$u2");
+            if (useDir && labelKey != null && !labelKey.isEmpty()) {
+                groupId.append("w", "$w");
+            }
+            pipeline.add(new Document("$group", new Document()
+                    .append("_id", groupId)
+                    .append("count", new Document("$sum", 1))
+                    .append("ids", new Document("$push", "$_id")) // EdgeId 전체 푸시
+            ));
+            // 5) 중복만
+            pipeline.add(new Document("$match", new Document("count", new Document("$gt", 1))));
+            // 6) 보존 1개, 삭제 대상 나머지 산출
+            pipeline.add(new Document("$project", new Document()
+                    .append("_id", 0)
+                    .append("toDelete", new Document("$slice", Arrays.asList("$ids", 1, new Document("$subtract", Arrays.asList("$count", 1)))))
+            ));
+
+            // 실행
+            var agg = mongoTemplate.getDb()
+                    .getCollection("edge")
+                    .aggregate(pipeline);
+
+            List<Document> groups = new ArrayList<>();
+            agg.into(groups);
+
+            if (groups.isEmpty()) {
+                log.info("[DEDUP] projectIdx={} type={} → 중복 없음", projectIdx, edgeType);
+                continue;
+            }
+
+            // 삭제 대상 수집
+            List<Document> toDeleteIds = new ArrayList<>();
+            for (Document g : groups) {
+                List<Document> ids = (List<Document>) g.get("toDelete");
+                if (ids == null || ids.isEmpty()) continue;
+                toDeleteIds.addAll(ids);
+            }
+
+            if (toDeleteIds.isEmpty()) {
+                log.info("[DEDUP] projectIdx={} type={} → 삭제대상 0", projectIdx, edgeType);
+                continue;
+            }
+
+            // 배치 삭제
+            int deleted = 0;
+            BulkOperations bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Edge.class);
+            for (Document idDoc : toDeleteIds) {
+                // idDoc 구조는 EdgeId 복합키: { projectIdx, type, edgeIdx }
+                Query q = Query.query(Criteria.where("_id").is(idDoc));
+                bulk.remove(q);
+                if (++deleted % BATCH == 0) {
+                    try { bulk.execute(); } catch (RuntimeException e) { log.warn("[DEDUP] bulk 삭제 실패(무시): {}", e.getMessage()); }
+                    bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Edge.class);
+                }
+            }
+            if (deleted % BATCH != 0) {
+                try { bulk.execute(); } catch (RuntimeException e) { log.warn("[DEDUP] bulk 삭제 실패(무시): {}", e.getMessage()); }
+            }
+
+            log.info("[DEDUP] projectIdx={} type={} useDirection={} labelKey={} → 중복그룹:{} 삭제:{}",
+                    projectIdx, edgeType, useDir, labelKey, groups.size(), deleted);
+        }
+    }
+
+//    private void postProcessDedupWithBackup(int projectIdx, List<ProjectEdge> defs) {
+//        if (defs == null || defs.isEmpty()) return;
+//
+//        var edgeCol = mongoTemplate.getDb().getCollection("edge");
+//        var backupCol = mongoTemplate.getDb().getCollection("edge_dedup_backup");
+//        var runId = new ObjectId();
+//
+//        for (ProjectEdge def : defs) {
+//            if (!Boolean.TRUE.equals(def.getDuplicate())) continue;
+//
+//            boolean useDir = Boolean.TRUE.equals(def.getUseDirection());
+//            String edgeType = def.getEdgeType();
+//            String labelKey = def.getLabelEdgeCellName();
+//
+//            List<Document> pipeline = new ArrayList<>();
+//            pipeline.add(new Document("$match", new Document("_id.projectIdx", projectIdx).append("type", edgeType)));
+//            Document add1 = new Document()
+//                    .append("s", new Document("$toString", "$start"))
+//                    .append("t", new Document("$toString", "$end"));
+//            if (useDir && labelKey != null && !labelKey.isEmpty()) {
+//                add1.append("w", "$properties." + labelKey);
+//            } else {
+//                add1.append("w", null);
+//            }
+//            pipeline.add(new Document("$addFields", add1));
+//            Document cond = new Document("$lte", Arrays.asList("$s", "$t"));
+//            pipeline.add(new Document("$addFields", new Document()
+//                    .append("u1", new Document("$cond", Arrays.asList(cond, "$s", "$t")))
+//                    .append("u2", new Document("$cond", Arrays.asList(cond, "$t", "$s")))
+//            ));
+//            Document gid = new Document()
+//                    .append("pj", "$_id.projectIdx").append("type", "$type")
+//                    .append("u1", "$u1").append("u2", "$u2");
+//            if (useDir && labelKey != null && !labelKey.isEmpty()) gid.append("w", "$w");
+//            pipeline.add(new Document("$group", new Document()
+//                    .append("_id", gid)
+//                    .append("count", new Document("$sum", 1))
+//                    .append("docs", new Document("$push", "$$ROOT"))
+//            ));
+//            pipeline.add(new Document("$match", new Document("count", new Document("$gt", 1))));
+//            pipeline.add(new Document("$project", new Document("_id", 0)
+//                    .append("toBackup", new Document("$slice", Arrays.asList("$docs", 1, new Document("$subtract", Arrays.asList("$count", 1)))))
+//            ));
+//            pipeline.add(new Document("$unwind", "$toBackup"));
+//            // 기존 $project 단계 교체: 포함만 사용
+//            pipeline.add(new org.bson.Document("$project", new org.bson.Document()
+//                    .append("_id", "$toBackup._id")
+//                    .append("edge", "$toBackup")
+//                    .append("meta", new org.bson.Document("projectIdx", projectIdx)
+//                            .append("edgeType", edgeType)
+//                            .append("useDirection", useDir)
+//                            .append("labelKey", labelKey)
+//                            .append("runId", runId)
+//                            .append("createdAt", new java.util.Date())
+//                            .append("reason", "deduplicate")
+//                    )
+//            ));
+//            pipeline.add(new org.bson.Document("$unset", Arrays.asList("edge.useDirection")));
+//            pipeline.add(new Document("$merge", new Document("into", "edge_dedup_backup")
+//                    .append("on", "_id")
+//                    .append("whenMatched", "keepExisting")
+//                    .append("whenNotMatched", "insert")));
+//
+//
+//            // 백업 실행
+//            edgeCol.aggregate(pipeline).toCollection();
+//
+//            // 삭제 실행
+//            List<Document> idDocs = new ArrayList<>();
+//            backupCol.find(new Document("meta.runId", runId))
+//                    .projection(new Document("_id", 1))
+//                    .into(idDocs);
+//
+//            if (!idDocs.isEmpty()) {
+//                int BATCH = 1000;
+//                BulkOperations bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Edge.class);
+//                int cnt = 0;
+//                for (Document d : idDocs) {
+//                    bulk.remove(Query.query(Criteria.where("_id").is(d.get("_id"))));
+//                    if (++cnt % BATCH == 0) { try { bulk.execute(); } catch (RuntimeException ignored) {} bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Edge.class); }
+//                }
+//                if (cnt % BATCH != 0) { try { bulk.execute(); } catch (RuntimeException ignored) {} }
+//                log.info("[DEDUP] backup+delete projectIdx={} type={} removed={}", projectIdx, edgeType, idDocs.size());
+//            } else {
+//                log.info("[DEDUP] projectIdx={} type={} 중복 없음", projectIdx, edgeType);
+//            }
+//        }
+//    }
 }

@@ -37,4 +37,6 @@ public class ProjectEdge {
     private Boolean useDirection;
     @Comment("엣지 가중치(선 두께 표시 여부)")
     private Boolean weight;
+    @Comment("중복 엣지 미허용 여부")
+    private Boolean duplicate = false;
 }

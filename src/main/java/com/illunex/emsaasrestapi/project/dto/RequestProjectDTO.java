@@ -87,6 +87,7 @@ public class RequestProjectDTO {
         private String color;
         private Boolean useDirection;
         private Boolean weight;
+        private Boolean duplicate;
     }
 
     /**
