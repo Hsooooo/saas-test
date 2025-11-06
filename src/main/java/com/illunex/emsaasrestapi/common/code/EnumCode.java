@@ -290,7 +290,8 @@ public class EnumCode {
             SIMPLE("CHT0001", "SIMPLE"),
             GENERAL("CHT0002", "GENERAL"),
             PROFESSIONAL("CHT0003", "PROFESSIONAL"),
-            USER("CHT0004", "USER");
+            USER("CHT0004", "USER"),
+            ERROR("CHT0005", "ERROR");
 
             private final String code;
             private final String value;
@@ -400,8 +401,8 @@ public class EnumCode {
         public enum StateCd implements BaseCodeEnum {
             DRAFT("LPS0001", "임시"),
             ACTIVE("LPS0002", "활성"),
-            PAUSED("LPS0003", "일시정지"),
-            EXPIRED("LPS0004", "만료");
+            CHANGE("LPS0003", "변경 예약"),
+            CANCEL("LPS0004", "해지 예약");
 
             private final String code;
             private final String value;
