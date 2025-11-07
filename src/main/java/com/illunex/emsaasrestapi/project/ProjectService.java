@@ -301,6 +301,8 @@ public class ProjectService {
         if (project.getProjectNodeList() != null)      u.set("projectNodeList", project.getProjectNodeList());
         if (project.getProjectEdgeList() != null)      u.set("projectEdgeList", project.getProjectEdgeList());
         if (project.getProjectNodeContentList() != null) u.set("projectNodeContentList", project.getProjectNodeContentList());
+        if (project.getProjectFilterList() != null)    u.set("projectFilterList", project.getProjectFilterList());
+        if (project.getProjectNodeSizeList() != null)  u.set("projectNodeSizeList", project.getProjectNodeSizeList());
 
 
         draftRepo.upsert(sid, u);
