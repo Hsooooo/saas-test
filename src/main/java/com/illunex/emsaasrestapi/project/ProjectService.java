@@ -23,9 +23,7 @@ import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.EdgeId;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.network.NodeId;
-import com.illunex.emsaasrestapi.project.document.project.Project;
-import com.illunex.emsaasrestapi.project.document.project.ProjectEdgeCount;
-import com.illunex.emsaasrestapi.project.document.project.ProjectNodeCount;
+import com.illunex.emsaasrestapi.project.document.project.*;
 import com.illunex.emsaasrestapi.project.dto.RequestProjectDTO;
 import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectFileMapper;
@@ -285,12 +283,25 @@ public class ProjectService {
         existing.setProjectEdgeCountList(edgeCountList);
         existing.setTotalDataCount(totalDataCount);
         if (project.getMaxNodeSize() != null) existing.setMaxNodeSize(project.getMaxNodeSize());
+        if (project.getProjectFilterList() != null) existing.setProjectFilterList(modelMapper.map(
+                project.getProjectFilterList(),
+                new TypeToken<List<ProjectFilter>>(){}.getType()
+        ));
+        if (project.getProjectNodeSizeList() != null) existing.setProjectNodeSizeList(modelMapper.map(
+                project.getProjectNodeSizeList(),
+                new TypeToken<List<ProjectNodeSize>>(){}.getType()
+        ));
+        if (project.getProjectNodeContentList() != null) existing.setProjectNodeContentList(modelMapper.map(
+                project.getProjectNodeContentList(),
+                new TypeToken<List<ProjectNodeContent>>(){}.getType()
+        ));
         existing.setUpdateDate(java.time.LocalDateTime.now());
 
         Update u = new Update().set("updatedAt", new Date())
                 .set("projectDoc", existing);
         u.set("nodeCnt", nodeCount);
         u.set("edgeCnt", edgeCount);
+        u.set("project", existing); // project 전체 교체
         if (project.getMaxNodeSize() != null)       u.set("maxNodeSize", project.getMaxNodeSize());
         if (project.getTitle() != null)              u.set("title", project.getTitle());
         if (project.getPartnershipIdx() != null)     u.set("partnershipIdx", project.getPartnershipIdx());
