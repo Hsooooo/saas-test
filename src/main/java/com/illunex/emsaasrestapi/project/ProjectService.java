@@ -277,8 +277,8 @@ public class ProjectService {
         }
 
 // 2) req -> projDoc 병합(널 스킵) + 카운트/메타 주입
-        var existing = Optional.ofNullable(draft.getProjectDoc())
-                .orElseGet(com.illunex.emsaasrestapi.project.document.project.Project::new);
+        Project existing = Optional.ofNullable(draft.getProjectDoc())
+                .orElseGet(Project::new);
         modelMapper.getConfiguration().setPropertyCondition(Conditions.isNotNull());
         modelMapper.map(project, existing); // 널 필드는 보존
         existing.setProjectNodeCountList(nodeCountList);
@@ -298,6 +298,10 @@ public class ProjectService {
         if (project.getDescription() != null)        u.set("description", project.getDescription());
         if (project.getImagePath() != null)          u.set("imagePath", project.getImagePath());
         if (project.getImageUrl() != null)           u.set("imageUrl", project.getImageUrl());
+        if (project.getProjectNodeList() != null)      u.set("projectNodeList", project.getProjectNodeList());
+        if (project.getProjectEdgeList() != null)      u.set("projectEdgeList", project.getProjectEdgeList());
+        if (project.getProjectNodeContentList() != null) u.set("projectNodeContentList", project.getProjectNodeContentList());
+
 
         draftRepo.upsert(sid, u);
         var refreshed = draftRepo.get(sid);
