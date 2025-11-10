@@ -7,6 +7,8 @@ import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.Utils;
 import com.illunex.emsaasrestapi.common.aws.AwsSESComponent;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
+import com.illunex.emsaasrestapi.license.mapper.LicensePartnershipMapper;
+import com.illunex.emsaasrestapi.license.vo.LicensePartnershipVO;
 import com.illunex.emsaasrestapi.member.mapper.EmailHistoryMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberJoinMapper;
 import com.illunex.emsaasrestapi.member.mapper.MemberMapper;
@@ -20,6 +22,8 @@ import com.illunex.emsaasrestapi.partnership.vo.PartnershipInviteLinkVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipInvitedMemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
+import com.illunex.emsaasrestapi.payment.mapper.SubscriptionChangeEventMapper;
+import com.illunex.emsaasrestapi.payment.vo.SubscriptionChangeEventVO;
 import lombok.RequiredArgsConstructor;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -49,6 +53,8 @@ public class CertService {
     private final PartnershipInvitedMemberMapper partnershipInvitedMemberMapper;
 
     private final ModelMapper modelMapper;
+    private final LicensePartnershipMapper licensePartnershipMapper;
+    private final SubscriptionChangeEventMapper subscriptionChangeEventMapper;
 
     @Value("${server.encrypt-key}")
     private String encryptKey;
@@ -244,6 +250,8 @@ public class CertService {
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
             PartnershipVO partnershipVO = partnershipMapper.selectByIdx(invitePartnershipMember.getPartnershipIdx())
                     .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
+            LicensePartnershipVO lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipVO.getIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
             // 회원가입
             MemberVO member;
@@ -296,6 +304,14 @@ public class CertService {
 
             linkVO.setUsedCount(linkVO.getUsedCount() == null ? 1 : linkVO.getUsedCount() + 1);
             partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
+
+            // 구독 변경 이벤트 기록 (좌석 1 증가)
+            SubscriptionChangeEventVO eventVO = new SubscriptionChangeEventVO();
+            eventVO.setLicensePartnershipIdx(lp.getIdx());
+            eventVO.setOccurredDate(ZonedDateTime.now());
+            eventVO.setTypeCd(EnumCode.SubscriptionChangeEvent.TypeCd.ADD_SEAT.getCode());
+            eventVO.setQtyDelta(1);
+            subscriptionChangeEventMapper.insertBySubscriptionChangeEventVO(eventVO);
         }
 
 

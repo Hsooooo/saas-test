@@ -87,7 +87,7 @@ public class LicensePartnershipVO {
             *
         FROM license_partnership
         WHERE partnership_idx = #{partnershipIdx}
-          AND state_cd = 'LPS0002'
+          AND state_cd != 'LPS0001'
         ORDER BY create_date DESC
         LIMIT 1
     </select>

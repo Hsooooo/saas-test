@@ -27,6 +27,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
@@ -328,7 +329,7 @@ public class AiProxyController {
             ChatHistoryVO professionalMsg = chatHistoryMapper.selectByChatRoomIdxAndCategoryTypeOrderByCreateDateDesc(chatRoomIdx, EnumCode.ChatHistory.CategoryType.PROFESSIONAL.getCode()).get(0);
 
             // 5) 외부 API 호출 + S3 업로드 + DB 인서트 (블로킹 작업 → boundedElastic)
-            reactor.core.publisher.Mono.fromCallable(() -> {
+            Mono.fromCallable(() -> {
                 Map<String, Object> result = new java.util.HashMap<>();
 
                 if (needPpt) {
@@ -763,15 +764,15 @@ public class AiProxyController {
         return null;
     }
 
-    private Optional<com.fasterxml.jackson.databind.node.ObjectNode> findLastOkEvent(String all, ObjectMapper om) {
+    private Optional<ObjectNode> findLastOkEvent(String all, ObjectMapper om) {
         if (all == null || all.isBlank()) return Optional.empty();
         try (var p = om.getFactory().createParser(all)) {
-            com.fasterxml.jackson.databind.node.ObjectNode lastOk = null;
+            ObjectNode lastOk = null;
             while (p.nextToken() != null) {
                 // 이벤트가 연속된 JSON object라고 가정
                 var node = om.readTree(p);
                 if (node != null && node.isObject()) {
-                    var obj = (com.fasterxml.jackson.databind.node.ObjectNode) node;
+                    var obj = (ObjectNode) node;
                     var st = obj.get("status");
                     boolean isOk = false;
                     if (st != null) {

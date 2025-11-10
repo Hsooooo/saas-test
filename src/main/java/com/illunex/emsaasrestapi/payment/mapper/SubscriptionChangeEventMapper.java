@@ -18,4 +18,6 @@ public interface SubscriptionChangeEventMapper {
 
     List<SubscriptionChangeEventVO> selectAddsAfter(Integer licensePartnershipIdx, ZonedDateTime issueDate);
 
+    void insertBySubscriptionChangeEventVO(SubscriptionChangeEventVO subscriptionChangeEventVO);
+
 }

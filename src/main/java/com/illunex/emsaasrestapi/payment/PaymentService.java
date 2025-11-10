@@ -82,9 +82,134 @@ public class PaymentService {
     }
 
     /**
-     * 즉시 결제(오늘 결제, 내일부터 적용) – 오케스트레이션 메서드
+     * 구독 변경 처리
+     * @param req
+     * @param member
+     * @return
+     * @throws CustomException
      */
-    public ResponsePaymentDTO.PaymentChargeResult chargeNow(RequestPaymentDTO.SubscriptionInfo req, MemberVO member) throws CustomException {
+    public ResponsePaymentDTO.LicenseChangeResult changeSubscription(RequestPaymentDTO.SubscriptionInfo req, MemberVO member) throws CustomException {
+        // 0) 필수 파라미터 방어
+        if (req == null || req.getPartnershipIdx() == null || req.getLicenseIdx() == null) {
+            throw new CustomException(ErrorCode.COMMON_INVALID, "partnershipIdx/licenseIdx 누락");
+        }
+
+        // 1) 현재 구독 조회
+        final Optional<LicensePartnershipVO> lpOpt = licensePartnershipMapper.selectByPartnershipIdx(req.getPartnershipIdx());
+
+        // 2) 신규 구독: 즉시 과금
+        if (lpOpt.isEmpty()) {
+            return chargeNow(req, member);
+        }
+
+        // 3) 변경 의사결정
+        final LicensePartnershipVO lp = lpOpt.get();
+
+        final LicenseVO toLicense = licenseMapper.selectByIdx(req.getLicenseIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID, "대상 요금제 없음"));
+        final LicenseVO fromLicense = licenseMapper.selectByIdx(lp.getLicenseIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID, "현재 요금제 없음"));
+
+        final ChangeDecision decision = decideChange(fromLicense, toLicense);
+
+        return switch (decision) {
+            case UPGRADE ->
+                // 업그레이드: 즉시 과금
+                    chargeNow(req, member);
+            case DOWNGRADE ->
+                // 다운그레이드: 주기말 적용 예약
+                    changeReservation(lp, EnumCode.LicensePartnership.StateCd.CHANGE.getCode(),
+                            req.getLicenseIdx());
+            case CANCEL_TO_FREE ->
+                // 무료로 전환(=사실상 취소): 주기말 적용 예약
+                    changeReservation(lp, EnumCode.LicensePartnership.StateCd.CANCEL.getCode(),
+                            null);
+            case NOOP -> throw new CustomException(ErrorCode.COMMON_INVALID, "동일 단가: 변경 불가");
+            default -> throw new CustomException(ErrorCode.COMMON_INVALID, "알 수 없는 변경 결정");
+        };
+    }
+
+    /**
+     * 요금제 변경 의사결정
+     */
+    private ChangeDecision decideChange(LicenseVO fromLicense, LicenseVO toLicense) {
+        final BigDecimal from = nullSafe(fromLicense.getPricePerUser());
+        final BigDecimal to   = nullSafe(toLicense.getPricePerUser());
+
+        if (to.signum() == 0) {
+            return ChangeDecision.CANCEL_TO_FREE;
+        }
+        final int cmp = to.compareTo(from);
+        if (cmp > 0) return ChangeDecision.UPGRADE;
+        if (cmp < 0) return ChangeDecision.DOWNGRADE;
+        return ChangeDecision.NOOP;
+    }
+
+    private enum ChangeDecision {
+        NEW,           // 미사용(위에서 lpOpt.isEmpty()로 처리)
+        UPGRADE,
+        DOWNGRADE,
+        CANCEL_TO_FREE,
+        NOOP
+    }
+
+    private BigDecimal nullSafe(BigDecimal v) {
+        return (v == null) ? BigDecimal.ZERO : v;
+    }
+
+    /**
+     * 변경 예약: 파트너십 상태코드와 변경 이벤트를 기록하고, 결과 DTO 반환
+     * - 좌석 증감이 아닌 “요금제 변경/취소”이므로 qtyDelta는 0 또는 null 권장
+     */
+    @Transactional
+    public ResponsePaymentDTO.LicenseChangeResult changeReservation(LicensePartnershipVO lp, String stateCd, Integer toLicenseIdx) throws CustomException {
+        ResponsePaymentDTO.LicenseChangeResult result = new ResponsePaymentDTO.LicenseChangeResult();
+        // 1) 파트너십 상태 전환
+        lp.setStateCd(stateCd);
+        licensePartnershipMapper.updateByLicensePartnershipVO(lp);
+
+        // 2) 이벤트 기록
+        final SubscriptionChangeEventVO eventVO = new SubscriptionChangeEventVO();
+        eventVO.setLicensePartnershipIdx(lp.getIdx());
+        eventVO.setOccurredDate(ZonedDateTime.now());
+        eventVO.setTypeCd(EnumCode.SubscriptionChangeEvent.TypeCd.PLAN_DOWNGRADE.getCode());
+        eventVO.setFromLicenseIdx(lp.getLicenseIdx());
+        eventVO.setToLicenseIdx(toLicenseIdx);
+        eventVO.setQtyDelta(0);
+        subscriptionChangeEventMapper.insertBySubscriptionChangeEventVO(eventVO);
+
+        LicenseVO toLicense = toLicenseIdx != null ? licenseMapper.selectByIdx(toLicenseIdx)
+                .orElse(null) : null;
+        LicenseVO fromLicense = licenseMapper.selectByIdx(lp.getLicenseIdx())
+                .orElse(null);
+
+        // 3) 응답 구성
+        result.setLicenseChangeStatueStatus(toLicense != null ?
+                ResponsePaymentDTO.LicenseChangeResult.LicenseChangeStatus.DOWNGRADE :
+                ResponsePaymentDTO.LicenseChangeResult.LicenseChangeStatus.CANCEL);
+        result.setFromPlan(fromLicense != null ?
+                modelMapper.map(fromLicense, ResponsePaymentDTO.PreviewPlan.class) :
+                null);
+        result.setToPlan(toLicense != null ?
+                modelMapper.map(toLicense, ResponsePaymentDTO.PreviewPlan.class) :
+                null);
+        return result;
+    }
+
+    private String buildReservationMessage(String stateCd, LicensePartnershipVO lp) {
+        if (EnumCode.LicensePartnership.StateCd.CANCEL.getCode().equals(stateCd)) {
+            return "구독 취소가 주기 종료 시점에 적용됩니다. partnershipIdx=" + lp.getPartnershipIdx();
+        }
+        if (EnumCode.LicensePartnership.StateCd.CHANGE.getCode().equals(stateCd)) {
+            return "요금제 변경이 주기 종료 시점에 적용됩니다. partnershipIdx=" + lp.getPartnershipIdx();
+        }
+        return "변경 예약이 적용됩니다. partnershipIdx=" + lp.getPartnershipIdx();
+    }
+
+    /**
+     * 즉시 결제
+     */
+    public ResponsePaymentDTO.LicenseChangeResult chargeNow(RequestPaymentDTO.SubscriptionInfo req, MemberVO member) throws CustomException {
         final PaymentPreviewResult preview = paymentPreviewResultForCharge(req, member); // 결제수단 검증 목적
 
         // A) TX-1: 인보이스 준비 + 시도기록(PENDING) 생성
@@ -94,6 +219,7 @@ public class PaymentService {
         JSONObject pgResp = callPgConfirmBillingByPreview(tx1, preview);
 
         // C) TX-2: 응답 반영(시도 성공/실패 + 수납 + 인보이스 상태 전이 + 구독 스냅샷 적용)
+
         return tx2_finalizeAttemptAndReceiptByPreview(preview, tx1, pgResp);
     }
 
@@ -119,6 +245,8 @@ public class PaymentService {
         preview.setCustomerEmail(member.getEmail());
         preview.setOrderName(input.getToPlan().getName() + " 외 " + (preview.getItems().size() -1) + "건");
         preview.setPartnershipIdx(req.getPartnershipIdx());
+        preview.setFromLicenseIdx(input.getFromPlan() != null ? input.getFromPlan().getIdx() : null);
+        preview.setToLicenseIdx(input.getToPlan().getPlanCd().equals(EnumCode.License.PlanCd.BASIC.getCode()) ? null : input.getToPlan().getIdx());
         return preview;
     }
 
@@ -131,6 +259,7 @@ public class PaymentService {
 
     // ===================== TX-1 =====================
 
+    @Transactional
     protected Tx1Context tx1_prepareInvoiceAndBeginAttemptByPaymentPreviewResult(RequestPaymentDTO.SubscriptionInfo req, PaymentPreviewResult preview) throws CustomException {
         // (A) LP 보장: 없으면 DRAFT로 생성
         LicensePartnershipVO lp = ensureLicensePartnershipForNewIfAbsent(req, preview);
@@ -260,32 +389,6 @@ public class PaymentService {
     /**
      * 비트랜잭션: 토스 정기결제 confirm 호출
      */
-    protected JSONObject callPgConfirmBilling(Tx1Context tx1, ProrationResult result) throws CustomException {
-        try {
-            TossConfirmPayload tossConfirmPayload = TossConfirmPayload.of(
-                    tx1.mandate().providerCd(),
-                    tx1.mandate().paymentMethodIdx(),
-                    tx1.mandate().paymentMandateIdx(),
-                    tx1.attempt().getOrderNumber(),
-                    BigDecimal.valueOf(result.getTotal())
-            );
-            JSONObject payload = new JSONObject(tossConfirmPayload);
-            payload.put("billingKey", tx1.mandate.mandateId());
-            payload.put("orderName", result.getPlanName());
-            payload.put("orderId", tx1.attempt().getOrderNumber());
-            payload.put("amount", tossConfirmPayload.amount());
-            payload.put("customerKey", tx1.mandate.customerKey());
-            return tossPaymentService.confirmBilling(payload);
-        } catch (IOException ioe) {
-            log.error("PG confirmBilling network error", ioe);
-            // TX-2에서 실패 반영을 위해 예외로 넘김
-            throw new CustomException(ErrorCode.PG_TOSS_PAYMENT_FAIL);
-        }
-    }
-
-    /**
-     * 비트랜잭션: 토스 정기결제 confirm 호출
-     */
     protected JSONObject callPgConfirmBillingByPreview(Tx1Context tx1, PaymentPreviewResult preview) throws CustomException {
         try {
             TossConfirmPayload tossConfirmPayload = TossConfirmPayload.of(
@@ -314,9 +417,10 @@ public class PaymentService {
     // ===================== TX-2 =====================
 
     @Transactional
-    protected ResponsePaymentDTO.PaymentChargeResult tx2_finalizeAttemptAndReceiptByPreview(PaymentPreviewResult preview,
+    protected ResponsePaymentDTO.LicenseChangeResult tx2_finalizeAttemptAndReceiptByPreview(PaymentPreviewResult preview,
                                                                                             Tx1Context tx1,
                                                                                             JSONObject pgResp) throws CustomException {
+        ResponsePaymentDTO.LicenseChangeResult changeResult = new ResponsePaymentDTO.LicenseChangeResult();
         PaymentAttemptVO attempt = tx1.attempt();
         ZonedDateTime now = ZonedDateTime.now();
 
@@ -333,7 +437,9 @@ public class PaymentService {
             attempt.setFailureMessage(vr.message);
             paymentAttemptMapper.updateByPaymentAttemptVO(attempt);
             // 인보이스는 OPEN 유지 – 재시도 가능
-            return ResponsePaymentDTO.PaymentChargeResult.failed(vr.code, vr.message);
+            changeResult.setErrorCode(vr.code);
+            changeResult.setErrorMessage(vr.message);
+            return changeResult;
         }
 
         attempt.setStatusCd(EnumCode.PaymentAttempt.StateCd.SUCCESS.getCode());
@@ -358,10 +464,32 @@ public class PaymentService {
             invoiceMapper.markPaid(tx1.invoice().getIdx());
         }
 
-        // 5) 정책: “오늘 결제, 내일부터 적용”
+        // 5) 구독정보 변경
         applyChangeLicensePartnership(tx1.lp, preview);
+        Optional<LicenseVO> fromLicense = licenseMapper.selectByIdx(preview.getFromLicenseIdx());
+        Optional<LicenseVO> toLicense = licenseMapper.selectByIdx(preview.getToLicenseIdx());
+        ResponsePaymentDTO.PreviewPlan fromPlan = fromLicense.map(l -> modelMapper.map(l, ResponsePaymentDTO.PreviewPlan.class)).orElse(null);
+        ResponsePaymentDTO.PreviewPlan toPlan = toLicense.map(l -> modelMapper.map(l, ResponsePaymentDTO.PreviewPlan.class)).orElse(null);
 
-        return ResponsePaymentDTO.PaymentChargeResult.ok(tx1.invoice(), attempt);
+        // 6) 구독 변경 이벤트 생성
+        SubscriptionChangeEventVO event = new SubscriptionChangeEventVO();
+        event.setLicensePartnershipIdx(tx1.lp.getIdx());
+        event.setOccurredDate(LocalDate.now().atStartOfDay(ZoneId.systemDefault()));
+        event.setTypeCd(EnumCode.SubscriptionChangeEvent.TypeCd.PLAN_UPGRADE.getCode());
+        event.setFromLicenseIdx(preview.getFromLicenseIdx());
+        event.setToLicenseIdx(preview.getToLicenseIdx());
+        event.setQtyDelta(partnershipComponent.getPartnershipActiveMemberCount(tx1.lp.getPartnershipIdx())); // 전체 좌석 수로 이벤트 생성
+
+        subscriptionChangeEventMapper.insertBySubscriptionChangeEventVO(event);
+
+        changeResult.setAmount(tx1.invoice().getTotal().intValue());
+        changeResult.setOrderId(attempt.getOrderNumber());
+        changeResult.setOrderName(preview.getOrderName());
+        changeResult.setToPlan(toPlan);
+        changeResult.setFromPlan(fromPlan);
+        changeResult.setLicenseChangeStatueStatus(ResponsePaymentDTO.LicenseChangeResult.LicenseChangeStatus.UPGRADE);
+
+        return changeResult;
     }
 
     @Transactional
@@ -370,6 +498,8 @@ public class PaymentService {
         // - input.getNextPeriodStart(), input.getNextPeriodEndExcl()
         // - input.getChargeSeats(), input.getUnitPriceSnapshot(), input.getMinUserCountSnapshot()
         lp.setStateCd(EnumCode.LicensePartnership.StateCd.ACTIVE.getCode());
+        lp.setLicenseIdx(preview.getToLicenseIdx());
+        lp.setCurrentSeatCount(partnershipComponent.getPartnershipActiveMemberCount(lp.getPartnershipIdx()));
         licensePartnershipMapper.updateByLicensePartnershipVO(lp);
     }
 
@@ -379,14 +509,6 @@ public class PaymentService {
         // 간단 구현: 시도번호를 현재 timestamp 기반으로 1로 시작(권장: SELECT MAX(attempt_no)+1)
         // 필요 시 전용 Mapper 메서드를 만들어 MAX+1 가져오세요.
         return 1;
-    }
-
-    protected String buildItemMeta(ProrationInput input, ProrationResult.Item line) {
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("numeratorDays", line.getDays());
-        meta.put("seatCount", line.getQuantity());
-        meta.put("unitPrice", line.getUnitPrice());
-        return new JSONObject(meta).toString();
     }
 
     /**
@@ -529,37 +651,6 @@ public class PaymentService {
         result.setCard(card.toMap());
         result.setPaymentMethodIdx(methodVO.getIdx());
         return result;
-    }
-
-    private ResponsePaymentDTO.PaymentPreview buildPreviewByInputAndResult(ProrationInput input, ProrationResult result) {
-        ResponsePaymentDTO.PaymentPreview response = new ResponsePaymentDTO.PaymentPreview();
-
-        response.setTargetPlan(modelMapper.map(input.getToPlan(), ResponsePaymentDTO.PreviewPlan.class));
-//        response.setDenominatorDays(input.getDenominatorDays());
-        response.setRoundingRule(input.getRoundingMode().name());
-        response.setCurrency(input.getCurrency());
-        response.setPeriodStart(input.getPeriodStart());
-        response.setPeriodEnd(input.getPeriodEndExcl().minusDays(1)); // exclusive -> inclusive
-        response.setOccurredAt(ZonedDateTime.now().toString());
-//        response.setChargeSeats(input.getCurrentActiveSeats());
-        response.setSubTotal(result.getSubTotal());
-        response.setTax(result.getTax());
-        response.setTotal(result.getTotal());
-        response.setCreditCarryOver(result.getCreditCarryOver());
-        response.setItems(new ArrayList<>());
-        for (ProrationResult.Item item : result.getItems()) {
-            ResponsePaymentDTO.PreviewItem previewItem = new ResponsePaymentDTO.PreviewItem();
-            previewItem.setItemType(item.getItemType());
-            previewItem.setDescription(item.getDescription());
-            previewItem.setQuantity(item.getQuantity());
-            previewItem.setUnitPrice(item.getUnitPrice());
-            previewItem.setDays(item.getDays());
-            previewItem.setAmount(item.getAmount());
-            previewItem.setRelatedEventId(item.getRelatedEventId());
-            previewItem.setMeta(item.getMeta());
-            response.getItems().add(previewItem);
-        }
-        return response;
     }
 
     /**

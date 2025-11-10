@@ -14,6 +14,8 @@ import java.util.Map;
 @Builder(toBuilder = true)
 public class PaymentPreviewResult {
     private Integer partnershipIdx;
+    private Integer fromLicenseIdx;
+    private Integer toLicenseIdx;
     // 결제 연동 시 필요정보
     private String orderId;
     private String customerKey;

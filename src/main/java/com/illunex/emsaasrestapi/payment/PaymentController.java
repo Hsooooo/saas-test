@@ -83,7 +83,7 @@ public class PaymentController {
     public CustomResponse<?> applySubscriptionChangeEvent(@RequestBody RequestPaymentDTO.SubscriptionInfo request,
                                                @CurrentMember MemberVO memberVO) throws Exception {
         return CustomResponse.builder()
-                .data(paymentService.chargeNow(request, memberVO))
+                .data(paymentService.changeSubscription(request, memberVO))
                 .build();
     }
 

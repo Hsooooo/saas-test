@@ -23,6 +23,7 @@ import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.dto.ResponsePartnershipDTO;
 import com.illunex.emsaasrestapi.partnership.mapper.*;
 import com.illunex.emsaasrestapi.partnership.vo.*;
+import com.illunex.emsaasrestapi.payment.mapper.SubscriptionChangeEventMapper;
 import com.illunex.emsaasrestapi.payment.vo.SubscriptionChangeEventVO;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMemberMapper;
@@ -74,6 +75,7 @@ public class PartnershipService {
     private final ProjectMapper projectMapper;
     private final ProjectMemberMapper projectMemberMapper;
     private final LicenseMapper licenseMapper;
+    private final SubscriptionChangeEventMapper subscriptionChangeEventMapper;
 
     /**
      * 파트너십 생성 (기본 라이센스)
@@ -135,8 +137,8 @@ public class PartnershipService {
         }
 
         //TODO 초대 가능한 라이센스 여부 확인
-//        LicensePartnershipVO lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipIdx)
-//                .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
+        LicensePartnershipVO lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
 
         List<ResponsePartnershipDTO.InviteResult> validList = new ArrayList<>();
         List<ResponsePartnershipDTO.InviteResult> invalidList = new ArrayList<>();
@@ -160,6 +162,7 @@ public class PartnershipService {
             productArray.put(productJson);
         }
 
+        int invitedCount = 0;
         for (String email : inviteMember.getEmails().split("[,;\\s]+")) {
             try {
                 // 1. 이미 초대되었는지 확인
@@ -227,6 +230,7 @@ public class PartnershipService {
                         .email(email)
                         .result("success")
                         .build());
+                invitedCount++;
             } catch (Exception e) {
                 log.error(e.getMessage());
                 invalidList.add(ResponsePartnershipDTO.InviteResult.builder()
@@ -252,6 +256,15 @@ public class PartnershipService {
         linkVO.setStateCd(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode());
         linkVO.setExpireDate(linkVO.getCreateDate().plusDays(7));
         partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
+
+        // 구독변경이벤트 등록
+        SubscriptionChangeEventVO eventVO = new SubscriptionChangeEventVO();
+        eventVO.setLicensePartnershipIdx(lp.getIdx());
+        eventVO.setOccurredDate(ZonedDateTime.now());
+        eventVO.setTypeCd(EnumCode.SubscriptionChangeEvent.TypeCd.ADD_SEAT.getCode()); // 멤버 초대
+        eventVO.setQtyDelta(invitedCount);
+
+        subscriptionChangeEventMapper.insertBySubscriptionChangeEventVO(eventVO);
 
         return ResponsePartnershipDTO.InviteMember.builder()
                 .valid(validList)
@@ -525,10 +538,6 @@ public class PartnershipService {
             PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByIdx(data.getInt("partnershipMemberIdx"))
                     .orElseThrow(() -> new Exception("존재하지 않는 파트너쉽 회원입니다."));
 
-            //TODO 초대 승인 가능한 라이센스 구독여부 확인
-//            lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipMemberVO.getPartnershipIdx())
-//                    .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
-
             certComponent.approvePartnershipMember(data, memberVO);
 
             // 이메일 인증 완료 처리
@@ -543,9 +552,8 @@ public class PartnershipService {
             if (!linkVO.getStateCd().equals(EnumCode.PartnershipInviteLink.StateCd.ACTIVE.getCode())) {
                 throw new CustomException(ErrorCode.COMMON_INVALID);
             }
-//TODO 초대 승인 가능한 라이센스 구독여부 확인
-//            lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipMemberVO.getPartnershipIdx())
-//                    .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
+            lp = licensePartnershipMapper.selectByPartnershipIdx(linkVO.getPartnershipIdx())
+                    .orElseThrow(() -> new CustomException(ErrorCode.LICENSE_PARTNERSHIP_EMPTY));
 
             String infoJsonString = linkVO.getInviteInfoJson();
             if (infoJsonString == null || infoJsonString.isBlank()) {
@@ -623,17 +631,15 @@ public class PartnershipService {
             linkVO.setUsedCount(linkVO.getUsedCount() == null ? 1 : linkVO.getUsedCount() + 1);
             partnershipInviteLinkMapper.updateByPartnershipInviteLinkVO(linkVO);
 
+            // 구독변경이벤트 등록
+            SubscriptionChangeEventVO eventVO = new SubscriptionChangeEventVO();
+            eventVO.setLicensePartnershipIdx(lp.getIdx());
+            eventVO.setOccurredDate(ZonedDateTime.now());
+            eventVO.setTypeCd(EnumCode.SubscriptionChangeEvent.TypeCd.ADD_SEAT.getCode()); // 멤버 초대
+            eventVO.setQtyDelta(1);
+            subscriptionChangeEventMapper.insertBySubscriptionChangeEventVO(eventVO);
         }
-
-        SubscriptionChangeEventVO eventVO = new SubscriptionChangeEventVO();
-        eventVO.setLicensePartnershipIdx(lp.getIdx());
-        eventVO.setOccurredDate(ZonedDateTime.now());
-        eventVO.setTypeCd( EnumCode.SubscriptionChangeEvent.TypeCd.ADD_SEAT.getCode());
-        eventVO.setQtyDelta(1);
-        // TODO 구독 변경 이벤트 저장
-
         return null;
-
     }
 
     /**
@@ -776,6 +782,16 @@ public class PartnershipService {
                         targetMember.getIdx(),
                         transferMember.getIdx()
                 );
+
+                Optional<LicensePartnershipVO> lp = licensePartnershipMapper.selectByPartnershipIdx(partnershipIdx);
+                if (lp.isPresent()) {
+                    SubscriptionChangeEventVO eventVO = new SubscriptionChangeEventVO();
+                    eventVO.setLicensePartnershipIdx(lp.get().getIdx());
+                    eventVO.setOccurredDate(ZonedDateTime.now());
+                    eventVO.setTypeCd(EnumCode.SubscriptionChangeEvent.TypeCd.REMOVE_SEAT.getCode()); // 멤버 삭제
+                    eventVO.setQtyDelta(-1);
+                    subscriptionChangeEventMapper.insertBySubscriptionChangeEventVO(eventVO);
+                }
             }
             // 상태코드 변경
             targetMember.setStateCd(request.getStateCd());

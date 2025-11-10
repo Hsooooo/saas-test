@@ -78,46 +78,23 @@ public class ResponsePaymentDTO {
     }
 
 
-
-
     @Getter
     @Setter
-    public static class PaymentChargeResult {
-        private String paymentKey;
+    public static class LicenseChangeResult {
         private String orderId;
         private String orderName;
-        private Long amount;
-        private String currency;
-        private String requestedAt;
+        private Integer amount;
+        private PreviewPlan fromPlan;
+        private PreviewPlan toPlan;
+        private LicenseChangeStatus licenseChangeStatueStatus;
         private String status;
-        private String method;
-        private Map<String, Object> customer;
-        private Map<String, Object> card;
         private String errorCode;
         private String errorMessage;
 
-        public static PaymentChargeResult zero() {
-            PaymentChargeResult result = new PaymentChargeResult();
-            result.amount = 0L;
-            result.status = "SUCCESS";
-            return result;
-        }
-
-        public static PaymentChargeResult failed(String errorCode, String errorMessage) {
-            PaymentChargeResult result = new PaymentChargeResult();
-            result.errorCode = errorCode;
-            result.errorMessage = errorMessage;
-            result.amount = 0L;
-            result.status = "FAILED";
-            return result;
-        }
-
-        public static PaymentChargeResult ok(InvoiceVO inv, PaymentAttemptVO attempt) {
-            PaymentChargeResult result = new PaymentChargeResult();
-            result.orderId = attempt.getOrderNumber();
-            result.amount = inv.getTotal().longValue();
-            result.status = "SUCCESS";
-            return result;
+        public enum LicenseChangeStatus {
+            UPGRADE, DOWNGRADE, CANCEL
         }
     }
+
+
 }

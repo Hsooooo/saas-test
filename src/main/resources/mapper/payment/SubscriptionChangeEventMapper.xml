@@ -5,25 +5,20 @@
 <!--
 @Getter
 @Setter
-@Alias("InvoiceVO")
-public class InvoiceVO {
+@Alias("SubscriptionChangeEventVO")
+public class SubscriptionChangeEventVO {
     private Integer idx;
-    private Integer partnershipIdx;
     private Integer licensePartnershipIdx;
-    private LocalDate periodStart;
-    private LocalDate periodEnd;
-    private ZonedDateTime issueDate;
-    private ZonedDateTime dueDate;
-    private Double subtotal;
-    private Double tax;
-    private Double total;
-    private String statusCd;
-    private String unitCd;
+    private ZonedDateTime occurredDate;
+    private String typeCd;
+    private Integer qtyDelta;
+    private Integer fromLicenseIdx;
+    private Integer toLicenseIdx;
+    private String note;
     private String meta;
-    private ZonedDateTime createDate;
-    private ZonedDateTime updateDate;
+    private String createDate;
 }
- -->
+-->
 <mapper namespace="com.illunex.emsaasrestapi.payment.mapper.SubscriptionChangeEventMapper">
 
     <select id="selectByLpAndOccurredBetween" resultType="com.illunex.emsaasrestapi.payment.vo.SubscriptionChangeEventVO">
@@ -44,5 +39,29 @@ public class InvoiceVO {
           AND occurred_date >= #{startDate}
           AND occurred_date <![CDATA[<]]>  #{endDate}
     </select>
+
+    <insert id="insertBySubscriptionChangeEventVO" parameterType="SubscriptionChangeEventVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO subscription_change_event (
+            license_partnership_idx,
+            occurred_date,
+            type_cd,
+            qty_delta,
+            from_license_idx,
+            to_license_idx,
+            note,
+            meta,
+            create_date
+        ) VALUES (
+            #{licensePartnershipIdx},
+            #{occurredDate},
+            #{typeCd},
+            #{qtyDelta},
+            #{fromLicenseIdx},
+            #{toLicenseIdx},
+            #{note},
+            #{meta},
+            NOW()
+        )
+    </insert>
 
 </mapper>
