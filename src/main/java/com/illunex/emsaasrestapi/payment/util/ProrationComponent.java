@@ -148,6 +148,7 @@ public class ProrationComponent {
         }
 
         return ProrationInput.builder()
+                .anchorDate(T.toLocalDate())
                 .paymentTime(T)
                 .zone(Z)
                 .paidDate(baseFromDay)

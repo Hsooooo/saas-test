@@ -23,6 +23,7 @@ public class ProrationInput {
     private final LocalDate periodEndExcl;   // exclusive
 
     // 계산 기준 시각
+    private final LocalDate anchorDate;      // 구독 변경 효력 발생일(케이스 1/2/3에 따라 필요)
     private final ZonedDateTime paymentTime; // T
     private final ZoneId zone;               // 테넌트 존
 

@@ -60,7 +60,7 @@ public class LicensePartnershipVO {
     <select id="selectIdxsByNextBillingDateToday" resultType="int">
         SELECT lp.idx
         FROM license_partnership lp
-        WHERE lp.state_cd IN ('LPS0002','LPS0003')
+        WHERE lp.state_cd != 'LPS0001'
           AND lp.next_billing_date = CURRENT_DATE()
     </select>
 

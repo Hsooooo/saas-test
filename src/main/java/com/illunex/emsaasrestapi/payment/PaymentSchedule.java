@@ -13,6 +13,7 @@ import com.illunex.emsaasrestapi.payment.vo.SubscriptionChangeEventVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,7 +77,7 @@ public class PaymentSchedule {
 
         try {
             invoiceMapper.insertByInvoiceVO(inv); // AUTO_INCREMENT idx 세팅
-        } catch (org.springframework.dao.DuplicateKeyException dk) {
+        } catch (DuplicateKeyException dk) {
             // 동일기간 활성 인보이스가 이미 존재 (다른 트랜잭션이 선행)
             inv = invoiceMapper.selectActiveByPeriod(lp.getIdx(), periodStart, periodEnd);
             if (inv == null) {

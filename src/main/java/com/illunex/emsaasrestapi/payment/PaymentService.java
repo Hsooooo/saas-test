@@ -11,9 +11,7 @@ import com.illunex.emsaasrestapi.license.vo.LicensePaymentHistoryVO;
 import com.illunex.emsaasrestapi.license.vo.LicenseVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
-import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
-import com.illunex.emsaasrestapi.payment.dto.PaymentCommand;
 import com.illunex.emsaasrestapi.payment.dto.PaymentPreviewResult;
 import com.illunex.emsaasrestapi.payment.dto.RequestPaymentDTO;
 import com.illunex.emsaasrestapi.payment.dto.ResponsePaymentDTO;
@@ -24,13 +22,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.modelmapper.ModelMapper;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -38,7 +34,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.illunex.emsaasrestapi.common.code.EnumCode.InvoiceItem.ItemTypeCd.*;
-import static java.time.temporal.ChronoUnit.DAYS;
 
 @Service
 @RequiredArgsConstructor
@@ -784,7 +779,7 @@ public class PaymentService {
         }
 
         // 그 외(업/다운그레이드, 동일주기 내 좌석변경 등): 프레이션 엔진 결과 사용
-        final ProrationResult prorationResult = prorationEngine.calculate(input);
+        final ProrationResult prorationResult = prorationEngine.calculate2(input);
         return PaymentPreviewResult.of(prorationResult);
     }
 

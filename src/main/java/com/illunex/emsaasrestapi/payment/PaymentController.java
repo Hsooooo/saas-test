@@ -77,11 +77,11 @@ public class PaymentController {
      * @param request
      * @param memberVO
      * @return
-     * @throws Exception
+            * @throws Exception
      */
     @PostMapping("/subscription/change-event/apply")
     public CustomResponse<?> applySubscriptionChangeEvent(@RequestBody RequestPaymentDTO.SubscriptionInfo request,
-                                               @CurrentMember MemberVO memberVO) throws Exception {
+                                                          @CurrentMember MemberVO memberVO) throws Exception {
         return CustomResponse.builder()
                 .data(paymentService.changeSubscription(request, memberVO))
                 .build();
