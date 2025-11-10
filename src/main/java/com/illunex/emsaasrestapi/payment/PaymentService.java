@@ -461,7 +461,7 @@ public class PaymentService {
 
         // 5) 구독정보 변경
         applyChangeLicensePartnership(tx1.lp, preview);
-        Optional<LicenseVO> fromLicense = licenseMapper.selectByIdx(preview.getFromLicenseIdx());
+        Optional<LicenseVO> fromLicense = preview.getFromLicenseIdx() != null ? licenseMapper.selectByIdx(preview.getFromLicenseIdx()) : Optional.empty();
         Optional<LicenseVO> toLicense = licenseMapper.selectByIdx(preview.getToLicenseIdx());
         ResponsePaymentDTO.PreviewPlan fromPlan = fromLicense.map(l -> modelMapper.map(l, ResponsePaymentDTO.PreviewPlan.class)).orElse(null);
         ResponsePaymentDTO.PreviewPlan toPlan = toLicense.map(l -> modelMapper.map(l, ResponsePaymentDTO.PreviewPlan.class)).orElse(null);
