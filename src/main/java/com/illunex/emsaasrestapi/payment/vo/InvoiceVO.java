@@ -22,6 +22,9 @@ import java.time.ZonedDateTime;
  *   `total`        DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '총액(=subtotal+tax)',
  *   `status_cd`    VARCHAR(7) NOT NULL COMMENT '인보이스 상태 코드 (ISC0000)' COLLATE 'utf8mb4_general_ci',
  *   `unit_cd`      VARCHAR(7) NOT NULL DEFAULT 'MUC0001' COMMENT '화폐단위 (MUC0000)' COLLATE 'utf8mb4_general_ci',
+ *   `license_idx`  INT NULL COMMENT '청구 당시 플랜(라이센스) 번호',
+ *   `charge_user_count` INT NOT NULL DEFAULT 0 COMMENT '청구 당시 과금 기준 사용자 수',
+ *   `receipt_url`  VARCHAR(500) NULL COMMENT '결제전표' COLLATE 'utf8mb4_general_ci',
  *   `meta` JSON NULL COMMENT '스냅샷(시점의 단가/최소과금/분모기준/플랜버전 등)' COLLATE 'utf8mb4_general_ci',
  *   -- 운영
  *   `create_date`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -62,6 +65,9 @@ public class InvoiceVO {
     private BigDecimal total;
     private String statusCd;
     private String unitCd;
+    private Integer licenseIdx;
+    private Integer chargeUserCount;
+    private String receiptUrl;
     private String meta;
     private ZonedDateTime createDate;
     private ZonedDateTime updateDate;

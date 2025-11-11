@@ -320,13 +320,7 @@ public class PaymentService {
      */
     @Transactional
     protected InvoiceVO upsertDraftOpenInvoice(Integer lpIdx, PaymentPreviewResult preview) {
-        // 동일 LP + 동일 기간의 활성 인보이스가 있으면 재사용
-        InvoiceVO exists = invoiceMapper.selectActiveByPeriod(
-                lpIdx,
-                preview.getPeriodStart(),
-                preview.getPeriodEnd()
-        );
-        InvoiceVO inv = (exists != null) ? exists : createDraftInvoice(lpIdx, preview);
+        var inv = createDraftInvoice(lpIdx, preview);
 
         // 아이템 보장(엔진 결과 기반으로 PRORATION/RECURRING/CREDIT 채우기)
         ensureInvoiceItems(inv, preview);
@@ -351,6 +345,7 @@ public class PaymentService {
         inv.setTax(BigDecimal.ZERO);
         inv.setTotal(BigDecimal.ZERO);
         inv.setStatusCd(EnumCode.Invoice.StateCd.DRAFT.getCode());
+        inv.setLicenseIdx(preview.getToLicenseIdx() != null ? preview.getToLicenseIdx() : null);
         inv.setUnitCd("MUC0001");
         invoiceMapper.insertByInvoiceVO(inv);
         return inv;
@@ -418,6 +413,7 @@ public class PaymentService {
         ResponsePaymentDTO.LicenseChangeResult changeResult = new ResponsePaymentDTO.LicenseChangeResult();
         PaymentAttemptVO attempt = tx1.attempt();
         ZonedDateTime now = ZonedDateTime.now();
+        InvoiceVO invoice = tx1.invoice();
 
         // 1) 응답 검증 (금액/통화/성공여부)
         PgVerification vr = verifyPgResponse(pgResp, attempt.getOrderNumber(), BigDecimal.valueOf(preview.getAmount()));
@@ -456,7 +452,13 @@ public class PaymentService {
         InvoicePaymentView summary = invoicePaymentViewMapper.selectInvoicePaymentSummary(tx1.invoice().getIdx());
         if (summary != null && summary.getBalanceDue() != null
                 && summary.getBalanceDue().compareTo(BigDecimal.ZERO) <= 0) {
-            invoiceMapper.markPaid(tx1.invoice().getIdx());
+            String receiptUrl = Optional.ofNullable(pgResp.optJSONObject("receipt"))
+                    .map(r -> r.optString("url", null))
+                    .orElse(null);
+            invoice.setChargeUserCount(partnershipComponent.getPartnershipActiveMemberCount(tx1.lp.getPartnershipIdx()));
+            invoice.setReceiptUrl(receiptUrl);
+            invoice.setStatusCd(EnumCode.Invoice.StateCd.PAID.getCode());
+            invoiceMapper.updateByInvoiceVO(invoice);
         }
 
         // 5) 구독정보 변경

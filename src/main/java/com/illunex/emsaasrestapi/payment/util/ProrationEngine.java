@@ -309,7 +309,7 @@ public final class ProrationEngine {
                 .denominatorDays(D)
                 .currency(in.getCurrency())
                 .roundingRule(RM.name())
-                .periodStart(in.getPeriodStart())
+                .periodStart(anchorDate)
                 .periodEndExcl(in.getPeriodEndExcl())
                 .build();
     }

@@ -87,6 +87,21 @@ public class PaymentController {
                 .build();
     }
 
+//    /**
+//     * 결제 내역 조회
+//     * @param partnershipIdx
+//     * @param memberVO
+//     * @return
+//     * @throws Exception
+//     */
+//    @GetMapping("/invoice")
+//    public CustomResponse<?> getInvoices(@RequestParam Integer partnershipIdx,
+//                                         @CurrentMember MemberVO memberVO) throws Exception {
+//        return CustomResponse.builder()
+//                .data(paymentService.getInvoices(partnershipIdx, memberVO))
+//                .build();
+//    }
+
     @DeleteMapping("/test/cleanup")
     public String testCleanup(@RequestParam Integer partnershipIdx) throws Exception {
         paymentService.testCleanup(partnershipIdx);

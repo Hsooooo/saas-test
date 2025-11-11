@@ -114,4 +114,25 @@ public class InvoiceVO {
           AND status_cd = 'ICS0002' -- OPEN 에서만 PAID
     </update>
 
+    <update id="updateByInvoiceVO" parameterType="InvoiceVO">
+        UPDATE invoice
+        SET
+           partnership_idx = #{partnershipIdx},
+           license_partnership_idx = #{licensePartnershipIdx},
+           period_start = #{periodStart},
+           period_end = #{periodEnd},
+           due_date = #{dueDate},
+           subtotal = #{subtotal},
+           tax = #{tax},
+           total = #{total},
+           status_cd = #{statusCd},
+           unit_cd = #{unitCd},
+           receipt_url = #{receiptUrl},
+           license_idx = #{licenseIdx},
+           charge_user_count = #{chargeUserCount},
+           meta = #{meta},
+           update_date = now()
+        WHERE idx = #{idx}
+    </update>
+
 </mapper>
