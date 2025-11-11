@@ -56,6 +56,7 @@ public class InvoiceVO {
     private Integer idx;
     private Integer partnershipIdx;
     private Integer licensePartnershipIdx;
+    private String orderNumber;
     private LocalDate periodStart;
     private LocalDate periodEnd;
     private ZonedDateTime issueDate;

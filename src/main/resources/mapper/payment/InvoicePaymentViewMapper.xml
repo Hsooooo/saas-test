@@ -57,4 +57,63 @@ public class InvoiceVO {
             LIMIT 1
     </select>
 
+    <select id="selectAllBySearchInvoiceAndPageable" resultType="InvoiceListViewVO">
+        SELECT
+            i.idx AS invoice_idx,
+            i.issue_date   AS pay_date,
+            l.name AS plan_name,
+            i.charge_user_count AS seat_count,
+            i.total        AS amount,
+            i.period_start,
+            i.period_end,
+            CASE
+                WHEN i.period_end <![CDATA[<=]]> CURDATE() THEN '기한만료'
+                WHEN i.period_start >  CURDATE() THEN '구독중'
+                ELSE CASE lp.state_cd
+                         WHEN 'LPS0003' THEN '구독중(변경예약)'
+                         WHEN 'LPS0004' THEN '구독중(해지예약)'
+                         WHEN 'LPS0002' THEN '구독중'
+                         ELSE '기한만료'
+                    END
+                END AS display_state,
+            i.receipt_url
+        FROM invoice i
+                 LEFT JOIN license_partnership lp
+                           ON lp.idx = i.license_partnership_idx
+                 left join license l on l.idx = lp.license_idx
+        WHERE i.partnership_idx = #{searchInvoice.partnershipIdx}
+          AND i.issue_date >=
+        CASE #{searchInvoice.range}
+            WHEN 'M1' THEN DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+            WHEN 'M3' THEN DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+            WHEN 'M6' THEN DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+            WHEN 'Y1' THEN DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+            ELSE DATE_SUB(CURDATE(), INTERVAL 1 MONTH) -- default
+            END
+        <if test="pageable.sort != null and !pageable.sort.empty">
+            ORDER BY
+            <foreach item="order" collection="pageable.sort" separator=",">
+                ${order.property} ${order.direction}
+            </foreach>
+        </if>
+        LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
+    </select>
+
+    <select id="countAllBySearchInvoice">
+        SELECT
+            COUNT(*) AS total_count
+        FROM invoice i
+                 LEFT JOIN license_partnership lp
+                           ON lp.idx = i.license_partnership_idx
+        WHERE i.partnership_idx = #{partnershipIdx}
+          AND i.issue_date >=
+              CASE #{range}
+                  WHEN 'M1' THEN DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+                  WHEN 'M3' THEN DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+                  WHEN 'M6' THEN DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+                  WHEN 'Y1' THEN DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+                  ELSE DATE_SUB(CURDATE(), INTERVAL 1 MONTH) -- default
+                  END
+    </select>
+
 </mapper>

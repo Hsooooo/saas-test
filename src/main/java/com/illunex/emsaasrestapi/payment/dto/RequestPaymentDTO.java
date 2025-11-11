@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+
 public class RequestPaymentDTO {
     @Getter
     public static class MethodRegister {
@@ -35,5 +38,16 @@ public class RequestPaymentDTO {
         private String effective;
         private String orderNumber;
 
+    }
+
+    @Getter
+    @Setter
+    public static class SearchInvoice {
+        private Integer partnershipIdx;
+        private DateRange range;
+
+        public enum DateRange {
+            M1, M3, M6, Y1
+        }
     }
 }

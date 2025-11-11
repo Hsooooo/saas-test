@@ -1,6 +1,8 @@
 package com.illunex.emsaasrestapi.payment;
 
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomPageRequest;
+import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.license.mapper.LicenseMapper;
@@ -11,6 +13,7 @@ import com.illunex.emsaasrestapi.license.vo.LicensePaymentHistoryVO;
 import com.illunex.emsaasrestapi.license.vo.LicenseVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.payment.dto.PaymentPreviewResult;
 import com.illunex.emsaasrestapi.payment.dto.RequestPaymentDTO;
@@ -22,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +58,7 @@ public class PaymentService {
     private final ProrationEngine prorationEngine;
     private final InvoicePaymentViewMapper invoicePaymentViewMapper;
     private final PaymentMethodViewMapper paymentMethodViewMapper;
+    private final PartnershipMemberMapper partnershipMemberMapper;
 
     private final PaymentCleanupMapper paymentCleanupMapper;
     private final ProrationComponent prorationComponent;
@@ -138,6 +144,65 @@ public class PaymentService {
         if (cmp > 0) return ChangeDecision.UPGRADE;
         if (cmp < 0) return ChangeDecision.DOWNGRADE;
         return ChangeDecision.NOOP;
+    }
+
+    public CustomResponse<?> getInvoices(RequestPaymentDTO.SearchInvoice request, MemberVO memberVO, CustomPageRequest pageRequest, String[] sort) throws CustomException {
+        // 파트너쉽 관리자 여부 확인
+        PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
+                .selectByPartnershipIdxAndMemberIdx(request.getPartnershipIdx(), memberVO.getIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+        if (sort == null) {
+            sort = new String[]{"issue_date,DESC"};
+        }
+        Pageable pageable = pageRequest.of(sort);
+        List<InvoiceListViewVO> invoiceList = invoicePaymentViewMapper.selectAllBySearchInvoiceAndPageable(request, pageable);
+        long totalCount = invoicePaymentViewMapper.countAllBySearchInvoice(request);
+
+        List<ResponsePaymentDTO.InvoiceList> result = new ArrayList<>();
+        for (InvoiceListViewVO invoice : invoiceList) {
+            ResponsePaymentDTO.InvoiceList dto = modelMapper.map(invoice, ResponsePaymentDTO.InvoiceList.class);
+            result.add(dto);
+        }
+
+        return CustomResponse.builder()
+                .data(new PageImpl<>(result, pageable, totalCount))
+                .build();
+    }
+
+    public ResponsePaymentDTO.InvoiceSummary getInvoiceSummary(Integer invoiceIdx, MemberVO memberVO) throws CustomException {
+        // 청구서 존재 여부 확인
+        InvoiceVO inv = invoiceMapper.selectByIdx(invoiceIdx);
+        if (inv == null) throw new CustomException(ErrorCode.COMMON_EMPTY);
+        // 파트너쉽 관리자 여부 확인
+        partnershipComponent.checkPartnershipMemberManager(memberVO, inv.getPartnershipIdx());
+
+        ResponsePaymentDTO.InvoiceSummary result = new ResponsePaymentDTO.InvoiceSummary();
+
+        // 청구서 항목 목록 조회
+        List<InvoiceItemVO> items = invoiceItemMapper.selectByInvoiceIdx(invoiceIdx);
+        List<ResponsePaymentDTO.InvoiceSummaryItem> dtoItems = new ArrayList<>();
+        for (InvoiceItemVO item : items) {
+            ResponsePaymentDTO.InvoiceSummaryItem dtoItem = new ResponsePaymentDTO.InvoiceSummaryItem();
+            JSONObject meta = item.getMeta() != null ? new JSONObject(item.getMeta()) : new JSONObject();
+            if (meta.has("from")) {
+                dtoItem.setFrom(LocalDate.parse(meta.getString("from")));
+            }
+            if (meta.has("to")) {
+                dtoItem.setTo(LocalDate.parse(meta.getString("to")));
+            }
+            dtoItem.setItemTypeCd(item.getItemTypeCd());
+            dtoItem.setAmount(item.getAmount().intValue());
+            dtoItem.setDescription(item.getDescription());
+            dtoItem.setQuantity(item.getQuantity());
+            dtoItems.add(dtoItem);
+        }
+
+        result.setInvoiceIdx(inv.getIdx());
+        result.setOrderNumber(inv.getOrderNumber());
+        result.setTotal(inv.getTotal().intValue());
+        result.setPayDate(inv.getIssueDate());
+        result.setItems(dtoItems);
+        return result;
     }
 
     private enum ChangeDecision {
@@ -245,11 +310,9 @@ public class PaymentService {
         return preview;
     }
 
-    public Object getPaymentMethodToss(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
-        PartnershipMemberVO partnershipMember = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
-
-        List<PaymentMethodViewVO> methodList = paymentMethodViewMapper.selectPaymentMethodsByPartnershipIdx(partnershipIdx);
-        return methodList;
+    public Object getDefaultPayment(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
+        DefaultMethodMandate methodMandate = readDefaultMethodMandate(partnershipIdx);
+        return methodMandate != null;
     }
 
     // ===================== TX-1 =====================
@@ -369,9 +432,13 @@ public class PaymentService {
             item.setUnitPrice(BigDecimal.valueOf(resultItem.getUnitPrice()));
             item.setDays(resultItem.getDays());
             item.setAmount(BigDecimal.valueOf(resultItem.getAmount()));
-//            item.setMeta(buildItemMeta(input, prorationItem));
+            item.setMeta(buildItemMeta(resultItem));
             invoiceItemMapper.insertByInvoiceItemVO(item);
         }
+    }
+
+    protected String buildItemMeta(PaymentPreviewResult.PreviewResultItem line) {
+        return new JSONObject(line.getMeta()).toString();
     }
 
     // ===================== PG 호출 =====================
@@ -458,6 +525,7 @@ public class PaymentService {
             invoice.setChargeUserCount(partnershipComponent.getPartnershipActiveMemberCount(tx1.lp.getPartnershipIdx()));
             invoice.setReceiptUrl(receiptUrl);
             invoice.setStatusCd(EnumCode.Invoice.StateCd.PAID.getCode());
+            invoice.setOrderNumber(attempt.getOrderNumber());
             invoiceMapper.updateByInvoiceVO(invoice);
         }
 

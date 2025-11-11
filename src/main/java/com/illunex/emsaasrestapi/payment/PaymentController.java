@@ -1,8 +1,10 @@
 package com.illunex.emsaasrestapi.payment;
 
 import com.illunex.emsaasrestapi.common.CurrentMember;
+import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.partnership.dto.RequestPartnershipDTO;
 import com.illunex.emsaasrestapi.payment.dto.RequestPaymentDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,11 +51,11 @@ public class PaymentController {
                 .build();
     }
 
-    @GetMapping("/toss/method")
+    @GetMapping("/default/method")
     public CustomResponse<?> getPaymentMethod(@RequestParam Integer partnershipIdx,
                                               @CurrentMember MemberVO memberVO) throws Exception {
         return CustomResponse.builder()
-                .data(paymentService.getPaymentMethodToss(partnershipIdx, memberVO))
+                .data(paymentService.getDefaultPayment(partnershipIdx, memberVO))
                 .build();
     }
 
@@ -87,20 +89,36 @@ public class PaymentController {
                 .build();
     }
 
-//    /**
-//     * 결제 내역 조회
-//     * @param partnershipIdx
-//     * @param memberVO
-//     * @return
-//     * @throws Exception
-//     */
-//    @GetMapping("/invoice")
-//    public CustomResponse<?> getInvoices(@RequestParam Integer partnershipIdx,
-//                                         @CurrentMember MemberVO memberVO) throws Exception {
-//        return CustomResponse.builder()
-//                .data(paymentService.getInvoices(partnershipIdx, memberVO))
-//                .build();
-//    }
+    /**
+     * 결제 내역 조회
+     * @param request
+     * @param memberVO
+     * @param pageRequest
+     * @param sort
+     * @return
+     * @throws Exception
+     */
+    @PatchMapping("/invoice")
+    public CustomResponse<?> getInvoices(@RequestBody RequestPaymentDTO.SearchInvoice request,
+                                         @CurrentMember MemberVO memberVO,
+                                         CustomPageRequest pageRequest, String[] sort) throws Exception {
+        return paymentService.getInvoices(request, memberVO, pageRequest, sort);
+    }
+
+    /**
+     * 청구서 요약 정보 조회
+     * @param invoiceIdx
+     * @param memberVO
+     * @return
+     * @throws Exception
+     */
+    @GetMapping("/invoice/summary")
+    public CustomResponse<?> getInvoiceSummary(@RequestParam Integer invoiceIdx,
+                                               @CurrentMember MemberVO memberVO) throws Exception {
+        return CustomResponse.builder()
+                .data(paymentService.getInvoiceSummary(invoiceIdx, memberVO))
+                .build();
+    }
 
     @DeleteMapping("/test/cleanup")
     public String testCleanup(@RequestParam Integer partnershipIdx) throws Exception {

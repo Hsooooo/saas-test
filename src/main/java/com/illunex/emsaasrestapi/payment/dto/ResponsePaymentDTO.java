@@ -96,5 +96,46 @@ public class ResponsePaymentDTO {
         }
     }
 
+    @Getter
+    @Setter
+    public static class InvoiceList {
+        private Integer invoiceIdx;
+        private ZonedDateTime payDate;
+        private String planName;
+        private Integer seatCount;
+        private Integer amount;
+        private LocalDate periodStart;
+        private LocalDate periodEnd;
+        private String displayState;
+        private String receiptUrl;
+    }
+
+    @Getter
+    @Setter
+    public static class InvoiceSummary {
+        private Integer invoiceIdx;
+        private String orderNumber;
+        private ZonedDateTime payDate;
+        private Integer total;
+        List<InvoiceSummaryItem> items;
+    }
+
+    @Setter
+    @Getter
+    public static class InvoiceSummaryItem {
+        private String itemTypeCd;
+        private String itemTypeCdDesc;
+        private String description;
+        private Integer quantity;
+        private Integer unitPrice;
+        private Integer amount;
+        private LocalDate from;
+        private LocalDate to;
+
+        public void setItemTypeCd(String itemTypeCd) {
+            this.itemTypeCd = itemTypeCd;
+            this.itemTypeCdDesc = EnumCode.getCodeDesc(itemTypeCd);
+        }
+    }
 
 }

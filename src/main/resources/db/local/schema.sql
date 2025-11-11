@@ -202,6 +202,7 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`invoice` (
   `license_idx`  INT NULL COMMENT '청구 당시 플랜(라이센스) 번호',
   `charge_user_count` INT NOT NULL DEFAULT 0 COMMENT '청구 당시 과금 기준 사용자 수',
   `receipt_url`  VARCHAR(500) NULL COMMENT '결제전표' COLLATE 'utf8mb4_general_ci',
+  `order_number`  VARCHAR(500) NULL COMMENT '주문번호' COLLATE 'utf8mb4_general_ci',
   `meta` JSON NULL COMMENT '스냅샷(시점의 단가/최소과금/분모기준/플랜버전 등)' COLLATE 'utf8mb4_general_ci',
   -- 운영
   `create_date`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

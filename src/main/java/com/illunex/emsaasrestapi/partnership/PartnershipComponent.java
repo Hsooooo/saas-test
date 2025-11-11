@@ -58,4 +58,22 @@ public class PartnershipComponent {
     public Integer getPartnershipActiveMemberCount(Integer partnershipIdx) {
         return partnershipMemberMapper.countByPartnershipIdxAndNotStateCd(partnershipIdx, EnumCode.PartnershipMember.StateCd.Delete.getCode());
     }
+
+    /**
+     * 파트너쉽 관리자 여부 체크
+     * @param memberVO
+     * @param partnershipIdx
+     * @return
+     * @throws CustomException
+     */
+    public PartnershipMemberVO checkPartnershipMemberManager(MemberVO memberVO, Integer partnershipIdx) throws CustomException {
+        // 파트너쉽 관리자 여부 확인
+        PartnershipMemberVO loginPartnershipMemberVO = partnershipMemberMapper
+                .selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+        if (!loginPartnershipMemberVO.getManagerCd().equals(EnumCode.PartnershipMember.ManagerCd.Manager.getCode())) {
+            throw new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER);
+        }
+        return loginPartnershipMemberVO;
+    }
 }

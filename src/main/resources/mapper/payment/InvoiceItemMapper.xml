@@ -63,4 +63,11 @@ public class InvoiceItemVO {
            AND item_type_cd = 'ITC0001'
     </select>
 
+    <select id="selectByInvoiceIdx" resultType="InvoiceItemVO">
+        SELECT
+            *
+          FROM invoice_item
+         WHERE invoice_idx = #{invoiceIdx}
+    </select>
+
 </mapper>

@@ -227,7 +227,7 @@ public final class ProrationEngine {
                 if (diff != 0) {
                     BigDecimal amt = prorate(fromUnit, diff, d, D, RM); // 항목 금액 일할 계산
                     items.add(makeItem(
-                            diff > 0 ? "PRORATION" : "CREDIT",
+                            "PRORATION",
                             "기존 라이센스 좌석 변화 정산",
                             Math.abs(diff),
                             roundUnitForDisplay(fromUnit, RM),
@@ -251,7 +251,7 @@ public final class ProrationEngine {
             if (diff != 0) {
                 BigDecimal amt = prorate(fromUnit, diff, tail, D, RM);
                 items.add(makeItem(
-                        diff > 0 ? "PRORATION" : "CREDIT",
+                        "PRORATION",
                         "기존 라이센스 좌석 변화 정산",
                         Math.abs(diff),
                         roundUnitForDisplay(fromUnit, RM),
@@ -282,7 +282,7 @@ public final class ProrationEngine {
             // 3-2) 구 플랜 잔여기간 크레딧: - fromUnit × baseEff × remainDays / D
             BigDecimal oldCr = prorate(fromUnit, baseEff, remainDays, D, RM).negate();
             items.add(makeItem(
-                    "CREDIT",
+                    "PRORATION",
                     "구 플랜 잔여기간 크레딧",
                     baseEff,
                     roundUnitForDisplay(fromUnit, RM),
@@ -413,12 +413,17 @@ public final class ProrationEngine {
     private Map<String, Object> metaB(int numerator, int denominator,
                                       int minUserCount, String planCd,
                                       LocalDate anchorDate) {
+        LocalDate from = anchorDate;
+        LocalDate toExcl = anchorDate.plusDays(numerator);
+
         return Map.of(
                 "numerator", numerator,              // 잔여 일수
                 "denominator", denominator,          // 월 분모
                 "min_user_count", minUserCount,      // newMin or oldMin
                 "planCd", planCd,                    // 플랜 코드
-                "anchorDate", anchorDate.toString()  // 업그레이드 기준일
+                "anchorDate", anchorDate.toString(), // 업그레이드 기준일
+                "from", from.toString(),             // 잔여 구간 시작
+                "to", toExcl.toString()              // 잔여 구간 끝(배타)
         );
     }
 }

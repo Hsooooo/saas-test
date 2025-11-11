@@ -131,6 +131,7 @@ public class InvoiceVO {
            license_idx = #{licenseIdx},
            charge_user_count = #{chargeUserCount},
            meta = #{meta},
+           order_number = #{orderNumber},
            update_date = now()
         WHERE idx = #{idx}
     </update>
