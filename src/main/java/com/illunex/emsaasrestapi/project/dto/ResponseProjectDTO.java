@@ -126,6 +126,7 @@ public class ResponseProjectDTO {
         private String color;
         private Boolean useDirection;
         private Boolean weight;
+        private Boolean duplicate;
     }
 
     /**
