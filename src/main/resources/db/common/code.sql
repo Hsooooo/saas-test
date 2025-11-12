@@ -146,6 +146,10 @@ INSERT INTO em_saas.code (code, first_code, second_code, third_code, code_value,
 
 ('CBC0000','CBC','00','00','- 카드사 브랜드',0),
 ('CBC0001','CBC','00','01','VISA',1),
-('CBC0002','CBC','00','02','MASTER',2)
+('CBC0002','CBC','00','02','MASTER',2),
+
+('IIT0000','IIT','00','00','- 청구 타입',0),
+('IIT0001','IIT','00','01','정기',1),
+('IIT0002','IIT','00','02','조정',2)
 ;
 

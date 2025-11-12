@@ -447,6 +447,16 @@ public class EnumCode {
             private final String code;
             private final String value;
         }
+
+        @Getter
+        @AllArgsConstructor
+        public enum TypeCd implements BaseCodeEnum {
+            SUBSCRIPTION("IIT0001", "정기"),
+            UPGRADE("IIT0002", "업그레이드"),;
+
+            private final String code;
+            private final String value;
+        }
     }
 
     /**

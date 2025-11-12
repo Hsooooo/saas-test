@@ -65,6 +65,7 @@ public class InvoiceVO {
     private BigDecimal tax;
     private BigDecimal total;
     private String statusCd;
+    private String typeCd;
     private String unitCd;
     private Integer licenseIdx;
     private Integer chargeUserCount;

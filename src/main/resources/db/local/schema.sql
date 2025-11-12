@@ -198,6 +198,7 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`invoice` (
   `tax`          DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '세액',
   `total`        DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '총액(=subtotal+tax)',
   `status_cd`    VARCHAR(7) NOT NULL COMMENT '인보이스 상태 코드 (ISC0000)' COLLATE 'utf8mb4_general_ci',
+  `type_cd`      VARCHAR(7) NOT NULL DEFAULT 'IIT0001' COMMENT '청구 타입 (IIT0000)' COLLATE 'utf8mb4_general_ci',
   `unit_cd`      VARCHAR(7) NOT NULL DEFAULT 'MUC0001' COMMENT '화폐단위 (MUC0000)' COLLATE 'utf8mb4_general_ci',
   `license_idx`  INT NULL COMMENT '청구 당시 플랜(라이센스) 번호',
   `charge_user_count` INT NOT NULL DEFAULT 0 COMMENT '청구 당시 과금 기준 사용자 수',
@@ -210,8 +211,13 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`invoice` (
   -- 동일 기간 중 "활성 인보이스" 중복 방지용 생성 컬럼(VOID는 중복 허용)
   `active_invoice_uniquer` INT
     GENERATED ALWAYS AS (
-      IF(`status_cd` IN ('ICS0004'), NULL, `license_partnership_idx`)
-    ) STORED COMMENT '활성 인보이스 유니크 강제용(VOID는 NULL)',
+        CASE
+            WHEN `status_cd` IN ('ICS0004') THEN NULL         -- VOID는 예외
+            WHEN `type_cd` = 'IIT0001' THEN `license_partnership_idx`  -- SUBSCRIPTION만 유니크
+            ELSE NULL                                         -- ADJUSTMENT/CREDIT_NOTE는 중복 허용
+            END
+        ) STORED
+    COMMENT '활성 인보이스 유니크 강제용(VOID 및 조정/크레딧은 NULL)',
 
   PRIMARY KEY (`idx`),
   INDEX `fk_invoice_partnership_idx` (`partnership_idx`) USING BTREE,

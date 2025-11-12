@@ -59,29 +59,39 @@ public class InvoiceVO {
 
     <select id="selectAllBySearchInvoiceAndPageable" resultType="InvoiceListViewVO">
         SELECT
-            i.idx AS invoice_idx,
-            i.issue_date   AS pay_date,
-            l.name AS plan_name,
+            i.idx               AS invoice_idx,
+            i.issue_date        AS pay_date,
+            l_snap.name AS plan_name,
             i.charge_user_count AS seat_count,
-            i.total        AS amount,
+            i.total             AS amount,
             i.period_start,
             i.period_end,
+            i.type_cd,
+            lp.license_idx,
+            i.license_idx,
             CASE
+                -- 조정 인보이스: 앵커(=period_end, exclusive) 전까지 '구독중', 이후 '기한만료'
+                WHEN i.type_cd = 'IIT0002' THEN
+                    CASE
+                        WHEN CURDATE() <![CDATA[<]]>  i.period_end  AND CURDATE() >= i.period_start THEN '구독중'
+                        ELSE '기한만료'
+                        END
+                -- 정기 인보이스
                 WHEN i.period_end <![CDATA[<=]]> CURDATE() THEN '기한만료'
                 WHEN i.period_start >  CURDATE() THEN '구독중'
+                WHEN lp.license_idx <![CDATA[<>]]> i.license_idx THEN '기한만료'   -- 업그레이드 등으로 현재 플랜 불일치 시 강제 만료
                 ELSE CASE lp.state_cd
                          WHEN 'LPS0003' THEN '구독중(변경예약)'
                          WHEN 'LPS0004' THEN '구독중(해지예약)'
-                         WHEN 'LPS0002' THEN '구독중'
-                         ELSE '기한만료'
+                         ELSE '구독중'
                     END
                 END AS display_state,
             i.receipt_url
         FROM invoice i
-                 LEFT JOIN license_partnership lp
-                           ON lp.idx = i.license_partnership_idx
-                 left join license l on l.idx = lp.license_idx
+                 LEFT JOIN license_partnership lp ON lp.idx = i.license_partnership_idx
+                 LEFT JOIN license l_snap         ON l_snap.idx = i.license_idx
         WHERE i.partnership_idx = #{searchInvoice.partnershipIdx}
+          AND i.status_cd NOT IN ('ICS0004','ICS0001') -- VOID,DRAFT 제외 필요 시 조정
           AND i.issue_date >=
         CASE #{searchInvoice.range}
             WHEN 'M1' THEN DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
@@ -106,6 +116,7 @@ public class InvoiceVO {
                  LEFT JOIN license_partnership lp
                            ON lp.idx = i.license_partnership_idx
         WHERE i.partnership_idx = #{partnershipIdx}
+          AND i.status_cd NOT IN ('ICS0004','ICS0001') -- VOID,DRAFT 제외 필요 시 조정
           AND i.issue_date >=
               CASE #{range}
                   WHEN 'M1' THEN DATE_SUB(CURDATE(), INTERVAL 1 MONTH)

@@ -102,16 +102,25 @@ INSERT INTO license_partnership (
      (SELECT COALESCE(min_user_count,0) FROM license WHERE idx=2),
      0, 'LPS0002', NOW(), NOW());
 
--- ===== 이전 주기 인보이스 (선불 스냅샷) =====
--- 지난달 선불 좌석 수 = 3석 (RECURRING)
 INSERT INTO invoice (
-    partnership_idx, license_partnership_idx,
+    partnership_idx, license_partnership_idx, license_idx,
     period_start, period_end, issue_date, due_date,
-    subtotal, tax, total, status_cd, unit_cd,
+    subtotal, tax, total, type_cd, status_cd, unit_cd,
     create_date
 ) VALUES
-    (1, 1, @prevStart, @start, @start, NULL,
-     0, 0, 0, 'ICS0002', 'KRW', NOW());
+    (1, 1, 2,@start, @endExcl, @start, NULL,
+     0, 0, 0, 'IIT0001', 'ICS0002', 'KRW', NOW());
+
+-- ===== 이전 주기 인보이스 (선불 스냅샷) =====
+-- 지난달 선불 좌석 수 = 3석 (RECURRING)
+-- INSERT INTO invoice (
+--     partnership_idx, license_partnership_idx,
+--     period_start, period_end, issue_date, due_date,
+--     subtotal, tax, total, status_cd, unit_cd,
+--     create_date
+-- ) VALUES
+--     (1, 1, @prevStart, @start, @start, NULL,
+--      0, 0, 0, 'ICS0002', 'KRW', NOW());
 
 INSERT INTO invoice_item (
     invoice_idx, item_type_cd, description,
@@ -150,3 +159,6 @@ INSERT INTO em_saas.payment_mandate (idx, partnership_idx, payment_method_idx, p
 
 INSERT INTO em_saas.partnership_payment_method (idx, partnership_idx, method_type_cd, brand, last4, exp_year, exp_month, customer_key, auth_key, holder_name, state_cd, is_default, delete_date, update_date, create_date) VALUES (4, 1, 'PMC0001', '신한', '', null, null, 'SAAS-CK-20251111-A6D289F9FD4B', 'bln_xya1xQwwARM', null, 'PSC0001', 1, null, '2025-11-11 07:27:39', '2025-11-11 07:27:39');
 INSERT INTO em_saas.payment_mandate (idx, partnership_idx, payment_method_idx, provider_cd, mandate_id, status_cd, agree_date, revoke_date, meta, update_date, create_date) VALUES (4, 1, 4, 'PGC0001', 'zZOQHTcgq8tOJrZGXrHgPoV4Iuf-i2O0APsFWJTSeYA=', 'MDS0001', '2025-11-11 07:27:46', null, null, '2025-11-11 07:27:46', '2025-11-11 07:27:46');
+
+-- INSERT INTO em_saas.license_partnership (idx, partnership_idx, license_idx, billing_day, period_start_date, period_end_date, next_billing_date, current_seat_count, current_unit_price, current_min_user_count, cancel_at_period_end, state_cd, update_date, create_date) VALUES (2, 1, 3, 28, '2025-10-28', '2025-11-28', '2025-11-28', 8, 10000.00, 3, 0, 'LPS0002', '2025-11-12 00:30:28', '2025-11-12 00:18:55');
+-- INSERT INTO em_saas.invoice (idx, partnership_idx, license_partnership_idx, period_start, period_end, issue_date, due_date, subtotal, tax, total, status_cd, type_cd, unit_cd, license_idx, charge_user_count, receipt_url, order_number, meta, create_date, update_date) VALUES (2, 1, 2, '2025-11-12', '2025-11-28', '2025-11-12 00:30:26', null, 0.00, 0.00, 66453.00, 'ISC0003', 'IIT0002', 'MUC0001', 3, 8, 'https://dashboard-sandbox.tosspayments.com/receipt/redirection?transactionId=tbill20251112093027TXxV9&ref=PX', 'SAAS-OD-20251112-B8976B37488B', null, '2025-11-12 00:30:26', '2025-11-12 00:30:28');

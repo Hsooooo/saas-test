@@ -160,6 +160,7 @@ public class PaymentService {
 
         List<ResponsePaymentDTO.InvoiceList> result = new ArrayList<>();
         for (InvoiceListViewVO invoice : invoiceList) {
+
             ResponsePaymentDTO.InvoiceList dto = modelMapper.map(invoice, ResponsePaymentDTO.InvoiceList.class);
             result.add(dto);
         }
@@ -383,9 +384,21 @@ public class PaymentService {
      */
     @Transactional
     protected InvoiceVO upsertDraftOpenInvoice(Integer lpIdx, PaymentPreviewResult preview) {
-        var inv = createDraftInvoice(lpIdx, preview);
-
         // 아이템 보장(엔진 결과 기반으로 PRORATION/RECURRING/CREDIT 채우기)
+        InvoiceVO inv = new InvoiceVO();
+        inv.setPartnershipIdx(preview.getPartnershipIdx());
+        inv.setLicensePartnershipIdx(lpIdx);
+        inv.setTypeCd(preview.getFromLicenseIdx() == null ? EnumCode.Invoice.TypeCd.SUBSCRIPTION.getCode() : EnumCode.Invoice.TypeCd.UPGRADE.getCode());
+        inv.setPeriodStart(preview.getPeriodStart());
+        inv.setPeriodEnd(preview.getPeriodEnd());
+        inv.setSubtotal(BigDecimal.ZERO);
+        inv.setTax(BigDecimal.ZERO);
+        inv.setTotal(BigDecimal.ZERO);
+        inv.setStatusCd(EnumCode.Invoice.StateCd.DRAFT.getCode());
+        inv.setLicenseIdx(preview.getToLicenseIdx() != null ? preview.getToLicenseIdx() : null);
+        inv.setUnitCd("MUC0001");
+        invoiceMapper.insertByInvoiceVO(inv);
+
         ensureInvoiceItems(inv, preview);
 
         // 합계/세금/총액 재계산
@@ -526,6 +539,7 @@ public class PaymentService {
             invoice.setReceiptUrl(receiptUrl);
             invoice.setStatusCd(EnumCode.Invoice.StateCd.PAID.getCode());
             invoice.setOrderNumber(attempt.getOrderNumber());
+            invoice.setTotal(attempt.getAmount());
             invoiceMapper.updateByInvoiceVO(invoice);
         }
 

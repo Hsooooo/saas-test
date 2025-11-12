@@ -29,6 +29,8 @@ public class InvoiceVO {
         INSERT INTO invoice(
            partnership_idx,
            license_partnership_idx,
+           type_cd,
+           license_idx,
            period_start,
            period_end,
            issue_date,
@@ -44,6 +46,8 @@ public class InvoiceVO {
         ) VALUES (
             #{partnershipIdx},
             #{licensePartnershipIdx},
+            #{typeCd},
+            #{licenseIdx},
             #{periodStart},
             #{periodEnd},
             now(),
