@@ -99,7 +99,7 @@ INSERT INTO license_partnership (
     current_seat_count, current_unit_price, current_min_user_count,
     cancel_at_period_end, state_cd, update_date, create_date
 ) VALUES
-    (1, 1, 2, DAY(@start),
+    (1, 1, 3, DAY(@start),
      @start, @endExcl, @endExcl,
      3, (SELECT price_per_user FROM license WHERE idx=2),
      (SELECT COALESCE(min_user_count,0) FROM license WHERE idx=2),
@@ -111,7 +111,7 @@ INSERT INTO invoice (
     subtotal, tax, total, type_cd, status_cd, unit_cd,
     create_date
 ) VALUES
-    (1, 1, 2,@start, @endExcl, @start, NULL,
+    (1, 1, 3,@start, @endExcl, @start, NULL,
      0, 0, 0, 'IIT0001', 'ICS0003', 'KRW', NOW());
 
 -- ===== 이전 주기 인보이스 (선불 스냅샷) =====

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public class ResponseLicenseDTO {
@@ -33,6 +34,21 @@ public class ResponseLicenseDTO {
         public void setPlanCd(String planCd) {
             this.planCd = planCd;
             this.planCdDesc = EnumCode.getCodeDesc(planCd);
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class PartnershipLicenseInfo {
+        private Integer partnershipIdx;
+        private License license;
+        private String stateCd;
+        private String stateCdDesc;
+        private LocalDate periodStartDate;
+        private LocalDate periodEndDate;
+        public void setStateCd(String stateCd) {
+            this.stateCd = stateCd;
+            this.stateCdDesc = EnumCode.getCodeDesc(stateCd);
         }
     }
 }
