@@ -117,14 +117,13 @@ public class AiProxyController {
             )));
         } catch (Exception ignore) {}
 
-        // 3) 업스트림 페이로드 구성 (최근 히스토리 전달)
-        final String historyString = toHistoryJsonString(
-                roomIdx == null ? List.of() : chatService.getRecentHistories(chatRoomIdx, 6)
-        );
-        final Map<String, Object> payload = Map.of(
-                "query", query,
-                "history", historyString
-        );
+        Map<String, Object> payload = new HashMap<>(Map.of(
+                "query", query
+        ));
+
+        if (roomIdx != null) {
+            payload.put("room_idx", roomIdx);
+        }
 
         // 4) 스트림 상태 변수
         final var tee = new java.io.ByteArrayOutputStream(32 * 1024);
