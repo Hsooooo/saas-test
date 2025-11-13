@@ -83,4 +83,22 @@ public class PaymentPreviewResult {
                 .build();
     }
 
+    @Override
+    public String toString() {
+        return "PaymentPreviewResult{" +
+                "partnershipIdx=" + partnershipIdx +
+                ", fromLicenseIdx=" + fromLicenseIdx +
+                ", toLicenseIdx=" + toLicenseIdx +
+                ", orderId='" + orderId + '\'' +
+                ", customerKey='" + customerKey + '\'' +
+                ", billingKey='" + billingKey + '\'' +
+                ", orderName='" + orderName + '\'' +
+                ", amount=" + amount +
+                ", customerEmail='" + customerEmail + '\'' +
+                ", customerName='" + customerName + '\'' +
+                ", items=" + items +
+                ", periodStart=" + periodStart +
+                ", periodEnd=" + periodEnd +
+                '}';
+    }
 }

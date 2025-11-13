@@ -402,7 +402,9 @@ public class EnumCode {
             DRAFT("LPS0001", "임시"),
             ACTIVE("LPS0002", "활성"),
             CHANGE("LPS0003", "변경 예약"),
-            CANCEL("LPS0004", "해지 예약");
+            CANCEL("LPS0004", "해지 예약"),
+            PAUSE("LPS0005", "일시 정지")
+            ;
 
             private final String code;
             private final String value;

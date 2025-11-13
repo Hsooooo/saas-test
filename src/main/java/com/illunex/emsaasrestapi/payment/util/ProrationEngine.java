@@ -16,154 +16,105 @@ import static java.time.temporal.ChronoUnit.DAYS;
 @Component
 public final class ProrationEngine {
 
-    public ProrationResult calculate(ProrationInput in) {
-        if (in.getToPlan() == null) {
-            throw new IllegalArgumentException("fromPlan is required");
-        }
-        final int D = (int) DAYS.between(in.getPeriodStart(), in.getPeriodEndExcl());
-        final BigDecimal Dbd = BigDecimal.valueOf(D);
+    public ProrationResult calculateRecurringSeatProration(ProrationInput in, boolean allowDecreaseCredit) {
+        // ===== 0) 입력 검증 =====
+        requireNonNull(in.getFromPlan(), "fromPlan");
+        requireNonNull(in.getPeriodStart(), "periodStart");
+        requireNonNull(in.getPeriodEndExcl(), "periodEndExcl");
+        requireNonNull(in.getPaidDate(), "paidDate");
+
+        if (!in.getPeriodStart().isBefore(in.getPeriodEndExcl()))
+            throw new IllegalArgumentException("invalid period range");
+        if (in.getPaidDate().isBefore(in.getPeriodStart()) || !in.getPaidDate().isBefore(in.getPeriodEndExcl()))
+            throw new IllegalArgumentException("paidDate must be within [periodStart, periodEndExcl)");
+
+        // ===== 1) 파생 변수 =====
+        final int D = days(in.getPeriodStart(), in.getPeriodEndExcl());          // 분모
+        final BigDecimal unit = in.getFromPlan().getPricePerUser();              // 단가(구 플랜)
+        final int oldMin = in.getFromPlan().getMinUserCount();                   // 구 플랜 최소 좌석
+        final int snapshot = in.getSnapshotSeats();                              // 직전 인보이스 선불 좌석
+        final int baseEff = Math.min(snapshot, oldMin);                           // 베이스라인
         final RoundingMode RM = in.getRoundingMode();
 
-        // 기간 & 좌석 해석
-        LocalDate start = in.getPeriodStart(); //기존 구독 시작일
-        LocalDate endExcl = in.getPeriodEndExcl(); //기존 구독 종료일
-        LocalDate today = in.getAnchorDate(); //계산당시날짜
-        LocalDate capEnd = today; //업그레이드 NOW 기준
-        int dRemain = Math.max(0, (int) DAYS.between(today, endExcl));  // 잔여일수
+        final LocalDate evalStart = in.getPaidDate();
+        final LocalDate evalEnd   = in.getPeriodEndExcl();                        // 정기정산은 주기 끝까지
 
-        // from/to 단가
-        BigDecimal fromUnit = in.getFromPlan().getPricePerUser();   //기존구독단가
-        BigDecimal toUnit = (in.getToPlan() != null) ? in.getToPlan().getPricePerUser() : BigDecimal.ZERO; //신규구독단가
+        List<ProrationResult.Item> items = new ArrayList<>();
+        long subtotal = 0L;
 
-        // 현 좌석(신 플랜 전액 산정용)
-        int baseMin = in.getToPlan().getMinUserCount(); //신규구독최소좌석수
-        int active = in.getCurrentSeat();   //현재활성좌석수
-//        int snapshot = (in.getSnapshotSeats() == null ? active : in.getSnapshotSeats());
-        int chargeSeatsNow = Math.max(active, baseMin); //업그레이드 NOW 전용
+        // ===== 2) 이벤트 전처리: [paidDate, periodEndExcl) =====
+        List<ProrationInput.SeatEvent> events = normalizeAndSort(
+                filterEvents(in.getSeatEvents(), evalStart, evalEnd)
+        );
 
-        // 선불 좌석(구 플랜 크레딧용)
-        int prepaidSeats = Math.max(in.getPaidSeat(), 0);
+        // ===== 3) 구간 스캔 =====
+        LocalDate cur = evalStart;
+        int cumDelta = 0; // paidDate 이후 누적 좌석 변화(스냅샷 기준)
 
-        // 미청구 시작점
-        LocalDate baseFrom = in.getPaidDate();
-        if (baseFrom.isBefore(start)) baseFrom = start;
-        if (!capEnd.isAfter(baseFrom)) baseFrom = capEnd;
+        for (ProrationInput.SeatEvent e : events) {
+            int days = days(cur, e.getOccurredAt());
+            if (days > 0) {
+                int eff  = Math.max(snapshot + cumDelta, oldMin); // 세그먼트 과금좌석
+                int diff = eff - baseEff;                         // 베이스 대비 편차(+ 과금, − 크레딧)
 
-        // 이벤트 집계: 날짜 → delta 합산
-        LocalDate finalBaseFrom = baseFrom;
-        Map<LocalDate, Integer> deltaByDate = in.getSeatEvents().stream()
-                .filter(e -> !e.getOccurredAt().isBefore(finalBaseFrom) && e.getOccurredAt().isBefore(capEnd))
-                .collect(Collectors.groupingBy(ProrationInput.SeatEvent::getOccurredAt, TreeMap::new,
-                        Collectors.summingInt(ProrationInput.SeatEvent::getDelta)));
+                int billable = (diff < 0 && !allowDecreaseCredit) ? 0 : diff;
+                if (billable != 0) {
+                    long amt = toLongExact(prorate(unit, billable, days, D, RM)); // 아이템 내 원단위 반올림
+                    items.add(makeItem(
+                            "PRORATION",
+                            billable > 0 ? "좌석 증가 일할 정산" : "좌석 감소 일할 크레딧",
+                            Math.abs(billable),
+                            roundUnitForDisplay(unit, RM),
+                            days,
+                            amt,
+                            metaA(cur, e.getOccurredAt(), D, baseEff, oldMin, in.getFromPlan().getPlanCd(), /*anchor*/ evalStart)
+                    ));
+                    subtotal += amt;
+                }
+            }
+            cumDelta += e.getDelta();
+            cur = e.getOccurredAt();
+        }
 
-        // 브레이크포인트
-        TreeSet<LocalDate> bps = new TreeSet<>();
-        bps.add(baseFrom);
-        bps.add(capEnd);
-        bps.addAll(deltaByDate.keySet());
+        // tail 세그먼트: 마지막 이벤트 ~ 주기 말
+        int tail = days(cur, evalEnd);
+        if (tail > 0) {
+            int eff  = Math.max(snapshot + cumDelta, oldMin);
+            int diff = eff - baseEff;
 
-        var items = new ArrayList<ProrationResult.Item>();
-        BigDecimal subTotal = BigDecimal.ZERO;
-
-        // 러닝 좌석 = 선불 좌석에서 시작
-        int runningSeats = prepaidSeats;
-
-        // 세그먼트 스윕: 업그레이드 이전 구간의 미청구(구 플랜)
-        LocalDate[] pts = bps.toArray(new LocalDate[0]);
-        for (int i = 0; i < pts.length - 1; i++) {
-            LocalDate segStart = pts[i];
-            LocalDate segEndExcl = pts[i + 1];
-            int days = (int) DAYS.between(segStart, segEndExcl);
-            if (days <= 0) continue;
-
-            Integer dlt = deltaByDate.get(segStart);
-            if (dlt != null) runningSeats += dlt;
-
-            int effectiveSeats = Math.max(runningSeats, baseMin);
-            // 업그레이드 이전만 미청구 과금
-            if (segEndExcl.isAfter(today)) continue;
-
-            int addAbovePrepaid = Math.max(0, effectiveSeats - prepaidSeats);
-            if (addAbovePrepaid > 0) {
-                BigDecimal amt = fromUnit
-                        .multiply(BigDecimal.valueOf(addAbovePrepaid))
-                        .multiply(BigDecimal.valueOf(days))
-                        .divide(Dbd, 0, RM);
-
-                items.add(ProrationResult.Item.builder()
-                        .itemType("PRORATION")
-                        .description("좌석 변경 미청구분(구 플랜)")
-                        .quantity(addAbovePrepaid)
-                        .unitPrice(fromUnit.setScale(0, RM).longValueExact())
-                        .days(days)
-                        .amount(amt.setScale(0, RM).longValueExact())
-                        .relatedEventId(null)
-                        .meta(Map.of("numerator", days, "denominator", D,
-                                "from", segStart.toString(), "to", segEndExcl.toString(),
-                                "planCd", in.getFromPlan().getPlanCd()))
-                        .build());
-                subTotal = subTotal.add(amt);
+            int billable = (diff < 0 && !allowDecreaseCredit) ? 0 : diff;
+            if (billable != 0) {
+                long amt = toLongExact(prorate(unit, billable, tail, D, RM));
+                items.add(makeItem(
+                        "PRORATION",
+                        billable > 0 ? "좌석 증가 일할 정산" : "좌석 감소 일할 크레딧",
+                        Math.abs(billable),
+                        roundUnitForDisplay(unit, RM),
+                        tail,
+                        amt,
+                        metaA(cur, evalEnd, D, baseEff, oldMin, in.getFromPlan().getPlanCd(), /*anchor*/ evalStart)
+                ));
+                subtotal += amt;
             }
         }
 
-        // 업그레이드/다운/해지 NOW 분기
-        if (in.getCaseType() == ProrationInput.CaseType.UPGRADE) {
-            // 신 플랜 잔여 전액 (현 좌석)
-            BigDecimal newRemain = toUnit
-                    .multiply(BigDecimal.valueOf(chargeSeatsNow))
-                    .multiply(BigDecimal.valueOf(dRemain))
-                    .divide(Dbd, 0, RM);
-
-            items.add(ProrationResult.Item.builder()
-                    .itemType("PRORATION")
-                    .description("신 플랜 잔여기간(업그레이드 NOW)")
-                    .quantity(chargeSeatsNow)
-                    .unitPrice(toUnit.setScale(0, RM).longValueExact())
-                    .days(dRemain)
-                    .amount(newRemain.setScale(0, RM).longValueExact())
-                    .meta(Map.of("numerator", dRemain, "denominator", D, "planCd", in.getToPlan().getPlanCd()))
-                    .build());
-            subTotal = subTotal.add(newRemain);
-
-            // 구 플랜 잔여 크레딧 (선불 좌석만)
-            if (prepaidSeats > 0) {
-                BigDecimal oldCredit = fromUnit
-                        .multiply(BigDecimal.valueOf(prepaidSeats))
-                        .multiply(BigDecimal.valueOf(dRemain))
-                        .divide(Dbd, 0, RM)
-                        .negate();
-
-                items.add(ProrationResult.Item.builder()
-                        .itemType("CREDIT")
-                        .description("구 플랜 남은기간 크레딧(선불 좌석)")
-                        .quantity(prepaidSeats)
-                        .unitPrice(fromUnit.setScale(0, RM).longValueExact())
-                        .days(dRemain)
-                        .amount(oldCredit.setScale(0, RM).longValueExact())
-                        .meta(Map.of("numerator", dRemain, "denominator", D, "planCd", in.getFromPlan().getPlanCd()))
-                        .build());
-                subTotal = subTotal.add(oldCredit);
-            }
-        }
-        // (DOWNGRADE NOW, CANCEL NOW는 동일 패턴으로 추가 가능)
-
-        long subtotal = subTotal.setScale(0, RM).longValueExact();
+        // ===== 4) 합계/반환 =====
         long tax = 0L;
         long total = subtotal + tax;
-        long carry = (total < 0) ? Math.abs(total) : 0L;
+        long carry = total < 0 ? Math.abs(total) : 0L;
 
         return ProrationResult.builder()
                 .items(items)
-                .subTotal(subtotal)
+                .subTotal(subtotal)                  // 아이템 합 그대로
                 .tax(tax)
                 .total(total)
                 .creditCarryOver(carry)
-                .chargeSeatsResolved(chargeSeatsNow)
+                .chargeSeatsResolved(0)              // 정기정산은 신플랜 좌석결정 없음
                 .denominatorDays(D)
                 .currency(in.getCurrency())
                 .roundingRule(RM.name())
-                .periodStart(start)
-                .periodEndExcl(endExcl)
+                .periodStart(in.getPeriodStart())    // 원래 주기
+                .periodEndExcl(in.getPeriodEndExcl())
                 .build();
     }
 
@@ -174,7 +125,7 @@ public final class ProrationEngine {
     public ProrationResult calculate2(ProrationInput in) {
         // ===== 0) 입력 검증 =====
         requireNonNull(in.getFromPlan(), "fromPlan");
-        requireNonNull(in.getToPlan(), "toPlan");
+//        requireNonNull(in.getToPlan(), "toPlan");
         requireNonNull(in.getPeriodStart(), "periodStart");
         requireNonNull(in.getPeriodEndExcl(), "periodEndExcl");
         requireNonNull(in.getPaidDate(), "paidDate");
@@ -187,20 +138,20 @@ public final class ProrationEngine {
             throw new IllegalArgumentException("invalid period range");
         if ( in.getPaidDate().isAfter(anchorDate) )
             throw new IllegalArgumentException("paidDate must be ≤ anchorDate");
-        if ( !anchorDate.isBefore(in.getPeriodEndExcl()) )
-            throw new IllegalArgumentException("anchorDate must be < periodEndExcl");
+//        if ( !anchorDate.isBefore(in.getPeriodEndExcl()) )
+//            throw new IllegalArgumentException("anchorDate must be < periodEndExcl");
 
         // ===== 1) 파생 변수 =====
         final int D = days(in.getPeriodStart(), in.getPeriodEndExcl());          // 분모(해당 월 달력 일수)
         final int remainDays = Math.max(0, days(anchorDate, in.getPeriodEndExcl())); // 업그레이드 이후 남은 일수
         final BigDecimal fromUnit = in.getFromPlan().getPricePerUser();          // 구 플랜 단가
-        final BigDecimal toUnit   = in.getToPlan().getPricePerUser();            // 신 플랜 단가
+
         final int oldMin = in.getFromPlan().getMinUserCount();                   // 구 플랜 최소 좌석
-        final int newMin = in.getToPlan().getMinUserCount();                     // 신 플랜 최소 좌석
+        int newEff = 0;
         final int snapshot = in.getSnapshotSeats();                              // 직전 인보이스(선불) 좌석 스냅샷
         final int activeAtUpgrade = in.getActiveSeats();                         // 업그레이드 시점 실제 좌석
-        final int baseEff = Math.max(snapshot, oldMin);                          // 구 플랜 하한 반영한 "베이스라인"
-        final int newEff  = Math.max(activeAtUpgrade, newMin);                   // 신 플랜 하한 반영한 "과금 좌석"
+        final int baseEff = oldMin;                          // 구 플랜 하한 반영한 "베이스라인"
+
         final RoundingMode RM = in.getRoundingMode();
 
         List<ProrationResult.Item> items = new ArrayList<>();
@@ -242,7 +193,6 @@ public final class ProrationEngine {
             cumDelta += e.getDelta();
             cur = e.getOccurredAt();
         }
-
         // 마지막 세그먼트(마지막 이벤트 ~ anchorDate)
         int tail = days(cur, anchorDate);
         if (tail > 0) {
@@ -263,34 +213,40 @@ public final class ProrationEngine {
             }
         }
 
-        // ===== 3) 구간 B: [anchorDate, periodEndExcl) =====
-        // 신 플랜 잔여기간(+) 과금 + 구 플랜 잔여기간(-) 크레딧을 동시에 반영
-        if (remainDays > 0) {
-            // 3-1) 신 플랜 잔여기간 과금: toUnit × newEff × remainDays / D
-            BigDecimal newAmt = prorate(toUnit, newEff, remainDays, D, RM);
-            items.add(makeItem(
-                    "PRORATION",
-                    "신규 라이센스 잔여기간 일할 계산 금액",
-                    newEff,
-                    roundUnitForDisplay(toUnit, RM),
-                    remainDays,
-                    toLongExact(newAmt),
-                    metaB(remainDays, D, newMin, in.getToPlan().getPlanCd(), anchorDate)
-            ));
-            subtotal = subtotal.add(newAmt);
+        if (in.getCaseType().equals(ProrationInput.CaseType.UPGRADE)) {
+            final int newMin = in.getToPlan().getMinUserCount();                     // 신 플랜 최소 좌석
+            final BigDecimal toUnit   = in.getToPlan().getPricePerUser();            // 신 플랜 단가
+            newEff  = Math.max(activeAtUpgrade, newMin);                   // 신 플랜 하한 반영한 "과금 좌석"
 
-            // 3-2) 구 플랜 잔여기간 크레딧: - fromUnit × baseEff × remainDays / D
-            BigDecimal oldCr = prorate(fromUnit, baseEff, remainDays, D, RM).negate();
-            items.add(makeItem(
-                    "PRORATION",
-                    "구 플랜 잔여기간 크레딧",
-                    baseEff,
-                    roundUnitForDisplay(fromUnit, RM),
-                    remainDays,
-                    toLongExact(oldCr),
-                    metaB(remainDays, D, oldMin, in.getFromPlan().getPlanCd(), anchorDate)
-            ));
-            subtotal = subtotal.add(oldCr);
+            // ===== 3) 구간 B: [anchorDate, periodEndExcl) =====
+            // 신 플랜 잔여기간(+) 과금 + 구 플랜 잔여기간(-) 크레딧을 동시에 반영
+            if (remainDays > 0) {
+                // 3-1) 신 플랜 잔여기간 과금: toUnit × newEff × remainDays / D
+                BigDecimal newAmt = prorate(toUnit, newEff, remainDays, D, RM);
+                items.add(makeItem(
+                        "PRORATION",
+                        "신규 라이센스 잔여기간 일할 계산 금액",
+                        newEff,
+                        roundUnitForDisplay(toUnit, RM),
+                        remainDays,
+                        toLongExact(newAmt),
+                        metaB(remainDays, D, newMin, in.getToPlan().getPlanCd(), anchorDate)
+                ));
+                subtotal = subtotal.add(newAmt);
+
+                // 3-2) 구 플랜 잔여기간 크레딧: - fromUnit × baseEff × remainDays / D
+                BigDecimal oldCr = prorate(fromUnit, baseEff, remainDays, D, RM).negate();
+                items.add(makeItem(
+                        "PRORATION",
+                        "구 플랜 잔여기간 크레딧",
+                        baseEff,
+                        roundUnitForDisplay(fromUnit, RM),
+                        remainDays,
+                        toLongExact(oldCr),
+                        metaB(remainDays, D, oldMin, in.getFromPlan().getPlanCd(), anchorDate)
+                ));
+                subtotal = subtotal.add(oldCr);
+            }
         }
 
         // ===== 4) 합계/마감 =====

@@ -19,4 +19,12 @@
         WHERE active = true
     </select>
 
+    <select id="selectByPlanCdAndActive" resultType="LicenseVO">
+        SELECT
+            *
+        FROM license
+        WHERE plan_cd = #{code}
+          AND active = true
+    </select>
+
 </mapper>

@@ -113,8 +113,25 @@ public class PartnershipService {
         return partnership;
     }
 
-    public List<PartnershipVO> getPartnerships(Integer memberIdx) throws CustomException {
-        return partnershipMapper.selectByMember(memberIdx);
+    public List<ResponsePartnershipDTO.PartnershipList> getPartnerships(Integer memberIdx) throws CustomException {
+        List<PartnershipVO> partnerships = partnershipMapper.selectByMember(memberIdx);
+        List<ResponsePartnershipDTO.PartnershipList> response = new ArrayList<>();
+        for (PartnershipVO p : partnerships) {
+            ResponsePartnershipDTO.PartnershipList item = modelMapper.map(p, ResponsePartnershipDTO.PartnershipList.class);
+            LicensePartnershipVO lp = licensePartnershipMapper.selectByPartnershipIdx(p.getIdx()).orElse(null);
+            ResponsePartnershipDTO.LicensePartnershipInfo licenseInfo = new ResponsePartnershipDTO.LicensePartnershipInfo();
+            if (lp != null) {
+                LicenseVO license = licenseMapper.selectByIdx(lp.getLicenseIdx()).orElse(null);
+                licenseInfo.setPlanCd(license != null ? license.getPlanCd() : EnumCode.License.PlanCd.BASIC.getCode());
+                licenseInfo.setStateCd(lp.getStateCd());
+                item.setLicense(licenseInfo);
+            } else {
+                licenseInfo.setPlanCd(EnumCode.License.PlanCd.BASIC.getCode());
+                item.setLicense(licenseInfo);
+            }
+            response.add(item);
+        }
+        return response;
     }
 
     /**

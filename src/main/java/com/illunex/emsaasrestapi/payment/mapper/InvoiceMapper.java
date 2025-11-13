@@ -18,4 +18,5 @@ public interface InvoiceMapper {
     void markPaid(Integer invoiceIdx);
     void updateByInvoiceVO(InvoiceVO inv);
 
+    InvoiceVO selectLastPaidByLicensePartnershipIdx(Integer idx);
 }

@@ -140,4 +140,12 @@ public class InvoiceVO {
         WHERE idx = #{idx}
     </update>
 
+    <select id="selectLastPaidByLicensePartnershipIdx" resultType="InvoiceVO">
+        SELECT *
+        FROM invoice
+        WHERE license_partnership_idx = #{licensePartnershipIdx}
+          AND status_cd = 'ICS0003'
+        ORDER BY issue_date DESC
+        LIMIT 1
+    </select>
 </mapper>

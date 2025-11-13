@@ -553,7 +553,7 @@ public class PaymentService {
         // 6) 구독 변경 이벤트 생성
         SubscriptionChangeEventVO event = new SubscriptionChangeEventVO();
         event.setLicensePartnershipIdx(tx1.lp.getIdx());
-        event.setOccurredDate(LocalDate.now().atStartOfDay(ZoneId.systemDefault()));
+        event.setOccurredDate(ZonedDateTime.now());
         event.setTypeCd(EnumCode.SubscriptionChangeEvent.TypeCd.PLAN_UPGRADE.getCode());
         event.setFromLicenseIdx(preview.getFromLicenseIdx());
         event.setToLicenseIdx(preview.getToLicenseIdx());
@@ -891,4 +891,131 @@ public class PaymentService {
         }
         return orderId;
     }
+
+    /**
+     * 배치(월간 청구)에서 사용하는 자동 결제
+     * - 인보이스는 이미 생성되어 있다고 가정
+     * - LP 롤오버/플랜 변경은 PaymentSchedule 쪽에서 처리
+     */
+    @Transactional(noRollbackFor = Exception.class)
+    public void autoChargeByPreviewForBatch(LicensePartnershipVO lp,
+                                            InvoiceVO invoice,
+                                            PaymentPreviewResult preview) throws CustomException {
+
+        // 1) 기본 결제수단/위임 조회
+        DefaultMethodMandate mm = readDefaultMethodMandate(lp.getPartnershipIdx());
+        if (mm == null || mm.paymentMethodIdx() == null || mm.paymentMandateIdx() == null || mm.providerCd() == null) {
+            log.warn("[autoChargeByPreviewForBatch] no default method/mandate. partnershipIdx={}", lp.getPartnershipIdx());
+            // 결제수단이 없으면 OPEN 인보이스만 두고 끝 (나중에 수동 결제 유도)
+            return;
+        }
+
+        // 2) orderId 보장 (인보이스에 없으면 새로 발급)
+        String orderId = invoice.getOrderNumber();
+        if (orderId == null || orderId.isBlank()) {
+            orderId = createTossOrderId();
+            invoice.setOrderNumber(orderId);
+            invoiceMapper.updateByInvoiceVO(invoice);
+        }
+
+        // 3) PaymentAttempt 생성 (PENDING)
+        PaymentAttemptVO attempt = new PaymentAttemptVO();
+        attempt.setInvoiceIdx(invoice.getIdx());
+        attempt.setPartnershipIdx(lp.getPartnershipIdx());
+        attempt.setProviderCd(mm.providerCd());
+        attempt.setPaymentMethodIdx(mm.paymentMethodIdx());
+        attempt.setPaymentMandateIdx(mm.paymentMandateIdx());
+        attempt.setAttemptNo(resolveNextAttemptNo(invoice.getIdx()));
+        attempt.setAmount(BigDecimal.valueOf(preview.getAmount()));
+        attempt.setUnitCd("MUC0001");
+        attempt.setStatusCd(EnumCode.PaymentAttempt.StateCd.PENDING.getCode());
+        attempt.setOrderNumber(orderId);
+        paymentAttemptMapper.insertByPaymentAttemptVO(attempt);
+
+        JSONObject pgResp = null;
+        ZonedDateTime now = ZonedDateTime.now();
+
+        try {
+            // 4) PG 호출 payload 구성
+            TossConfirmPayload tossPayload = TossConfirmPayload.of(
+                    mm.providerCd(),
+                    mm.paymentMethodIdx(),
+                    mm.paymentMandateIdx(),
+                    orderId,
+                    BigDecimal.valueOf(preview.getAmount())
+            );
+
+            JSONObject payload = new JSONObject(tossPayload);
+            payload.put("billingKey", mm.mandateId());
+            payload.put("orderName",
+                    preview.getOrderName() != null ? preview.getOrderName() : "월간 정기 결제");
+            payload.put("orderId", orderId);
+            payload.put("amount", tossPayload.amount());
+            payload.put("customerKey", mm.customerKey());
+            payload.put("customerEmail", preview.getCustomerEmail());
+            payload.put("customerName", preview.getCustomerName());
+
+            // 5) PG 정기결제 confirm
+            pgResp = tossPaymentService.confirmBilling(payload);
+
+            // 6) 응답 검증
+            PgVerification vr = verifyPgResponse(pgResp, orderId, BigDecimal.valueOf(preview.getAmount()));
+
+            attempt.setRespondDate(now);
+            attempt.setMeta(pgResp.toString());
+
+            if (!vr.success) {
+                attempt.setStatusCd(EnumCode.PaymentAttempt.StateCd.FAILED.getCode());
+                attempt.setFailureCode(vr.code);
+                attempt.setFailureMessage(vr.message);
+                paymentAttemptMapper.updateByPaymentAttemptVO(attempt);
+                // 인보이스는 OPEN 유지 (사용자 재시도 가능)
+                return;
+            }
+
+            // 7) 성공 처리
+            attempt.setStatusCd(EnumCode.PaymentAttempt.StateCd.SUCCESS.getCode());
+            paymentAttemptMapper.updateByPaymentAttemptVO(attempt);
+
+            // 8) 수납 기록
+            LicensePaymentHistoryVO pay = new LicensePaymentHistoryVO();
+            pay.setInvoiceIdx(invoice.getIdx());
+            pay.setProviderCd(mm.providerCd());
+            pay.setOrderNumber(orderId);
+            pay.setAmount(BigDecimal.valueOf(preview.getAmount()));
+            pay.setUnitCd("MUC0001");
+            pay.setMeta(pgResp.toString());
+            pay.setPaidDate(now);
+            licensePaymentHistoryMapper.insertByLicensePaymentHistoryVO(pay);
+
+            // 9) 미납 여부 확인 후 인보이스 상태 전환
+            InvoicePaymentView summary = invoicePaymentViewMapper.selectInvoicePaymentSummary(invoice.getIdx());
+            if (summary != null && summary.getBalanceDue() != null
+                    && summary.getBalanceDue().compareTo(BigDecimal.ZERO) <= 0) {
+
+                String receiptUrl = Optional.ofNullable(pgResp.optJSONObject("receipt"))
+                        .map(r -> r.optString("url", null))
+                        .orElse(null);
+
+                invoice.setReceiptUrl(receiptUrl);
+                invoice.setStatusCd(EnumCode.Invoice.StateCd.PAID.getCode());
+                invoice.setTotal(BigDecimal.valueOf(preview.getAmount()));
+                invoiceMapper.updateByInvoiceVO(invoice);
+            }
+
+        } catch (Exception ex) {
+            log.error("[autoChargeByPreviewForBatch] PG billing failed. partnershipIdx={}, invoiceId={}",
+                    lp.getPartnershipIdx(), invoice.getIdx(), ex);
+
+            // 네트워크/PG 예외도 실패로 마킹
+            attempt.setRespondDate(now);
+            attempt.setStatusCd(EnumCode.PaymentAttempt.StateCd.FAILED.getCode());
+            attempt.setFailureCode("PG_EXCEPTION");
+            attempt.setFailureMessage(ex.getMessage());
+            attempt.setMeta(pgResp != null ? pgResp.toString() : null);
+            paymentAttemptMapper.updateByPaymentAttemptVO(attempt);
+            // 인보이스는 OPEN 상태 유지
+        }
+    }
+
 }

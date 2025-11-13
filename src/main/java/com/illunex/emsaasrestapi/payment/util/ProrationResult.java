@@ -35,5 +35,37 @@ public class ProrationResult {
         private long amount;       // KRW 단위
         private Long relatedEventId;
         private Map<String, Object> meta;
+
+        @Override
+        public String toString() {
+            return "Item{" +
+                    "itemType='" + itemType + '\'' +
+                    ", description='" + description + '\'' +
+                    ", quantity=" + quantity +
+                    ", unitPrice=" + unitPrice +
+                    ", days=" + days +
+                    ", amount=" + amount +
+                    ", relatedEventId=" + relatedEventId +
+                    ", meta=" + meta +
+                    '}';
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "ProrationResult{" +
+                "items=" + items +
+                ", planName='" + planName + '\'' +
+                ", subTotal=" + subTotal +
+                ", tax=" + tax +
+                ", total=" + total +
+                ", creditCarryOver=" + creditCarryOver +
+                ", chargeSeatsResolved=" + chargeSeatsResolved +
+                ", denominatorDays=" + denominatorDays +
+                ", currency='" + currency + '\'' +
+                ", roundingRule='" + roundingRule + '\'' +
+                ", periodStart=" + periodStart +
+                ", periodEndExcl=" + periodEndExcl +
+                '}';
     }
 }

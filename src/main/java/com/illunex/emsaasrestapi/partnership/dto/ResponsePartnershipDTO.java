@@ -132,5 +132,37 @@ public class ResponsePartnershipDTO {
             this.managerCdDesc = EnumCode.getCodeDesc(managerCd);
         }
     }
+
+    @Getter
+    @Setter
+    public static class PartnershipList {
+        private Integer idx;
+        private String name;
+        private String domain;
+        private String imageUrl;
+        private String imagePath;
+        private String comment;
+        private ZonedDateTime updateDate;
+        private ZonedDateTime createDate;
+        private LicensePartnershipInfo license;
+    }
+
+    @Getter
+    @Setter
+    public static class LicensePartnershipInfo {
+        private String planCd;
+        private String planCdDesc;
+        private String stateCd;
+        private String stateCdDesc;
+
+        public void setStateCd(String stateCd) {
+            this.stateCd = stateCd;
+            this.stateCdDesc = EnumCode.getCodeDesc(stateCd);
+        }
+        public void setPlanCd(String planCd) {
+            this.planCd = planCd;
+            this.planCdDesc = EnumCode.getCodeDesc(planCd);
+        }
+    }
 }
 

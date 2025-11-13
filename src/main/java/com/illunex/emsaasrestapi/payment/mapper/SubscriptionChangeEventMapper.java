@@ -20,4 +20,9 @@ public interface SubscriptionChangeEventMapper {
 
     void insertBySubscriptionChangeEventVO(SubscriptionChangeEventVO subscriptionChangeEventVO);
 
+    SubscriptionChangeEventVO selectLastOneByLpAndOccurredBetweenAndTypeCd(@Param("lpIdx") Integer lpIdx,
+                                                              @Param("start") LocalDateTime start,
+                                                              @Param("end") LocalDateTime end,
+                                                              @Param("typeCd") String typeCd);
+
 }

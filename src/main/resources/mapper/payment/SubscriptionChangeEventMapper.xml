@@ -31,6 +31,18 @@ public class SubscriptionChangeEventVO {
         ORDER BY occurred_date ASC, idx ASC
     </select>
 
+    <select id="selectLastOneByLpAndOccurredBetweenAndTypeCd" resultType="com.illunex.emsaasrestapi.payment.vo.SubscriptionChangeEventVO">
+        SELECT
+            *
+        FROM subscription_change_event
+        WHERE license_partnership_idx = #{lpIdx}
+          AND occurred_date >= #{start}
+          AND occurred_date <![CDATA[<]]>  #{end}
+          AND type_cd = #{typeCd}
+        ORDER BY occurred_date ASC, idx ASC
+        LIMIT 1
+    </select>
+
     <select id="selectByLicensePartnershipIdxAndOccurredDate" resultType="SubscriptionChangeEventVO">
         SELECT
             *

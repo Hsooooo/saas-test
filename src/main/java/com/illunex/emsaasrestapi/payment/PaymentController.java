@@ -18,9 +18,11 @@ public class PaymentController {
     private final PaymentSchedule paymentSchedule;
     private final PaymentService paymentService;
     @GetMapping("/test")
-    public String test() {
-        paymentSchedule.generateMonthlyInvoiceBatch();
-        return "Payment API is working!";
+    public CustomResponse<?> test() {
+        return CustomResponse.builder()
+                .data(paymentSchedule.generateMonthlyInvoiceBatch())
+                .build();
+//        paymentSchedule.test();
     }
 
     /**

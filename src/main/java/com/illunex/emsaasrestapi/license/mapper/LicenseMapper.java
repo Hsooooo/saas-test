@@ -11,4 +11,6 @@ import java.util.Optional;
 public interface LicenseMapper {
     Optional<LicenseVO> selectByIdx(int idx);
     List<LicenseVO> selectAllByActive();
+
+    LicenseVO selectByPlanCdAndActive(String code);
 }

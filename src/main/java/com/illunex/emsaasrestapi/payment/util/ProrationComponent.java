@@ -167,7 +167,7 @@ public class ProrationComponent {
                 .build();
     }
 
-    private static ProrationInput.Plan planOf(LicenseVO p) {
+    public static ProrationInput.Plan planOf(LicenseVO p) {
         return ProrationInput.Plan.builder()
                 .idx(p.getIdx())
                 .planCd(p.getPlanCd())
