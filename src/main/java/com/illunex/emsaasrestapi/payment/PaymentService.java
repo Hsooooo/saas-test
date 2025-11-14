@@ -868,7 +868,7 @@ public class PaymentService {
     }
 
     // null→0 보정
-    private static int nz(Integer v) { return v == null ? 0 : v; }
+    public static int nz(Integer v) { return v == null ? 0 : v; }
 
     private String mapItemType(String itemType) {
         return switch (itemType) {

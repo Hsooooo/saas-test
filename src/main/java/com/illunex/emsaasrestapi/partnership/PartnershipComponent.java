@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+import static com.illunex.emsaasrestapi.payment.PaymentService.nz;
+
 @Component
 @RequiredArgsConstructor
 public class PartnershipComponent {
@@ -56,7 +58,7 @@ public class PartnershipComponent {
      * @return
      */
     public Integer getPartnershipActiveMemberCount(Integer partnershipIdx) {
-        return partnershipMemberMapper.countByPartnershipIdxAndNotStateCd(partnershipIdx, EnumCode.PartnershipMember.StateCd.Delete.getCode());
+        return nz(partnershipMemberMapper.countByPartnershipIdxAndNotStateCd(partnershipIdx, EnumCode.PartnershipMember.StateCd.Delete.getCode()));
     }
 
     /**

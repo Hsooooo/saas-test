@@ -83,6 +83,7 @@ public class LicenseService {
         }
         resp.setLicense(license);
         resp.setPartnershipIdx(partnershipIdx);
+        resp.setCurrentUserCount(partnershipComponent.getPartnershipActiveMemberCount(partnershipIdx));
 
         return resp;
     }
