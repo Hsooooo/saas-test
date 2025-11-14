@@ -76,6 +76,7 @@ public class LicenseService {
                 // 만료된 라이선스인 경우 기본 라이선스로 세팅
                 license = new ResponseLicenseDTO.License();
                 license.setPlanCd(EnumCode.License.PlanCd.BASIC.getCode());
+                resp.setNextLicense(license);
             }
         } else {
             license = new ResponseLicenseDTO.License();
