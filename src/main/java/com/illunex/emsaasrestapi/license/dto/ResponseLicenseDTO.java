@@ -46,6 +46,7 @@ public class ResponseLicenseDTO {
         private String stateCdDesc;
         private LocalDate periodStartDate;
         private LocalDate periodEndDate;
+        private License nextLicense;
         public void setStateCd(String stateCd) {
             this.stateCd = stateCd;
             this.stateCdDesc = EnumCode.getCodeDesc(stateCd);
