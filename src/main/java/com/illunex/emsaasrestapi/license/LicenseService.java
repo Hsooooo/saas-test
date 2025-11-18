@@ -74,9 +74,9 @@ public class LicenseService {
                 }
             } else if (licensePartnershipVO.getStateCd().equals(EnumCode.LicensePartnership.StateCd.CANCEL.getCode())) {
                 // 만료된 라이선스인 경우 기본 라이선스로 세팅
-                license = new ResponseLicenseDTO.License();
-                license.setPlanCd(EnumCode.License.PlanCd.BASIC.getCode());
-                resp.setNextLicense(license);
+                ResponseLicenseDTO.License nextLicense = new ResponseLicenseDTO.License();
+                nextLicense.setPlanCd(EnumCode.License.PlanCd.BASIC.getCode());
+                resp.setNextLicense(nextLicense);
             }
         } else {
             license = new ResponseLicenseDTO.License();
