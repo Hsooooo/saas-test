@@ -26,6 +26,7 @@ import org.json.JSONObject;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -35,9 +36,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+
+import java.net.URI;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -91,33 +96,38 @@ public class MemberService {
         memberComponent.checkMemberState(member.getStateCd());
 
         if(passwordEncoder.matches(login.getPassword(), member.getPassword())) {
-            List<GrantedAuthority> authorities = new ArrayList<>();
-            authorities.add(new SimpleGrantedAuthority(SecurityConfig.MEMBER));
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(member.getEmail(), member.getPassword(), authorities);
-
-            // 토큰 생성 후 응답 값에 추가
-            ResponseMemberDTO.Login responseLoginDto = modelMapper.map(member, ResponseMemberDTO.Login.class);
-            responseLoginDto.setAccessToken(tokenProvider.generateAccessToken(auth));
-
-            // 로그인 이력 저장
-            MemberLoginHistoryVO loginHistoryVO = new MemberLoginHistoryVO();
-            loginHistoryVO.setMemberIdx(member.getIdx());
-            loginHistoryVO.setBrowser(MemberComponent.getClientPlatform(request));
-            loginHistoryVO.setPlatform(MemberComponent.getClientDevice(request));
-            loginHistoryVO.setIp(MemberComponent.getClientIpAddr(request));
-            loginHistoryMapper.insertLoginHistory(loginHistoryVO);
-
-            // 리프레시 토큰 쿠키 등록
-            response.addCookie(tokenProvider.createCookie("refreshToken", tokenProvider.generateRefreshToken(auth), MemberComponent.getClientIpAddr(request)));
-            ResponseMemberDTO.Member responseMember = modelMapper.map(member, ResponseMemberDTO.Member.class);
-            responseLoginDto.setMember(responseMember);
-
-            return CustomResponse.builder()
-                    .data(responseLoginDto)
-                    .build();
+            return responseLogin(request, response, member);
         } else {
             throw new CustomException(ErrorCode.MEMBER_NOT_MATCH_PASSWORD);
         }
+    }
+
+    @Transactional
+    public CustomResponse<Object> responseLogin(HttpServletRequest request, HttpServletResponse response, MemberVO member) {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority(SecurityConfig.MEMBER));
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(member.getEmail(), member.getPassword(), authorities);
+
+        // 토큰 생성 후 응답 값에 추가
+        ResponseMemberDTO.Login responseLoginDto = modelMapper.map(member, ResponseMemberDTO.Login.class);
+        responseLoginDto.setAccessToken(tokenProvider.generateAccessToken(auth));
+
+        // 로그인 이력 저장
+        MemberLoginHistoryVO loginHistoryVO = new MemberLoginHistoryVO();
+        loginHistoryVO.setMemberIdx(member.getIdx());
+        loginHistoryVO.setBrowser(MemberComponent.getClientPlatform(request));
+        loginHistoryVO.setPlatform(MemberComponent.getClientDevice(request));
+        loginHistoryVO.setIp(MemberComponent.getClientIpAddr(request));
+        loginHistoryMapper.insertLoginHistory(loginHistoryVO);
+
+        // 리프레시 토큰 쿠키 등록
+        response.addCookie(tokenProvider.createCookie("refreshToken", tokenProvider.generateRefreshToken(auth), MemberComponent.getClientIpAddr(request)));
+        ResponseMemberDTO.Member responseMember = modelMapper.map(member, ResponseMemberDTO.Member.class);
+        responseLoginDto.setMember(responseMember);
+
+        return CustomResponse.builder()
+                .data(responseLoginDto)
+                .build();
     }
 
     public CustomResponse<?> logout(HttpServletRequest request, HttpServletResponse response) {
@@ -444,5 +454,38 @@ public class MemberService {
                 .message(ErrorCode.OK.getMessage())
                 .status(ErrorCode.OK.getStatus())
                 .build();
+    }
+
+    /**
+     * 구글 로그인 처리
+     * @param request
+     * @param response
+     * @param googleAccountInfo
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> googleLogin(HttpServletRequest request, HttpServletResponse response, RequestMemberDTO.GoogleAccountInfo googleAccountInfo) throws CustomException {
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+        URI url = URI.create("https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" + googleAccountInfo.getTokenId());
+        ResponseEntity<String> responseEntity = restTemplate.exchange(url.toString(), HttpMethod.GET, new HttpEntity<>(httpHeaders), String.class);
+        JSONObject resCompanyJson = new JSONObject(responseEntity.getBody());
+        // 검증된 이메일 체크
+        if (Boolean.parseBoolean(resCompanyJson.toMap().get("email_verified").toString())) {
+            Optional<MemberVO> account = memberMapper.selectByEmail(resCompanyJson.toMap().get("email").toString());
+
+            // 계정이 있을 경우 로그인 처리
+            if (account.isPresent()) {
+                return responseLogin(request, response, account.get());
+            }
+
+            // 계정이 없으면 Google API 정보 같이 전달
+            return CustomResponse.builder()
+                    .status(ErrorCode.MEMBER_EMPTY_ACCOUNT.getStatus())
+                    .data(resCompanyJson.toMap())
+                    .build();
+        }
+        throw new CustomException(ErrorCode.INVALID_CERTIFICATION);
     }
 }

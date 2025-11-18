@@ -2,8 +2,7 @@ package com.illunex.emsaasrestapi.member.dto;
 
 
 import com.illunex.emsaasrestapi.partnership.dto.PartnershipCreateDTO;
-import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
+import lombok.*;
 
 import java.util.List;
 
@@ -75,4 +74,29 @@ public class RequestMemberDTO {
         private Integer memberTermIdx;
         private Boolean agree;
     }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class GoogleAccountInfo {
+        private String tokenId;
+        private String loginIp;
+        private String loginBrowser;
+        private GoogleProfileObject profileObj;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class GoogleProfileObject {
+        private String googleId;
+        private String imageUrl;
+        private String email;
+        private String name;
+    }
+
 }

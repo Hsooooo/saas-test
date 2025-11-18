@@ -133,4 +133,18 @@ public class MemberController {
                                                   @CurrentMember MemberVO memberVO) throws Exception {
         return memberService.mypageChangePassword(memberVO, request.getPassword(), request.getNewPassword());
     }
+
+    /**
+     * 구글 로그인 처리
+     * @param req
+     * @param res
+     * @param googleAccountInfo
+     * @return
+     * @throws CustomException
+     */
+    @PostMapping("login/google")
+    private CustomResponse<?> loginGoogle(HttpServletRequest req, HttpServletResponse res, @RequestBody RequestMemberDTO.GoogleAccountInfo googleAccountInfo) throws CustomException {
+        return memberService.googleLogin(req, res, googleAccountInfo);
+    }
+
 }

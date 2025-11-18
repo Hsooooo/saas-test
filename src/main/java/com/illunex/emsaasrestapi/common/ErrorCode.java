@@ -15,6 +15,7 @@ public enum ErrorCode {
     COMMON_EMPTY(100, "데이터가 없습니다."),
     COMMON_INVALID(101, "잘못된 요청입니다."),
     COMMON_FAIL_AUTHENTICATION(102, "권한이 없습니다."),
+    INVALID_CERTIFICATION(208, "인증데이터가 유효하지 않습니다."),
     COMMON_INTERNAL_SERVER_ERROR(500, "서버 에러"),
     COMMON_INVALID_FILE_EXTENSION(800, "잘못된 형식의 파일 입니다."),
     JWT_TOKEN_MISSING(103, "인증 토큰이 없습니다. 다시 로그인해주세요."),
