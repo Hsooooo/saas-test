@@ -100,6 +100,8 @@ public class AiProxyController {
                 ? chatService.resolveChatRoom(pmIdx, title)
                 : roomIdx;
 
+        final String model = body.get("model");
+
         // 1) USER 메시지 즉시 저장 (비동기여도 ok)
         chatService.saveHistoryAsync(
                 chatRoomIdx,
@@ -123,6 +125,10 @@ public class AiProxyController {
 
         if (roomIdx != null) {
             payload.put("room_idx", roomIdx);
+        }
+
+        if (model != null) {
+            payload.put("model", model);
         }
 
         // 4) 스트림 상태 변수
