@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -199,4 +200,15 @@ public class ProrationComponent {
     }
 
     private static int nz(Integer v) { return v == null ? 0 : v; }
+
+    public static Map<String, Object> metaRecurring(LocalDate from, LocalDate toExcl, int chargeUserCount, String planCd,
+                                                    LocalDate paymentDate) {
+        return Map.of(
+                "charge_user_count", chargeUserCount,      // oldMin
+                "from", from.toString(),             // 세그먼트 시작
+                "to", toExcl.toString(),             // 세그먼트 끝(배타)
+                "planCd", planCd,                    // 구 플랜 코드
+                "paymentDate", paymentDate.toString()  // 업그레이드 기준일
+        );
+    }
 }

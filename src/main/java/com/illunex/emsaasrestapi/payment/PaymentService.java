@@ -855,6 +855,7 @@ public class PaymentService {
                             .unitPrice(unitPrice)
                             .days(null)              // 월 선청구: 일수 개념 없음
                             .amount(lineAmount)
+                            .meta(ProrationComponent.metaRecurring(input.getPaidDate(), input.getPeriodEndExcl(), chargeSeat, input.getToPlan().getPlanCd(), LocalDate.now()))
                             .build();
 
             return PaymentPreviewResult.builder()
