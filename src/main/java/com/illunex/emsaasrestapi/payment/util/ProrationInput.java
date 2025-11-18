@@ -31,6 +31,20 @@ public class ProrationInput {
     private final Plan fromPlan;             // 기구독 플랜(없으면 null)
     private final Plan toPlan;               // 타깃 플랜(케이스 1/2/3에 따라 필요)
 
+    public ProrationInput.ProrationInputBuilder toBuilder() {
+        return ProrationInput.builder()
+                .paidSeat(this.paidSeat)
+                .currentSeat(this.currentSeat)
+                .paidDate(this.paidDate)
+                .periodStart(this.periodStart)
+                .periodEndExcl(this.periodEndExcl)
+                .anchorDate(this.anchorDate)
+                .paymentTime(this.paymentTime)
+                .zone(this.zone)
+                .fromPlan(this.fromPlan)
+                .toPlan(this.toPlan);
+    }
+
     @Getter @Builder
     public static class Plan {
         private final int idx;
@@ -52,6 +66,13 @@ public class ProrationInput {
         private final LocalDate occurredAt; // ZonedDateTime 원본
         private final int delta;                // +2, -1
         private final Long relatedId;
+
+        public SeatEventBuilder toBuilder() {
+            return SeatEvent.builder()
+                    .occurredAt(this.occurredAt)
+                    .delta(this.delta)
+                    .relatedId(this.relatedId);
+        }
     }
 
     // 통화/반올림
@@ -61,4 +82,5 @@ public class ProrationInput {
     // 케이스
     public enum CaseType { NEW_TO_PAID, UPGRADE, DOWNGRADE, CANCEL }
     private final CaseType caseType;
+
 }

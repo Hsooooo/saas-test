@@ -42,6 +42,7 @@ public class ResponsePaymentDTO {
         private Long tax;
         private Long total;
         private boolean willChargeNow;
+        private boolean isNewSubscription = false;
         private Long creditCarryOver;
         private List<String> notes;
     }

@@ -73,7 +73,7 @@ public class InvoiceVO {
                 -- 조정 인보이스: 앵커(=period_end, exclusive) 전까지 '구독중', 이후 '기한만료'
                 WHEN i.type_cd = 'IIT0002' THEN
                     CASE
-                        WHEN CURDATE() <![CDATA[<]]>  i.period_end  AND CURDATE() >= i.period_start THEN '구독중'
+                        WHEN CURDATE() <![CDATA[<]]>  i.period_end THEN '구독중'
                         ELSE '기한만료'
                         END
                 -- 정기 인보이스

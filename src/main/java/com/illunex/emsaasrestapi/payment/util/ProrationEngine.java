@@ -12,6 +12,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.time.temporal.ChronoUnit.DAYS;
+import static java.util.stream.Collectors.toList;
 
 @Component
 public final class ProrationEngine {
@@ -132,6 +133,8 @@ public final class ProrationEngine {
 
         // 앵커일(업그레이드 기준일). 없으면 결제시간 날짜, 그것도 없으면 예외
         LocalDate anchorDate = in.getAnchorDate();
+        LocalDate nextPeriodStart = anchorDate.plusDays(1);
+        LocalDate nextPeriodEndExcl = nextPeriodStart.plusMonths(1);
 
         // 기간 무결성: start ≤ paidDate ≤ anchorDate < periodEndExcl
         if ( !in.getPeriodStart().isBefore(in.getPeriodEndExcl()) )
@@ -162,9 +165,10 @@ public final class ProrationEngine {
         // - 좌석이 베이스라인보다 많으면 PRORATION(+)
         // - 좌석이 베이스라인보다 적으면 CREDIT(-)
         // - 단, oldMin 하한 적용(하한 미만 감소는 CREDIT 아님)
-        List<ProrationInput.SeatEvent> eventsA = normalizeAndSort(
-                filterEvents(in.getSeatEvents(), in.getPaidDate(), anchorDate)
-        );
+        List<ProrationInput.SeatEvent> eventsA = normalizeAndSortForBilling(in.getSeatEvents(), in.getPaidDate(), anchorDate);
+//        List<ProrationInput.SeatEvent> eventsA = normalizeAndSort(
+//                filterEvents(in.getSeatEvents(), in.getPaidDate(), anchorDate)
+//        );
 
         LocalDate cur = in.getPaidDate(); // 현재 세그먼트 시작점
         int cumDelta = 0;                 // paidDate 이후 누적 좌석 변화량(0에서 시작)
@@ -221,19 +225,6 @@ public final class ProrationEngine {
             // ===== 3) 구간 B: [anchorDate, periodEndExcl) =====
             // 신 플랜 잔여기간(+) 과금 + 구 플랜 잔여기간(-) 크레딧을 동시에 반영
             if (remainDays > 0) {
-                // 3-1) 신 플랜 잔여기간 과금: toUnit × newEff × remainDays / D
-                BigDecimal newAmt = prorate(toUnit, newEff, remainDays, D, RM);
-                items.add(makeItem(
-                        "PRORATION",
-                        "신규 라이센스 잔여기간 일할 계산 금액",
-                        newEff,
-                        roundUnitForDisplay(toUnit, RM),
-                        remainDays,
-                        toLongExact(newAmt),
-                        metaB(remainDays, D, newMin, in.getToPlan().getPlanCd(), anchorDate)
-                ));
-                subtotal = subtotal.add(newAmt);
-
                 // 3-2) 구 플랜 잔여기간 크레딧: - fromUnit × baseEff × remainDays / D
                 BigDecimal oldCr = prorate(fromUnit, baseEff, remainDays, D, RM).negate();
                 items.add(makeItem(
@@ -265,7 +256,7 @@ public final class ProrationEngine {
                 .denominatorDays(D)
                 .currency(in.getCurrency())
                 .roundingRule(RM.name())
-                .periodStart(anchorDate)
+                .periodStart(in.getPeriodStart())
                 .periodEndExcl(in.getPeriodEndExcl())
                 .build();
     }
@@ -381,5 +372,24 @@ public final class ProrationEngine {
                 "from", from.toString(),             // 잔여 구간 시작
                 "to", toExcl.toString()              // 잔여 구간 끝(배타)
         );
+    }
+
+    private List<ProrationInput.SeatEvent> normalizeAndSortForBilling(
+            List<ProrationInput.SeatEvent> raw,
+            LocalDate paidDate,
+            LocalDate anchorDate
+    ) {
+        return raw.stream()
+                .map(e -> {
+                    LocalDate effective = e.getOccurredAt().plusDays(1); // D+1 반영
+                    return e.toBuilder()
+                            .occurredAt(effective)
+                            .build();
+                })
+                // 과금 기간 밖은 컷
+                .filter(e -> !e.getOccurredAt().isBefore(paidDate)
+                        && e.getOccurredAt().isBefore(anchorDate))
+                .sorted(Comparator.comparing(ProrationInput.SeatEvent::getOccurredAt))
+                .collect(toList());
     }
 }

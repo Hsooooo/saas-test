@@ -579,6 +579,8 @@ public class PaymentService {
         lp.setStateCd(EnumCode.LicensePartnership.StateCd.ACTIVE.getCode());
         lp.setLicenseIdx(preview.getToLicenseIdx());
         lp.setCurrentSeatCount(partnershipComponent.getPartnershipActiveMemberCount(lp.getPartnershipIdx()));
+        lp.setPeriodStartDate(preview.getPeriodStart());
+        lp.setPeriodEndDate(preview.getPeriodEnd());
         licensePartnershipMapper.updateByLicensePartnershipVO(lp);
     }
 
@@ -800,6 +802,7 @@ public class PaymentService {
         out.setCreditCarryOver(creditCarryOver);
 
         out.setNotes(buildNotes(input, out));
+        out.setNewSubscription(input.getCaseType() == ProrationInput.CaseType.NEW_TO_PAID);
         return out;
     }
 
@@ -847,7 +850,7 @@ public class PaymentService {
             PaymentPreviewResult.PreviewResultItem item =
                     PaymentPreviewResult.PreviewResultItem.builder()
                             .itemType("RECURRING")
-                            .description("New subscription charge")
+                            .description("신규 구독 결제 금액")
                             .quantity(chargeSeat)
                             .unitPrice(unitPrice)
                             .days(null)              // 월 선청구: 일수 개념 없음
@@ -861,10 +864,44 @@ public class PaymentService {
                     .amount(Math.toIntExact(lineAmount))            // 총액(Integer) — 정책상 int 사용
                     .build();
         }
+        if (input.getCaseType() == ProrationInput.CaseType.UPGRADE) {
+            // 1) 구 플랜 정산
+            ProrationResult settle = prorationEngine.calculate2(input);
+            PaymentPreviewResult prorationPreview = PaymentPreviewResult.of(settle);
 
-        // 그 외(업/다운그레이드, 동일주기 내 좌석변경 등): 프레이션 엔진 결과 사용
-        final ProrationResult prorationResult = prorationEngine.calculate2(input);
-        return PaymentPreviewResult.of(prorationResult);
+            // 2) 새 플랜 한 달 선청구용 인풋
+            ProrationInput next = input.toBuilder()
+                    .caseType(ProrationInput.CaseType.NEW_TO_PAID)
+                    .fromPlan(null)
+                    .periodStart(input.getAnchorDate().plusDays(1))   // 정책에 따라 조정
+                    .periodEndExcl(input.getAnchorDate().plusDays(1).plusMonths(1))
+                    .snapshotSeats(input.getActiveSeats())
+                    .build();
+
+            PaymentPreviewResult recurringPreview = paymentPreviewResult(next); // NEW_TO_PAID 분기 태움
+
+            // 3) 두 Preview를 merge하는 헬퍼 하나 만들기
+            return mergePreview(recurringPreview, prorationPreview);
+        }
+        return null;
+    }
+
+    private PaymentPreviewResult mergePreview(PaymentPreviewResult recurringPreview, PaymentPreviewResult prorationPreview) {
+        List<PaymentPreviewResult.PreviewResultItem> mergedItems = new ArrayList<>();
+        if (prorationPreview.getItems() != null) {
+            mergedItems.addAll(prorationPreview.getItems());
+        }
+        if (recurringPreview.getItems() != null) {
+            mergedItems.addAll(recurringPreview.getItems());
+        }
+        int totalAmount = nz(prorationPreview.getAmount()) + nz(recurringPreview.getAmount());
+
+        return PaymentPreviewResult.builder()
+                .items(mergedItems)
+                .periodStart(recurringPreview.getPeriodStart())
+                .periodEnd(recurringPreview.getPeriodEnd())
+                .amount(totalAmount)
+                .build();
     }
 
     // null→0 보정
