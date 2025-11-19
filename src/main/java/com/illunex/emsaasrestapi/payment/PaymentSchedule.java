@@ -12,6 +12,7 @@ import com.illunex.emsaasrestapi.payment.dto.PaymentPreviewResult;
 import com.illunex.emsaasrestapi.payment.mapper.InvoiceItemMapper;
 import com.illunex.emsaasrestapi.payment.mapper.InvoiceMapper;
 import com.illunex.emsaasrestapi.payment.mapper.SubscriptionChangeEventMapper;
+import com.illunex.emsaasrestapi.payment.util.ProrationComponent;
 import com.illunex.emsaasrestapi.payment.util.ProrationEngine;
 import com.illunex.emsaasrestapi.payment.util.ProrationInput;
 import com.illunex.emsaasrestapi.payment.util.ProrationResult;
@@ -50,6 +51,8 @@ public class PaymentSchedule {
     private final ProrationEngine prorationEngine;
     private final PartnershipComponent partnershipComponent;
     private final TossPaymentService tossPaymentService; // 자동결제 2단계 붙일 때 사용 예정
+
+    private final ProrationComponent prorationComponent;
 
     @Scheduled(cron = "0 0 2 * * ?", zone = "Asia/Seoul")
     public List<PaymentPreviewResult> generateMonthlyInvoiceBatch() {
@@ -111,7 +114,7 @@ public class PaymentSchedule {
         final boolean isChangeReserved = CHANGE.getCode().equals(lp.getStateCd());
 
         // 2) 좌석 변경분 정산 입력 + 결과
-        ProrationInput prorationInput = buildProrationInput(currentLicense, lp, lastPaidInvoice, lp.getStateCd());
+        ProrationInput prorationInput = prorationComponent.buildProrationInput(currentLicense, lp, lastPaidInvoice, lp.getStateCd());
         ProrationResult prorationResult = prorationEngine.calculate2(prorationInput);
         PaymentPreviewResult prorationPreview = PaymentPreviewResult.of(prorationResult);
         prorationPreview.setPartnershipIdx(lp.getPartnershipIdx());
@@ -356,81 +359,6 @@ public class PaymentSchedule {
 
     // ===================== 프레이션 입력 빌더 =====================
 
-    /**
-     * A. 좌석 변경분 미결금액 처리용 입력 빌더
-     *   - 현재 구독 기간 내에 업그레이드 이력 존재 시, 업그레이드 이후~종료일만 정산하기 위해 filterEventList 적용
-     */
-    public ProrationInput buildProrationInput(LicenseVO currentPlan,
-                                              LicensePartnershipVO lp,
-                                              InvoiceVO lastPaidInvoice,
-                                              String stateCd) throws CustomException {
-
-        if (lastPaidInvoice == null) {
-            throw new CustomException(ErrorCode.COMMON_INVALID, "lastPaidInvoice is null");
-        }
-
-        // 1) 이벤트 로딩 (해당 결제기간 기준)
-        List<SubscriptionChangeEventVO> events = eventMapper.selectByLpAndOccurredBetween(
-                lp.getIdx(),
-                lastPaidInvoice.getPeriodStart(),
-                lastPaidInvoice.getPeriodEnd()
-        );
-
-        // 2) 해지/변경 예약이 아니면 업그레이드 이전 이벤트 컷
-        if (!CANCEL.getCode().equals(stateCd) && !CHANGE.getCode().equals(stateCd)) {
-            events = filterEventList(events);
-        }
-
-        // 3) SeatEvent 변환
-        final List<ProrationInput.SeatEvent> seatEvents = events.stream()
-                .map(e -> ProrationInput.SeatEvent.builder()
-                        .occurredAt(e.getOccurredDate().toLocalDate())
-                        .delta(e.getQtyDelta())
-                        .relatedId(e.getIdx().longValue())
-                        .build())
-                .toList();
-
-        ProrationInput.Plan fromPlan = planOf(currentPlan);
-
-        // 4) caseType 결정
-        //    - 현재 설계에서는 CANCEL을 "조정만(정기 라인 없음)" 의미로 사용
-        ProrationInput.CaseType caseType = ProrationInput.CaseType.CANCEL;
-
-        return ProrationInput.builder()
-                .paidSeat(lastPaidInvoice.getChargeUserCount())
-                .paidDate(lastPaidInvoice.getIssueDate().toLocalDate())
-                .paymentTime(ZonedDateTime.now())
-                .periodStart(lastPaidInvoice.getPeriodStart())
-                .periodEndExcl(lastPaidInvoice.getPeriodEnd())
-                .anchorDate(lastPaidInvoice.getPeriodEnd().minusDays(1)) // anchor < periodEndExcl 보장
-                .snapshotSeats(lp.getCurrentSeatCount())
-                .seatEvents(seatEvents)
-                .fromPlan(fromPlan)
-                .toPlan(fromPlan) // 동일 플랜 내 좌석 변경 정산
-                .roundingMode(RoundingMode.HALF_UP)
-                .currency("KRW")
-                .caseType(caseType)
-                .build();
-    }
-
-    /**
-     * PLAN_UPGRADE 이전 이벤트 컷:
-     *  - 업그레이드 이후~종료일만 정산하기 위해 사용
-     */
-    private List<SubscriptionChangeEventVO> filterEventList(List<SubscriptionChangeEventVO> events) {
-        events.sort(Comparator.comparing(SubscriptionChangeEventVO::getOccurredDate));
-
-        int upgradeIdx = IntStream.range(0, events.size())
-                .filter(i -> EnumCode.SubscriptionChangeEvent.TypeCd.PLAN_UPGRADE.getCode()
-                        .equals(events.get(i).getTypeCd()))
-                .findFirst()
-                .orElse(-1);
-
-        if (upgradeIdx > 0) {
-            return events.subList(upgradeIdx, events.size());
-        }
-        return events;
-    }
 
     /** billingDay(1~28) 기준 다음 주기의 종료일(= next billing date) 계산 */
     private LocalDate calcNextPeriodEnd(Integer billingDay, LocalDate nextPeriodStart) throws CustomException {
@@ -449,7 +377,7 @@ public class PaymentSchedule {
         InvoiceVO lastPaidInvoice = invoiceMapper.selectLastPaidByLicensePartnershipIdx(lp.getIdx());
         if (lastPaidInvoice == null) return;
 
-        ProrationInput input = buildProrationInput(currentPlan, lp, lastPaidInvoice, lp.getStateCd());
+        ProrationInput input = prorationComponent.buildProrationInput(currentPlan, lp, lastPaidInvoice, lp.getStateCd());
         ProrationResult res = prorationEngine.calculate2(input);
         PaymentPreviewResult previewResult = PaymentPreviewResult.of(res);
         log.info("test previewResult: {}", previewResult);

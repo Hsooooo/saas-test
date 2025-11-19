@@ -15,6 +15,7 @@ import com.illunex.emsaasrestapi.payment.mapper.InvoiceItemMapper;
 import com.illunex.emsaasrestapi.payment.mapper.InvoiceMapper;
 import com.illunex.emsaasrestapi.payment.mapper.SubscriptionChangeEventMapper;
 import com.illunex.emsaasrestapi.payment.vo.InvoiceVO;
+import com.illunex.emsaasrestapi.payment.vo.SubscriptionChangeEventVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,8 +23,13 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
+
+import static com.illunex.emsaasrestapi.common.code.EnumCode.LicensePartnership.StateCd.CANCEL;
+import static com.illunex.emsaasrestapi.common.code.EnumCode.LicensePartnership.StateCd.CHANGE;
 
 @Component
 @RequiredArgsConstructor
@@ -35,8 +41,9 @@ public class ProrationComponent {
     private final PartnershipMemberMapper partnershipMemberMapper;
     private final SubscriptionChangeEventMapper subscriptionChangeEventMapper;
     private final InvoiceItemMapper invoiceItemMapper;
+    private final SubscriptionChangeEventMapper eventMapper;
 
-    public ProrationInput buildInputForPreview(RequestPaymentDTO.SubscriptionInfo req, MemberVO member) throws CustomException {
+    public ProrationInput buildInputForPreview(RequestPaymentDTO.SubscriptionInfo req) throws CustomException {
         final int partnershipIdx = req.getPartnershipIdx();
 
         // 현재 구독(license_partnership) 조회: 없을 수 있음
@@ -47,7 +54,12 @@ public class ProrationComponent {
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_EMPTY));
 
         final ZoneId Z = ZoneId.of("Asia/Seoul");
-        final ZonedDateTime T = ZonedDateTime.now(Z);
+        ZonedDateTime T;
+        if (req.getCalcDate() == null) {
+            T = ZonedDateTime.now(Z);
+        } else {
+            T = req.getCalcDate().withZoneSameInstant(Z);
+        }
 
         // ===== 기간 결정 =====
         final LocalDate periodStart;
@@ -210,5 +222,57 @@ public class ProrationComponent {
                 "planCd", planCd,                    // 구 플랜 코드
                 "paymentDate", paymentDate.toString()  // 업그레이드 기준일
         );
+    }
+
+    /**
+     * A. 좌석 변경분 미결금액 처리용 입력 빌더
+     *   - 현재 구독 기간 내에 업그레이드 이력 존재 시, 업그레이드 이후~종료일만 정산하기 위해 filterEventList 적용
+     */
+    public ProrationInput buildProrationInput(LicenseVO currentPlan,
+                                              LicensePartnershipVO lp,
+                                              InvoiceVO lastPaidInvoice,
+                                              String stateCd) throws CustomException {
+
+        if (lastPaidInvoice == null) {
+            throw new CustomException(ErrorCode.COMMON_INVALID, "lastPaidInvoice is null");
+        }
+
+        // 1) 이벤트 로딩 (해당 결제기간 기준)
+        List<SubscriptionChangeEventVO> events = eventMapper.selectByLpAndOccurredBetween(
+                lp.getIdx(),
+                lastPaidInvoice.getPeriodStart(),
+                lastPaidInvoice.getPeriodEnd()
+        );
+
+        // 3) SeatEvent 변환
+        final List<ProrationInput.SeatEvent> seatEvents = events.stream()
+                .map(e -> ProrationInput.SeatEvent.builder()
+                        .occurredAt(e.getOccurredDate().toLocalDate())
+                        .delta(e.getQtyDelta())
+                        .relatedId(e.getIdx().longValue())
+                        .build())
+                .toList();
+
+        ProrationInput.Plan fromPlan = planOf(currentPlan);
+
+        // 4) caseType 결정
+        //    - 현재 설계에서는 CANCEL을 "조정만(정기 라인 없음)" 의미로 사용
+        ProrationInput.CaseType caseType = ProrationInput.CaseType.CANCEL;
+
+        return ProrationInput.builder()
+                .paidSeat(lastPaidInvoice.getChargeUserCount())
+                .paidDate(lastPaidInvoice.getIssueDate().toLocalDate())
+                .paymentTime(ZonedDateTime.now())
+                .periodStart(lastPaidInvoice.getPeriodStart())
+                .periodEndExcl(lastPaidInvoice.getPeriodEnd())
+                .anchorDate(lastPaidInvoice.getPeriodEnd().minusDays(1)) // anchor < periodEndExcl 보장
+                .snapshotSeats(lp.getCurrentSeatCount())
+                .seatEvents(seatEvents)
+                .fromPlan(fromPlan)
+                .toPlan(fromPlan) // 동일 플랜 내 좌석 변경 정산
+                .roundingMode(RoundingMode.HALF_UP)
+                .currency("KRW")
+                .caseType(caseType)
+                .build();
     }
 }

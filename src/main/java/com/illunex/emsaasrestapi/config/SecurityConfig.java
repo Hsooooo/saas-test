@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/project/category/**").hasAnyAuthority(MEMBER)
                         .requestMatchers("/network/**").hasAnyAuthority(MEMBER)
                         .requestMatchers("/query/**").hasAnyAuthority(MEMBER)
+                        .requestMatchers("/payment/subscription/change-event/calc-proration").permitAll()
                         .anyRequest()
                         .authenticated()
                 )

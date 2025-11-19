@@ -64,15 +64,13 @@ public class PaymentController {
     /**
      * 구독 변경 이벤트 청구 금액 계산
      * @param subscriptionInfo
-     * @param memberVO
      * @return
      * @throws Exception
      */
     @PostMapping("/subscription/change-event/calc-proration")
-    public CustomResponse<?> calculateProration(@RequestBody RequestPaymentDTO.SubscriptionInfo subscriptionInfo,
-                                                @CurrentMember MemberVO memberVO) throws Exception {
+    public CustomResponse<?> calculateProration(@RequestBody RequestPaymentDTO.SubscriptionInfo subscriptionInfo) throws Exception {
         return CustomResponse.builder()
-                .data(paymentService.calculateProrationAmount(subscriptionInfo, memberVO))
+                .data(paymentService.calculateProrationAmount(subscriptionInfo))
                 .build();
     }
 

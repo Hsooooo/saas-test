@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 
 public class RequestPaymentDTO {
@@ -34,9 +35,8 @@ public class RequestPaymentDTO {
     public static class SubscriptionInfo {
         private Integer partnershipIdx;
         private Integer licenseIdx;
-        private String action;
-        private String effective;
         private String orderNumber;
+        private ZonedDateTime calcDate;
 
     }
 
