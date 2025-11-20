@@ -61,6 +61,9 @@ docker run -d -p ${PORT}:${PORT} \
     -v /etc/localtime:/etc/localtime:ro -e TZ=Asia/Seoul \
     -e "spring.profiles.active=${ACTIVE}" \
     -e "server.cors-list=${CORS_LIST}" \
+    -e "spring.datasource.url=${RDS_URL}" \
+    -e "spring.datasource.username=${RDS_USER}" \
+    -e "spring.datasource.password=${RDS_PASS}" \
     -e "server.encrypt-key=${AES_ENCRYPT_KEY}" \
     -e "webhook.synology.url=${SYNOLOGY_HOOK_URL}" \
     -e "webhook.synology.api=${SYNOLOGY_HOOK_API}" \
