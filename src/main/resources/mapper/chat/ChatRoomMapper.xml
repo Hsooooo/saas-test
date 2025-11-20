@@ -52,4 +52,11 @@
            SET delete_date = NOW()
          WHERE idx = #{idx}
     </delete>
+
+    <update id="updateByChatRoomVO" parameterType="ChatRoomVO">
+        UPDATE chat_room
+           SET title = #{title},
+               update_date = NOW()
+         WHERE idx = #{idx}
+    </update>
 </mapper>

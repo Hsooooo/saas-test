@@ -61,6 +61,13 @@ public class ChatService {
         return room.getIdx();
     }
 
+    public void updateChatRoomTitle(int chatRoomIdx, String title) {
+        ChatRoomVO room = new ChatRoomVO();
+        room.setIdx(chatRoomIdx);
+        room.setTitle(title);
+        chatRoomMapper.updateByChatRoomVO(room);
+    }
+
     public void saveHistoryAsync(int chatRoomIdx, String senderType, String categoryType, String message) {
         Mono.fromRunnable(() -> {
             ChatHistoryVO h = new ChatHistoryVO();

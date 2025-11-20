@@ -211,11 +211,16 @@ public class AiProxyController {
                             mcpResultSet.add(item.asText());
                         }
                     }
+
+                    if (isSummaryTitle(n) && roomIdx == null) {
+                        chatService.updateChatRoomTitle(chatRoomIdx, n.get("summary_title").asText());
+                    }
                 } catch (Exception ex) {
                     log.warn("tool/assistant parse fail: {}", ex.toString());
                 }
             }
         }, e -> log.warn("tool/assistant parser error: {}", e.getMessage()));
+
 
         // 4-3) 완료 시점: 마지막 메시지 → chat_history 저장, 그 history_idx로 tool_result들 연결
         Disposable dDone = stream.ignoreElements().subscribe(null, null, () -> {
@@ -417,6 +422,10 @@ public class AiProxyController {
         return new ResponseEntity<>(emitter, headers, HttpStatus.OK);
     }
 
+    private boolean isSummaryTitle(JsonNode n) {
+        return n.hasNonNull("summary_title") && n.get("summary_title").isTextual();
+    }
+
     private boolean isMcpResult(JsonNode n) {
         return n.hasNonNull("mcp") && n.get("mcp").isArray();
     }
@@ -515,6 +524,11 @@ public class AiProxyController {
         if (n.has("message") && n.get("message").isTextual()) return n.get("message").asText(); // ★ 추가
         if (n.hasNonNull("text")) return n.get("text").asText();
         if (n.has("message") && n.get("message").isTextual()) return n.get("message").asText();
+        return null;
+    }
+
+    private static String extractSummaryTitle(JsonNode n) {
+        if (n.hasNonNull("summary_title")) return n.get("summary_title").asText();
         return null;
     }
 
