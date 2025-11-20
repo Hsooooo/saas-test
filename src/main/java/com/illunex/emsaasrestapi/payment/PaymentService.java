@@ -745,7 +745,7 @@ public class PaymentService {
         // 1) 프리뷰 입력 생성
         final ProrationInput input = prorationComponent.buildInputForPreview(req);
 
-        if (input.getFromPlan().getIdx() == input.getToPlan().getIdx()) {
+        if (input.getFromPlan() != null && input.getFromPlan().getIdx() == input.getToPlan().getIdx()) {
             throw new CustomException(ErrorCode.COMMON_INVALID);
         }
 
