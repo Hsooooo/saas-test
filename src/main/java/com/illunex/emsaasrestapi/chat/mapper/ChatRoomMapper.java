@@ -19,4 +19,6 @@ public interface ChatRoomMapper {
     Optional<ChatRoomVO> selectByPartnershipMemberIdxAndChatRoomIdx(Integer partnershipMemberIdx, Integer chatRoomIdx);
 
     void softDeleteByIdx(Integer chatRoomIdx);
+
+    void updateByChatRoomVO(ChatRoomVO vo);
 }
