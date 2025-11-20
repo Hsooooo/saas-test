@@ -26,3 +26,6 @@ SET @sql := IF(
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+ALTER TABLE `em_saas`.`license`
+    ADD COLUMN IF NOT EXISTS `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 번호' AFTER `version_no`;

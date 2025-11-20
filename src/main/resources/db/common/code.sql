@@ -91,6 +91,7 @@ INSERT INTO em_saas.code (code, first_code, second_code, third_code, code_value,
 ('PLC0001', 'PLC', '00', '01', 'BASIC', 1),
 ('PLC0002', 'PLC', '00', '02', 'ADVANCED', 2),
 ('PLC0003', 'PLC', '00', '03', 'PREMIUM', 3),
+('PLC0004', 'PLC', '00', '04', 'ENTERPRISE', 4),
 
 ('LPS0000', 'LPS', '00', '00', '- 파트너쉽 라이센스 상태 코드', 0),
 ('LPS0001', 'LPS', '00', '01', '임시', 1),

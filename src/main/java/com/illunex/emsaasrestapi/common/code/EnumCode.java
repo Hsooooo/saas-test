@@ -382,7 +382,9 @@ public class EnumCode {
         public enum PlanCd implements BaseCodeEnum {
             BASIC("PLC0001", "Basic Plan"),
             ADVANCED("PLC0002", "Advanced Plan"),
-            PREMIUM("PLC0003", "Premium Plan");
+            PREMIUM("PLC0003", "Premium Plan"),
+            ENTERPRISE("PLC0004", "Enterprise Plan"),
+            ;
 
             private final String code;
             private final String value;
