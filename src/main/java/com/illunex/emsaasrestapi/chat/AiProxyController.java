@@ -830,16 +830,16 @@ public class AiProxyController {
     private void normalizeForPersist(ObjectNode obj, ObjectMapper om) {
         if ("get_search_result_by_query_tool".equals(obj.path("tool").asText())) {
             ArrayNode src = (ArrayNode) obj.path("results");
-            ArrayNode arr = om.createArrayNode();
-            int limit = Math.min(src.size(), 10);
-            for (int i = 0; i < limit; i++) {
-                JsonNode it = src.get(i);
-                ObjectNode slim = om.createObjectNode();
-                slim.put("title", it.path("title").asText(null));
-                slim.put("url",   it.path("url").asText(null));
-                arr.add(slim);
+            if (src != null && src.isArray()) {
+                ArrayNode arr = om.createArrayNode();
+                for (JsonNode it : src) {
+                    ObjectNode slim = om.createObjectNode();
+                    slim.put("title", it.path("title").asText(null));
+                    slim.put("url",   it.path("url").asText(null));
+                    arr.add(slim);
+                }
+                obj.set("results", arr);
             }
-            obj.set("results", arr);
         }
         obj.put("@upsert_at", java.time.OffsetDateTime.now().toString());
     }
