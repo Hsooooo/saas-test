@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`license` (
     `project_count_limit` INT(11) NULL DEFAULT NULL COMMENT '프로젝트 개수 제한',
     `period_month` INT(11) NULL DEFAULT 1 COMMENT '결제 주기 개월수 (기본 1개월)',
     `version_no` INT(11) DEFAULT 1 COMMENT '요금제 버전',
+    `partnership_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너쉽 번호',
     `active` TINYINT(1) NULL DEFAULT 1 COMMENT '활성화 여부(1:활성, 0:비활성)',
     `update_date` DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일',
     `create_date` DATETIME NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일',

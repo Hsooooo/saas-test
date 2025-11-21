@@ -19,9 +19,9 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: jdbc:mariadb://172.19.0.100:3306/em_saas
-    username: root
-    password: Illunex123!
+    url: ${rds-url}
+    username: ${rds-user}
+    password: ${rds-pass}
   servlet:
     multipart:
       max-file-size: 50MB
