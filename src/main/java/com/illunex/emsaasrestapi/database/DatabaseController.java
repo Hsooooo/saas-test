@@ -55,6 +55,47 @@ public class DatabaseController {
     }
 
     /**
+     * 템플릿 데이터베이스 검색
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param query 검색 조건
+     * @param pageRequest 페이지 요청 정보
+     * @return 검색 결과
+     */
+    @PostMapping("/search/template")
+    public CustomResponse<?> searchDatabaseByTemplate(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                                      @RequestBody RequestDatabaseDTO.SearchTemplate query,
+                                                      CustomPageRequest pageRequest) throws CustomException {
+        log.info("Received database search request with query: {}, projectIdx = {}", query, projectIdx);
+        return databaseService.searchDatabaseByTemplate(projectIdx, query, pageRequest);
+    }
+
+    /**
+     * 프로젝트 노드 타입 검색
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @return
+     */
+    @GetMapping("/node-type")
+    public CustomResponse<?> searchDatabaseNodeType(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        log.info("Received request to get database node type for project index: {}", projectIdx);
+        return databaseService.searchDatabaseNodeType(projectIdx);
+    }
+
+    /**
+     * 프로젝트 노드 컬럼 타입 검색
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @return
+     */
+    @PostMapping("/node/column-type")
+    public CustomResponse<?> searchDatabaseNodeColumnType(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                                          @RequestBody RequestDatabaseDTO.SearchTemplate request) throws CustomException {
+        log.info("Received request to get database node column type for project index: {}", projectIdx);
+        return databaseService.searchDatabaseNodeColumnType(projectIdx, request);
+    }
+
+    /**
      * 데이터 추가
      *
      * @param projectIdx 프로젝트 인덱스
