@@ -7,8 +7,8 @@ import com.illunex.emsaasrestapi.database.dto.EdgeDataDTO;
 import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
 import com.illunex.emsaasrestapi.database.dto.ResponseDatabaseDTO;
 import com.illunex.emsaasrestapi.database.dto.SaveResultRecord;
-import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.document.database.Column;
+import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
@@ -20,12 +20,13 @@ import com.illunex.emsaasrestapi.project.vo.ProjectTableVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.DeleteResult;
 import lombok.RequiredArgsConstructor;
+import org.bson.BsonType;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.bson.Document;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -203,6 +204,206 @@ public class DatabaseService {
     }
 
     /**
+     * 템플릿 데이터베이스 검색 기능
+     *
+     * @param projectIdx  프로젝트 인덱스
+     * @param query       검색 쿼리
+     * @param pageRequest 페이지 요청 정보
+     * @return 검색 결과를 포함한 CustomResponse 객체
+     */
+    public CustomResponse<?> searchDatabaseByTemplate(Integer projectIdx, RequestDatabaseDTO.SearchTemplate query, CustomPageRequest pageRequest) {
+        String nodeType = query.getNodeType();
+        List<RequestDatabaseDTO.SearchFilter> filters = query.getFilters();
+        List<RequestDatabaseDTO.SearchSort> sorts = query.getSorts();
+
+        // 1. 기본 검색 조건 생성
+        Criteria criteria = Criteria.where(MongoDBUtils.Node._ID_PROJECT_IDX.getField()).is(projectIdx)
+                .and(MongoDBUtils.Node._ID_TYPE.getField()).is(nodeType);
+
+        // 2. 필터 조건 추가
+        List<Criteria> filterCriteriaList = new ArrayList<>();
+
+        List<RequestDatabaseDTO.SearchFilter> searchFilterList = Optional.ofNullable(filters)
+                .orElse(List.of());
+        for (RequestDatabaseDTO.SearchFilter searchFilter : searchFilterList) {
+            Criteria filterCriteria = createFilterCriteria(searchFilter);
+            if (filterCriteria != null) {
+                filterCriteriaList.add(filterCriteria);
+            }
+        }
+
+        if (!filterCriteriaList.isEmpty()) {
+            criteria = criteria.andOperator(filterCriteriaList.toArray(new Criteria[0]));
+        }
+
+        // 3. 정렬 조건 생성
+        List<String> sortList = new ArrayList<>();
+
+        List<RequestDatabaseDTO.SearchSort> searchSortList = Optional.ofNullable(sorts)
+                .orElse(List.of());
+        for (RequestDatabaseDTO.SearchSort searchSort : searchSortList) {
+            String columnName = searchSort.getColumnName();
+            Boolean isAsc = searchSort.getIsAsc();
+
+            if (columnName == null || columnName.isEmpty()) {
+                throw new IllegalArgumentException("정렬 기준의 컬럼명이 비어있습니다.");
+            }
+
+            String sortColumn = MongoDBUtils.Node.PROPERTIES.getPropertyField(columnName);
+            String sortDirection = isAsc ? "ASC" : "DESC";
+            String sort = sortColumn + "," + sortDirection;
+
+            sortList.add(sort);
+        }
+
+        Pageable pageable = pageRequest.of(sortList.toArray(new String[0]));
+
+        // 4. 데이터 조회
+        Query findNodeQuery = Query.query(criteria).with(pageable);
+        Query countNodeQuery = Query.query(criteria);
+
+        List<Node> nodes = mongoTemplate.find(findNodeQuery, Node.class);
+        long totalCount = mongoTemplate.count(countNodeQuery, Node.class);
+
+        // 5. 결과 매핑
+        // - 컬럼 정보 조회
+        List<Map> mappedResults = nodes.stream()
+                .map(Node::getProperties)
+                .collect(Collectors.toList());
+
+        return CustomResponse.builder()
+                .data(new PageImpl<>(mappedResults, pageRequest.of(sortList.toArray(new String[0])), totalCount))
+                .build();
+    }
+
+    private Criteria createFilterCriteria(RequestDatabaseDTO.SearchFilter filter) {
+        String field = MongoDBUtils.Node.PROPERTIES.getPropertyField(filter.getColumnName());
+        String raw = filter.getSearchString() == null ? "" : filter.getSearchString();
+        ParsedCandidates c = parseCandidates(raw);
+
+        RequestDatabaseDTO.FilterCondition filterCondition = filter.getFilterCondition();
+        switch (filterCondition) {
+            case EQUALS, IS:
+                return createEqualsCriteria(field, c);
+            case NOT_EQUALS, IS_NOT:
+                return createNotEqualsCriteria(field, c);
+            case LESS_THAN, LESS_THAN_OR_EQUAL, GREATER_THAN, GREATER_THAN_OR_EQUAL:
+                return createComparisonCriteria(field, filter.getFilterCondition(), c);
+            case EMPTY:
+                return emptyCriteria(field);
+            case NOT_EMPTY:
+                return notEmptyCriteria(field);
+            case CONTAINS:
+                return Criteria.where(field).regex(escapeCharacter(raw), "i");
+            case NOT_CONTAINS:
+                return new Criteria().orOperator(
+                        // - 조건 1: 필드가 비어있는 경우 (null, 빈 문자열, 필드 없음)
+                        emptyCriteria(field),
+                        // or
+                        // - 조건 2: 필드가 있고 문자열인데, 검색어와 매치되지 않는 경우
+                        new Criteria().andOperator(
+                                Criteria.where(field).type(BsonType.STRING.getValue()),
+                                Criteria.where(field).not().regex(escapeCharacter(raw), "i")
+                        )
+                );
+            default:
+                return null;
+        }
+    }
+
+    private Criteria createEqualsCriteria(String field, ParsedCandidates c) {
+        List<Criteria> orParts = new ArrayList<>();
+        orParts.add(Criteria.where(field).is(c.asString()));
+
+        if (c.asNumber() != null) orParts.add(Criteria.where(field).is(c.asNumber()));
+        if (c.asBoolean() != null) orParts.add(Criteria.where(field).is(c.asBoolean()));
+        if (c.asDate() != null) orParts.add(Criteria.where(field).is(c.asDate()));
+
+        return orParts.size() == 1 ? orParts.get(0) : new Criteria().orOperator(orParts.toArray(new Criteria[0]));
+    }
+
+    private Criteria createNotEqualsCriteria(String field, ParsedCandidates c) {
+        List<Criteria> andParts = new ArrayList<>();
+        andParts.add(Criteria.where(field).ne(c.asString()));
+
+        if (c.asNumber() != null) andParts.add(Criteria.where(field).ne(c.asNumber()));
+        if (c.asBoolean() != null) andParts.add(Criteria.where(field).ne(c.asBoolean()));
+        if (c.asDate() != null) andParts.add(Criteria.where(field).ne(c.asDate()));
+
+        return andParts.size() == 1 ? andParts.get(0) : new Criteria().andOperator(andParts.toArray(new Criteria[0]));
+    }
+
+    private Criteria createComparisonCriteria(String field, RequestDatabaseDTO.FilterCondition condition, ParsedCandidates c) {
+        if (c.asNumber() == null && c.asDate() == null) {
+            return Criteria.where("_id").is("__no_match__");
+        }
+
+        List<Criteria> orParts = new ArrayList<>();
+
+        // 1. 숫자 비교
+        if (c.asNumber() != null) {
+            Criteria numberComparison;
+            Long number = c.asNumber();
+
+            switch (condition) {
+                case LESS_THAN:
+                    numberComparison = Criteria.where(field).lt(number);
+                    break;
+                case LESS_THAN_OR_EQUAL:
+                    numberComparison = Criteria.where(field).lte(number);
+                    break;
+                case GREATER_THAN:
+                    numberComparison = Criteria.where(field).gt(number);
+                    break;
+                case GREATER_THAN_OR_EQUAL:
+                    numberComparison = Criteria.where(field).gte(number);
+                    break;
+                default:
+                    numberComparison = null;
+                    break;
+            }
+
+            orParts.add(numberComparison);
+        }
+
+        // 2. 날짜 비교
+        if (c.asDate() != null) {
+            Criteria dateComparison;
+            Date date = c.asDate();
+
+            switch (condition) {
+                case LESS_THAN:
+                    dateComparison = Criteria.where(field).lt(date);
+                    break;
+                case LESS_THAN_OR_EQUAL:
+                    dateComparison = Criteria.where(field).lte(date);
+                    break;
+                case GREATER_THAN:
+                    dateComparison = Criteria.where(field).gt(date);
+                    break;
+                case GREATER_THAN_OR_EQUAL:
+                    dateComparison = Criteria.where(field).gte(date);
+                    break;
+                default:
+                    dateComparison = null;
+                    break;
+            }
+
+            orParts.add(dateComparison);
+        }
+
+        return orParts.size() == 1 ? orParts.get(0) : new Criteria().orOperator(orParts.toArray(new Criteria[0]));
+    }
+
+    private String escapeCharacter(String raw) {
+        if (raw == null) return "";
+
+        // 정규식 특수 문자 목록: \ . + * ? ^ $ [ ] ( ) { } |
+        // 이 문자들을 찾아서 앞에 백슬래시(\) 추가
+        return raw.replaceAll("([\\\\\\.\\+\\*\\?\\^\\$\\[\\]\\(\\)\\{\\}\\|])", "\\\\$1");
+    }
+
+    /**
      * 요청된 DocType에 따라 해당하는 클래스 반환
      *
      * @param docType 요청된 DocType
@@ -304,6 +505,7 @@ public class DatabaseService {
                 .data(response)
                 .build();
     }
+
     private Map<String, Long> aggregateCountsByType(Integer projectIdx, List<String> titles, Class<?> collectionClass) {
         Map<String, Long> map = new HashMap<>();
         if (titles == null || titles.isEmpty()) return map;
@@ -537,12 +739,17 @@ public class DatabaseService {
     }
 
     // 1) 유틸: 타입 후보 파싱
-    private record ParsedCandidates(Object asString, Long asNumber, Boolean asBoolean, Date asDate) {}
+    private record ParsedCandidates(Object asString, Long asNumber, Boolean asBoolean, Date asDate) {
+    }
+
     private ParsedCandidates parseCandidates(String s) {
         Object asString = s;
 
         Long asNumber = null;
-        try { asNumber = Long.parseLong(s); } catch (Exception ignored) {}
+        try {
+            asNumber = Long.parseLong(s);
+        } catch (Exception ignored) {
+        }
 
         Boolean asBoolean = null;
         if ("true".equalsIgnoreCase(s) || "false".equalsIgnoreCase(s)) {
@@ -563,7 +770,8 @@ public class DatabaseService {
                 java.time.Instant inst = java.time.Instant.from(ta);
                 asDate = Date.from(inst);
                 break;
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
         return new ParsedCandidates(asString, asNumber, asBoolean, asDate);
@@ -577,6 +785,7 @@ public class DatabaseService {
                 Criteria.where(field).is("")
         );
     }
+
     private Criteria notEmptyCriteria(String field) {
         return new Criteria().norOperator(
                 Criteria.where(field).exists(false),

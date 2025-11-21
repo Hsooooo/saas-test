@@ -45,6 +45,16 @@ public class RequestDatabaseDTO {
     }
 
     /**
+     * 템플릿 검색 요청 DTO
+     */
+    @Getter
+    public static class SearchTemplate {
+        private String nodeType; // Node 타입
+        private List<SearchFilter> filters; // 검색할 컬럼 이름들
+        private List<SearchSort> sorts; // 정렬 조건들
+    }
+
+    /**
      * 조회 조건 DTO
      */
     @Getter
