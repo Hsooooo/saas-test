@@ -121,7 +121,7 @@ public class KnowledgeController {
      * @return
      * @throws CustomException
      */
-    @GetMapping("/network/extend")
+    @PatchMapping("/network/extend")
     public CustomResponse<?> getKnowledgeGardenNetworkExtend(@RequestBody RequestKnowledgeDTO.ExtendSearch req,
                                                              @CurrentMember MemberVO memberVO) throws CustomException {
         return CustomResponse.builder()
