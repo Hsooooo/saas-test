@@ -324,7 +324,16 @@ public class DatabaseService {
             throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
         }
 
-        // 2. 컬럼 조회
+        // 2. 노드 타입 조회 (nodeType 유효성 검사)
+        List<String> nodeTypeList = project.getProjectNodeList().stream()
+                .map(ProjectNode::getNodeType)
+                .toList();
+
+        if (!nodeTypeList.contains(nodeType)) {
+            throw new CustomException(ErrorCode.PROJECT_INVALID_NODE_TYPE);
+        }
+
+        // 3. 컬럼 조회
         Query findColumnQuery = Query.query(
                 Criteria.where(MongoDBUtils.Column.PROJECT_IDX.getField()).is(projectIdx)
                         .and(MongoDBUtils.Column.TYPE.getField()).is(nodeType)
@@ -332,7 +341,7 @@ public class DatabaseService {
 
         Column column = (mongoTemplate.findOne(findColumnQuery, Column.class));
         if (column == null) {
-            throw new CustomException(ErrorCode.PROJECT_INVALID_NODE_TYPE);
+            throw new CustomException(ErrorCode.PROJECT_COLUMN_NOT_FOUND);
         }
 
         List<ColumnDetail> columnDetailList = column.getColumnDetailList();

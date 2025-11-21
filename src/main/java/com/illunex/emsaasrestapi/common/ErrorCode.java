@@ -72,6 +72,8 @@ public enum ErrorCode {
     PROJECT_INVALID_TYPE_CD(510, "올바르지 않은 권한 코드입니다."),
     PROJECT_MEMBER_DUPLICATE(510, "중복되는 프로젝트 구성원이 존재합니다."),
     PROJECT_INVALID_NODE_TYPE(511, "잘못된 노드 타입입니다."),
+    PROJECT_COLUMN_NOT_FOUND(512, "프로젝트 컬럼이 없습니다."),
+
 
     PROJECT_CATEGORY_INVALID_SORT_ORDER(550, "요청된 정렬 순서가 올바르지 않습니다."),
 
