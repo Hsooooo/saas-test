@@ -38,14 +38,14 @@ public class KnowledgeGardenLinkVO {
         WHERE
         (
             l.start_node_idx IN
-            <foreach collection="neighborNodeIds" item="id" open="(" separator="," close=")">
+            <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
                 #{id}
             </foreach>
         )
         OR
         (
             l.end_node_idx IN
-            <foreach collection="neighborNodeIds" item="id" open="(" separator="," close=")">
+            <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
                 #{id}
             </foreach>
         )
