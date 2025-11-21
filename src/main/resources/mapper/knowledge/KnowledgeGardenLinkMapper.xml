@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- @Getter
+@Getter
+@Setter
+@Alias("KnowledgeGardenLinkVO")
+public class KnowledgeGardenLinkVO {
+    private Integer idx;
+    private Integer startNodeIdx;
+    private Integer endNodeIdx;
+    private String typeCd;
+    private Float weight;
+    private String createDate;
+}
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.knowledge.mapper.KnowledgeGardenLinkMapper">
+
+    <insert id="insertByKnowledgeGardenLinkVO" parameterType="KnowledgeGardenLinkVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO knowledge_garden_link
+        (start_node_idx, end_node_idx, type_cd, weight, create_date)
+        VALUES
+        (#{startNodeIdx}, #{endNodeIdx}, #{typeCd}, #{weight}, NOW())
+    </insert>
+
+    <delete id="deleteByParentAndNodeIdx">
+        DELETE FROM knowledge_garden_link
+        WHERE start_node_idx = #{parentNodeIdx}
+          AND end_node_idx   = #{nodeIdx}
+    </delete>
+</mapper>

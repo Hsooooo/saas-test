@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- @Getter
+@Setter
+@Alias("KnowledgeGardenNodeVO")
+public class KnowledgeGardenNodeVO {
+    private Integer idx;
+    private Integer partnershipMemberIdx;
+    private String label;
+    private String typeCd;
+    private Integer parentNodeIdx;
+    private Integer sortOrder;
+    private Integer depth;
+    private Integer currentVersionIdx;
+    private String updateDate;
+    private String createDate;
+}
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.knowledge.mapper.KnowledgeGardenNodeMapper">
+
+    <insert id="insertByKnowledgeGardenNodeVO" parameterType="KnowledgeGardenNodeVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO knowledge_garden_node
+        (partnership_member_idx, label, type_cd, parent_node_idx, sort_order, depth, current_version_idx, update_date, create_date)
+        VALUES
+        (#{partnershipMemberIdx}, #{label}, #{typeCd}, #{parentNodeIdx}, #{sortOrder}, #{depth}, #{currentVersionIdx}, NOW(), NOW())
+    </insert>
+
+    <select id="selectByIdx" resultType="KnowledgeGardenNodeVO">
+        SELECT *
+          FROM knowledge_garden_node
+         WHERE idx = #{idx}
+    </select>
+
+    <select id="selectBySearchFolder" resultType="KnowledgeGardenNodeVO">
+        SELECT
+            *
+        FROM knowledge_garden_node n
+        WHERE n.partnership_member_idx = #{partnershipMemberIdx}
+          AND n.type_cd = #{typeCd}
+          AND n.label LIKE CONCAT('%', #{searchStr}, '%')     -- 부분 일치
+        ORDER BY n.label
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectTreeNodes" resultType="KnowledgeGardenNodeViewVO">
+        SELECT
+            *,
+            CASE WHEN c.child_cnt > 0 THEN 1 ELSE 0 END AS has_children
+        FROM knowledge_garden_node n
+        LEFT JOIN (
+            SELECT parent_node_idx, COUNT(*) AS child_cnt
+            FROM knowledge_garden_node
+            WHERE partnership_member_idx = #{partnershipMemberIdx}
+            GROUP BY parent_node_idx
+        ) c ON c.parent_node_idx = n.idx
+        WHERE n.partnership_member_idx = #{partnershipMemberIdx}
+          /* parentId가 NULL이면 루트, 아니면 해당 parent의 자식 */
+          AND (
+                (#{parentNodeIdx} IS NULL AND n.parent_node_idx IS NULL)
+                OR (#{parentNodeIdx} IS NOT NULL AND n.parent_node_idx = #{parentNodeIdx})
+              )
+          /* includeTypes (예: NOTE,CATEGORY) */
+        <!-- includeTypes 가 있을 때만 type 필터 -->
+        <if test="includeTypes != null and includeTypes.length > 0">
+            AND n.type_cd IN
+            <foreach collection="includeTypes" item="type" open="(" separator="," close=")">
+                #{type}
+            </foreach>
+        </if>
+        <if test="includeTypes == null and includeTypes.length == 0">
+            AND n.type_cd IN ('KNT0001', 'KNT0002')
+        </if>
+        ORDER BY n.sort_order, n.label
+        LIMIT #{limit};
+    </select>
+
+    <select id="selectByPartnershipMemberIdxWithLimit" resultType="KnowledgeGardenNodeVO">
+        SELECT *
+          FROM knowledge_garden_node
+         WHERE partnership_member_idx = #{partnershipMemberIdx}
+        ORDER BY create_date DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectByIdxInAndPartnershipMemberIdx" resultType="KnowledgeGardenNodeVO">
+        SELECT *
+          FROM knowledge_garden_node
+         WHERE idx IN
+        <foreach item="item" index="index" collection="neighborNodeIds" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+           AND partnership_member_idx = #{partnershipMemberIdx}
+    </select>
+
+    <select id="selectNextSortOrder" resultType="Double">
+        SELECT COALESCE(MAX(sort_order), 0) + 1
+        FROM knowledge_garden_node
+        WHERE partnership_member_idx = #{partnershipMemberIdx}
+          AND parent_node_idx <![CDATA[<=>]]> #{parentNodeIdx}
+    </select>
+
+    <select id="selectByPartnershipMemberIdxAndParentNodeIdx" resultType="KnowledgeGardenNodeVO">
+        SELECT *
+          FROM knowledge_garden_node
+         WHERE partnership_member_idx = #{partnershipMemberIdx}
+           AND parent_node_idx <![CDATA[<=>]]> #{parentNodeIdx}
+        ORDER BY sort_order, label
+    </select>
+
+    <select id="selectPrevByNodeIdx" resultType="KnowledgeGardenNodeVO">
+        SELECT *
+        FROM knowledge_garden_node
+        WHERE parent_node_idx <![CDATA[<=>]]> (
+            SELECT parent_node_idx
+            FROM knowledge_garden_node
+            WHERE idx = #{targetNodeIdx}
+        )
+          AND sort_order <![CDATA[<]]> (
+            SELECT sort_order
+            FROM knowledge_garden_node
+            WHERE idx = #{targetNodeIdx}
+          )
+        ORDER BY sort_order DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectNextByNodeIdx" resultType="KnowledgeGardenNodeVO">
+        SELECT *
+        FROM knowledge_garden_node
+        WHERE parent_node_idx <![CDATA[<=>]]> (
+            SELECT parent_node_idx
+            FROM knowledge_garden_node
+            WHERE idx = #{targetNodeIdx}
+        )
+          AND sort_order > (
+            SELECT sort_order
+            FROM knowledge_garden_node
+            WHERE idx = #{targetNodeIdx}
+          )
+        ORDER BY sort_order ASC
+        LIMIT 1
+    </select>
+
+    <update id="updateByKnowledgeGardenNodeVO" parameterType="KnowledgeGardenNodeVO">
+        UPDATE knowledge_garden_node
+           SET label = #{label},
+               type_cd = #{typeCd},
+               parent_node_idx = #{parentNodeIdx},
+               sort_order = #{sortOrder},
+               depth = #{depth},
+               current_version_idx = #{currentVersionIdx},
+               update_date = NOW()
+         WHERE idx = #{idx}
+    </update>
+
+    <update id="updateDepth">
+        UPDATE knowledge_garden_node
+           SET depth = #{newDepth},
+               update_date = NOW()
+         WHERE idx = #{nodeIdx,}
+    </update>
+
+    <select id="selectChildrenByNodeIdx" resultType="KnowledgeGardenNodeVO">
+        SELECT
+            *
+        FROM knowledge_garden_node
+        WHERE parent_node_idx = #{nodeIdx}
+        ORDER BY sort_order ASC
+    </select>
+
+    <select id="selectByPmIdxAndSearchStrAndTypeCdInWithLimit" resultType="KnowledgeGardenNodeVO">
+        SELECT
+            n.*
+        FROM knowledge_garden_node n
+        JOIN knowledge_garden_node_version v
+            ON v.idx = n.current_version_idx   <!-- 마지막 버전만 -->
+        <where>
+            n.partnership_member_idx = #{partnershipMemberIdx}
+            <!-- includeTypes 가 있을 때만 type 필터 -->
+            <if test="includeTypes != null and includeTypes.length > 0">
+                AND n.type_cd IN
+                <foreach collection="includeTypes" item="type" open="(" separator="," close=")">
+                    #{type}
+                </foreach>
+            </if>
+            <!-- searchStr 있을 때만 FULLTEXT 검색 -->
+            <if test="searchStr != null and searchStr != ''">
+                AND MATCH(v.title, v.content)
+                    AGAINST(#{searchStr} IN NATURAL LANGUAGE MODE)
+            </if>
+        </where>
+        <!-- 정렬: 검색어 있을 때는 FULLTEXT 점수 우선, 없으면 최신 버전 순 -->
+        <if test="searchStr != null and searchStr != ''">
+            ORDER BY
+                MATCH(v.title, v.content)
+                    AGAINST(#{searchStr} IN NATURAL LANGUAGE MODE) DESC,
+                v.create_date DESC
+        </if>
+        <if test="searchStr == null or searchStr == ''">
+            ORDER BY v.create_date DESC
+        </if>
+        LIMIT #{limit}
+    </select>
+</mapper>

@@ -88,7 +88,13 @@ public enum ErrorCode {
     /**
      * PG
      */
-    PG_TOSS_PAYMENT_FAIL(900, "토스페이먼츠 결제에 실패했습니다.")
+    PG_TOSS_PAYMENT_FAIL(900, "토스페이먼츠 결제에 실패했습니다."),
+
+
+    /**
+     * 지식정원
+     */
+    KNOWLEDGE_NOTE_CONTENT_EMPTY(1100, "노트 내용이 없습니다."),
     ;
 
     private final int status;

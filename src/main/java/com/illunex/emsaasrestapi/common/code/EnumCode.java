@@ -547,4 +547,33 @@ public class EnumCode {
             private final String value;
         }
     }
+
+    public static class KnowledgeGardenNode {
+        /**
+         * 지식정원 노드 상태 코드
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum TypeCd implements BaseCodeEnum {
+            NOTE("KNT0001", "노트"),
+            FOLDER("KNT0002", "폴더"),
+            KEYWORD("KNT0003", "키워드");
+
+            private final String code;
+            private final String value;
+        }
+    }
+
+    public static class KnowledgeGardenLink {
+        @Getter
+        @AllArgsConstructor
+        public enum TypeCd implements BaseCodeEnum {
+            TREE("KLT0001", "트리"),
+            REF("KLT0002", "참조"),
+            KEYWORD("KLT0003", "키워드");
+
+            private final String code;
+            private final String value;
+        }
+    }
 }

@@ -1,0 +1,41 @@
+package com.illunex.emsaasrestapi.knowledge.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.List;
+
+public class ResponseKnowledgeDTO {
+    @Setter
+    @Getter
+    public static class SearchNetwork {
+        private List<NodeInfo> nodes;
+        private List<EdgeInfo> edges;
+        private Integer nodeSize;
+        private Integer edgeSize;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @Builder
+    public static class NodeInfo {
+        private Integer nodeId;
+        private String label;
+        private String type;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @Builder
+    public static class EdgeInfo {
+        private Integer edgeId;
+        private Integer startNodeId;
+        private Integer endNodeId;
+        private String type;
+        private Float weight;
+    }
+}

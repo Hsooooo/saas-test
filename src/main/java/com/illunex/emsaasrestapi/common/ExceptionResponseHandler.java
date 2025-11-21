@@ -66,12 +66,19 @@ public class ExceptionResponseHandler {
 
     @ExceptionHandler({Exception.class})
     public ResponseEntity<CustomResponse<?>> Exception(Exception e) {
-        log.error(Utils.getLogMaker(Utils.eLogType.USER), e.getLocalizedMessage());
+        // 1) 전체 스택트레이스 + 메시지 같이 로그
+        log.error(Utils.getLogMaker(Utils.eLogType.USER) + " Unhandled exception", e);
+
         Arrays.stream(e.getStackTrace())
                 .filter(stackTraceElement -> stackTraceElement.getClassName().startsWith("com.illunex.emsaasrestapi"))
                 .forEach(stackTraceElement -> {
-                    log.error(Utils.getLogMaker(Utils.eLogType.USER), String.format("%s.%s:%d", stackTraceElement.getClassName(), stackTraceElement.getMethodName(), stackTraceElement.getLineNumber()));
+                    log.error(Utils.getLogMaker(Utils.eLogType.USER),
+                            String.format("%s.%s:%d",
+                                    stackTraceElement.getClassName(),
+                                    stackTraceElement.getMethodName(),
+                                    stackTraceElement.getLineNumber()));
                 });
+
         return new ResponseEntity<>(CustomResponse.builder()
                 .status(ErrorCode.COMMON_INTERNAL_SERVER_ERROR.getStatus())
                 .data(ErrorCode.COMMON_INTERNAL_SERVER_ERROR.getMessage())

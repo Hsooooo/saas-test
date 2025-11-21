@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- @Getter
+@Getter
+@Setter
+@Alias("KnowledgeGardenNodeVO")
+public class KnowledgeGardenNodeVersionVO {
+    private Integer idx;
+    private Integer nodeIdx;
+    private Integer versionNo;
+    private String title;
+    private String content;
+    private String createDate;
+}
+
+ -->
+<mapper namespace="com.illunex.emsaasrestapi.knowledge.mapper.KnowledgeGardenNodeVersionMapper">
+
+    <insert id="insertByKnowledgeGardenNodeVersionVO" parameterType="KnowledgeGardenNodeVersionVO" useGeneratedKeys="true" keyProperty="idx">
+        INSERT INTO knowledge_garden_node_version
+            (node_idx, version_no, title, content, create_date)
+        VALUES (
+            #{nodeIdx},
+            (
+                SELECT COALESCE(MAX(v.version_no), 0) + 1
+                FROM (
+                         SELECT version_no
+                         FROM knowledge_garden_node_version
+                         WHERE node_idx = #{nodeIdx}
+                     ) AS v
+            ),
+            #{title},
+            #{content},
+            NOW()
+        );
+    </insert>
+</mapper>

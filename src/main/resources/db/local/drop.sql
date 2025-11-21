@@ -1,3 +1,7 @@
+-- 지식정원 관련 테이블
+DROP TABLE IF EXISTS `em_saas`.`knowledge_garden_node_version`;
+DROP TABLE IF EXISTS `em_saas`.`knowledge_garden_link`;
+DROP TABLE IF EXISTS `em_saas`.`knowledge_garden_node`;
 -- 라이센스 관련 테이블
 DROP TABLE IF EXISTS `em_saas`.`payment_attempt`;
 DROP TABLE IF EXISTS `em_saas`.`payment_mandate`;
