@@ -71,6 +71,18 @@ public class DatabaseController {
     }
 
     /**
+     * 프로젝트 노드 타입 검색
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @return
+     */
+    @GetMapping("/node-type")
+    public CustomResponse<?> searchDatabaseNodeType(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
+        log.info("Received request to get database collection for project index: {}", projectIdx);
+        return databaseService.searchDatabaseNodeType(projectIdx);
+    }
+
+    /**
      * 데이터 추가
      *
      * @param projectIdx 프로젝트 인덱스

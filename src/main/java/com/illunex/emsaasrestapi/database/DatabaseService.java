@@ -1,7 +1,9 @@
 package com.illunex.emsaasrestapi.database;
 
+import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
+import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.database.dto.EdgeDataDTO;
 import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
@@ -12,6 +14,7 @@ import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
 import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.document.project.Project;
+import com.illunex.emsaasrestapi.project.document.project.ProjectNode;
 import com.illunex.emsaasrestapi.project.mapper.ProjectCategoryMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.mapper.ProjectTableMapper;
@@ -273,6 +276,24 @@ public class DatabaseService {
 
         return CustomResponse.builder()
                 .data(new PageImpl<>(mappedResults, pageRequest.of(sortList.toArray(new String[0])), totalCount))
+                .build();
+    }
+
+    public CustomResponse<?> searchDatabaseNodeType(Integer projectIdx) throws CustomException {
+        // 1. 프로젝트 조회
+        Query query = Query.query(
+                Criteria.where("_id").is(projectIdx)
+        );
+
+        Project project = mongoTemplate.findOne(query, Project.class);
+        if (project == null) {
+            throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
+        }
+
+        // 2. 프로젝트 노드 정보 조회
+        List<ProjectNode> projectNodeList = project.getProjectNodeList();
+        return CustomResponse.builder()
+                .data(projectNodeList)
                 .build();
     }
 
