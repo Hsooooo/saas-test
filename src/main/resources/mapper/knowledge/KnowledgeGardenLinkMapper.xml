@@ -31,6 +31,12 @@ public class KnowledgeGardenLinkVO {
           AND end_node_idx   = #{nodeIdx}
     </delete>
 
+    <delete id="deleteByStartNodeAndType">
+        DELETE FROM knowledge_garden_link
+        WHERE start_node_idx = #{startNodeIdx}
+          AND type_cd        = #{typeCd}
+    </delete>
+
     <select id="selectByNodeIds" resultType="KnowledgeGardenLinkVO">
         SELECT
         *

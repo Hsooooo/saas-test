@@ -21,6 +21,7 @@ import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,7 @@ public class KnowledgeService {
 
     private final PartnershipComponent partnershipComponent;
     private final KnowledgeComponent knowledgeComponent;
+    private final ModelMapper modelMapper;
 
 
     /**
@@ -49,7 +51,8 @@ public class KnowledgeService {
      * @throws CustomException
      */
     @Transactional
-    public void createKnowledgeNode(RequestKnowledgeDTO.CreateNode req, MemberVO memberVO) throws CustomException {
+    public ResponseKnowledgeDTO.CreateNode createKnowledgeNode(RequestKnowledgeDTO.CreateNode req, MemberVO memberVO) throws CustomException {
+        ResponseKnowledgeDTO.CreateNode response = new ResponseKnowledgeDTO.CreateNode();
         PartnershipMemberVO pmVO = partnershipComponent.checkPartnershipMember(memberVO, req.getPartnershipIdx());
 
         String content = "";
@@ -85,6 +88,9 @@ public class KnowledgeService {
 
         nodeVO.setCurrentVersionIdx(versionVO.getIdx());
         knowledgeGardenNodeMapper.updateByKnowledgeGardenNodeVO(nodeVO);
+
+        modelMapper.map(nodeVO, response);
+        return response;
     }
 
     /**
@@ -228,49 +234,14 @@ public class KnowledgeService {
 
     /**
      * 지식정원 노드 관계망 확장 조회
+     *
      * @param req
      * @param memberVO
      * @return
      * @throws CustomException
      */
     public ResponseKnowledgeDTO.SearchNetwork getKnowledgeGardenNetworkExtend(RequestKnowledgeDTO.ExtendSearch req, MemberVO memberVO) throws CustomException {
-        // 파트너쉽 회원 여부 체크 (기존 구조와 맞추기)
-        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(
-                memberVO,
-                req.getPartnershipIdx()
-        );
-
-        // 여기서 owner 기준을 partnershipMemberVO.getIdx() 로 잡는다고 가정
-        Integer partnershipMemberIdx = partnershipMemberVO.getIdx();
-
-        // 시작 노드 조회
-        KnowledgeGardenNodeVO startNode = knowledgeGardenNodeMapper.selectByIdxAndPartnershipMemberIdx(req.getNodeIdx(), partnershipMemberIdx)
-                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
-
-        ResponseKnowledgeDTO.SearchNetwork response = new ResponseKnowledgeDTO.SearchNetwork();
-
-        // 시작 노드를 response에 세팅
-        ResponseKnowledgeDTO.NodeInfo startNodeInfo = ResponseKnowledgeDTO.NodeInfo.builder()
-                .nodeId(startNode.getIdx())
-                .type(startNode.getTypeCd())
-                .label(startNode.getLabel())
-                .build();
-
-        response.setNodes(new ArrayList<>(List.of(startNodeInfo)));
-        response.setEdges(new ArrayList<>());
-
-        // 관계망 확장 (depth 단계)
-        knowledgeComponent.networkSearch(
-                response,
-                List.of(startNode),
-                partnershipMemberIdx,
-                req.getDepth()
-        );
-
-        if (response.getNodes() != null) response.setNodeSize(response.getNodes().size());
-        if (response.getEdges() != null) response.setEdgeSize(response.getEdges().size());
-
-        return response;
+        return null;
     }
 
 
@@ -398,5 +369,130 @@ public class KnowledgeService {
                 req.getIncludeTypes(),
                 req.getLimit()
         );
+    }
+
+    /**
+     * 지식 노드 수정
+     * @param req
+     * @param memberVO
+     * @throws CustomException
+     */
+    @Transactional
+    public void updateKnowledgeNode(RequestKnowledgeDTO.UpdateNode req, MemberVO memberVO) throws CustomException {
+        // 1) 파트너십 회원 검증
+        PartnershipMemberVO pmVO = partnershipComponent.checkPartnershipMember(
+                memberVO, req.getPartnershipIdx());
+
+        // 2) 노드 조회 + 소유자 확인
+        KnowledgeGardenNodeVO node = knowledgeGardenNodeMapper.selectByIdx(req.getNodeIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+
+        if (!Objects.equals(node.getPartnershipMemberIdx(), pmVO.getIdx())) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        boolean nodeChanged = false; // label / currentVersionIdx 변경 여부 추적
+
+        // 2-1) label 변경 (폴더/노트/키워드 공통)
+        // 기존 값
+        String oldLabel = node.getLabel();
+        String newLabel = oldLabel;
+        if (req.getLabel() != null && !req.getLabel().equals(oldLabel)) {
+            newLabel = req.getLabel();
+            node.setLabel(newLabel);
+            nodeChanged = true;
+        }
+
+        // NOTE 타입 여부
+        boolean isNote = EnumCode.KnowledgeGardenNode.TypeCd.NOTE.getCode().equals(node.getTypeCd());
+
+        // 3) NOTE 타입일 때만 content / 링크 처리
+        if (isNote) {
+            // 1) 현재 버전 내용 가져오기 (라벨만 바뀌는 경우 복사용)
+            KnowledgeGardenNodeVersionVO currentVersion =
+                    knowledgeGardenNodeVersionMapper.selectByIdx(node.getCurrentVersionIdx())
+                            .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+
+            String newContent = currentVersion.getContent();
+            boolean contentChanged = false;
+
+            if (req.getContent() != null && !req.getContent().equals(currentVersion.getContent())) {
+                newContent = req.getContent();
+                contentChanged = true;
+            }
+
+            boolean labelChanged = !Objects.equals(newLabel, currentVersion.getTitle());
+
+            // 라벨/컨텐츠 둘 중 하나라도 바뀌었으면 새 버전 생성
+            if (labelChanged || contentChanged) {
+                KnowledgeGardenNodeVersionVO version = new KnowledgeGardenNodeVersionVO();
+                version.setNodeIdx(node.getIdx());
+                version.setTitle(newLabel);      // 새 제목
+                version.setContent(newContent);  // 새 내용 or 기존 내용
+                knowledgeGardenNodeVersionMapper.insertByKnowledgeGardenNodeVersionVO(version);
+
+                node.setCurrentVersionIdx(version.getIdx());
+                nodeChanged = true;
+            }
+            // 3-2) 키워드 링크 동기화
+            if (req.getKeywordNodeIdxList() != null) {
+                knowledgeGardenLinkMapper.deleteByStartNodeAndType(
+                        node.getIdx(), EnumCode.KnowledgeGardenLink.TypeCd.KEYWORD.getCode());
+
+                for (Integer keywordIdx : req.getKeywordNodeIdxList()) {
+                    KnowledgeGardenNodeVO keyword = knowledgeGardenNodeMapper.selectByIdx(keywordIdx)
+                            .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+
+                    if (!EnumCode.KnowledgeGardenNode.TypeCd.KEYWORD.getCode().equals(keyword.getTypeCd())) {
+                        throw new CustomException(ErrorCode.KNOWLEDGE_LINK_TYPE_INVALID);
+                    }
+                    if (!Objects.equals(keyword.getPartnershipMemberIdx(), pmVO.getIdx())) {
+                        throw new CustomException(ErrorCode.COMMON_INVALID);
+                    }
+
+                    KnowledgeGardenLinkVO link = new KnowledgeGardenLinkVO();
+                    link.setStartNodeIdx(node.getIdx());
+                    link.setEndNodeIdx(keywordIdx);
+                    link.setTypeCd(EnumCode.KnowledgeGardenLink.TypeCd.KEYWORD.getCode());
+                    knowledgeGardenLinkMapper.insertByKnowledgeGardenLinkVO(link);
+                }
+            }
+
+            // 3-3) 참조 노트 링크 동기화
+            if (req.getReferenceNodeIdxList() != null) {
+                knowledgeGardenLinkMapper.deleteByStartNodeAndType(
+                        node.getIdx(), EnumCode.KnowledgeGardenLink.TypeCd.REF.getCode());
+
+                for (Integer refIdx : req.getReferenceNodeIdxList()) {
+                    if (refIdx.equals(node.getIdx())) continue; // 자기 자신 참조 방지
+
+                    KnowledgeGardenNodeVO ref = knowledgeGardenNodeMapper.selectByIdx(refIdx)
+                            .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+
+                    if (!EnumCode.KnowledgeGardenNode.TypeCd.NOTE.getCode().equals(ref.getTypeCd())) {
+                        throw new CustomException(ErrorCode.KNOWLEDGE_LINK_TYPE_INVALID);
+                    }
+
+                    KnowledgeGardenLinkVO link = new KnowledgeGardenLinkVO();
+                    link.setStartNodeIdx(node.getIdx());
+                    link.setEndNodeIdx(refIdx);
+                    link.setTypeCd(EnumCode.KnowledgeGardenLink.TypeCd.REF.getCode());
+                    knowledgeGardenLinkMapper.insertByKnowledgeGardenLinkVO(link);
+                }
+            }
+        } else {
+            // NOTE 아닌데 content / 링크가 들어왔으면? → 정책에 따라 에러 or 무시
+            if (req.getContent() != null ||
+                    req.getKeywordNodeIdxList() != null ||
+                    req.getReferenceNodeIdxList() != null) {
+                // 무시하거나 에러 던지기 (나는 에러 쪽이 안전하다고 봄)
+                throw new CustomException(ErrorCode.KNOWLEDGE_NODE_TYPE_INVALID);
+            }
+        }
+
+        // 4) 노드 정보 변경사항이 있으면 업데이트
+        if (nodeChanged) {
+            knowledgeGardenNodeMapper.updateByKnowledgeGardenNodeVO(node);
+        }
     }
 }

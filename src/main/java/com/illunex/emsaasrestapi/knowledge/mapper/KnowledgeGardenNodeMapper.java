@@ -20,7 +20,6 @@ public interface KnowledgeGardenNodeMapper {
     List<KnowledgeGardenNodeVO> selectByPartnershipMemberIdxWithLimit(Integer partnershipMemberIdx, Integer limit);
 
     List<KnowledgeGardenNodeVO> selectByIdxInAndPartnershipMemberIdx(Set<Integer> neighborNodeIds, Integer partnershipMemberIdx);
-    Optional<KnowledgeGardenNodeVO> selectByIdxAndPartnershipMemberIdx(Integer nodeIdx, Integer partnershipMemberIdx);
 
     Double selectNextSortOrder(Integer partnershipMemberIdx, Integer parentNodeIdx);
 

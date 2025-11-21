@@ -10,6 +10,15 @@ import java.util.List;
 public class ResponseKnowledgeDTO {
     @Setter
     @Getter
+    public static class CreateNode {
+        private Integer nodeIdx;
+        private String label;
+        private String typeCd;
+        private String typeCdDesc;
+
+    }
+    @Setter
+    @Getter
     public static class SearchNetwork {
         private List<NodeInfo> nodes;
         private List<EdgeInfo> edges;

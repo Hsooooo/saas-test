@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 public class RequestKnowledgeDTO {
     @Getter
     @Setter
@@ -20,6 +22,17 @@ public class RequestKnowledgeDTO {
         private String content;
         private Integer chatHistoryIdx;
         private Integer parentNodeIdx;
+    }
+
+    @Getter
+    @Setter
+    public static class UpdateNode {
+        private Integer partnershipIdx;
+        private Integer nodeIdx;
+        private String label;
+        private String content;
+        private List<Integer> keywordNodeIdxList;
+        private List<Integer> referenceNodeIdxList;
     }
 
     @Getter

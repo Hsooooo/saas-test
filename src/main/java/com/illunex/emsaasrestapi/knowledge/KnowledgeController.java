@@ -24,9 +24,26 @@ public class KnowledgeController {
      * @throws CustomException
      */
     @PostMapping("/node")
-    public void createNode(@RequestBody @Valid RequestKnowledgeDTO.CreateNode req,
+    public CustomResponse<?> createNode(@RequestBody @Valid RequestKnowledgeDTO.CreateNode req,
                            @CurrentMember MemberVO memberVO) throws CustomException {
-        knowledgeService.createKnowledgeNode(req, memberVO);
+        return CustomResponse.builder()
+                .data(knowledgeService.createKnowledgeNode(req, memberVO))
+                .build();
+    }
+
+    /**
+     * 지식 노드 수정
+     * @param req
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @PatchMapping("/node")
+    public CustomResponse<?> updateNode(@RequestBody @Valid RequestKnowledgeDTO.UpdateNode req,
+                                        @CurrentMember MemberVO memberVO) throws CustomException {
+        knowledgeService.updateKnowledgeNode(req, memberVO);
+        return CustomResponse.builder()
+                .build();
     }
 
     /**

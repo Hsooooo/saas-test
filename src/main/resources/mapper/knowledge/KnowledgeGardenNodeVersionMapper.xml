@@ -18,7 +18,6 @@ public class KnowledgeGardenNodeVersionVO {
 
  -->
 <mapper namespace="com.illunex.emsaasrestapi.knowledge.mapper.KnowledgeGardenNodeVersionMapper">
-
     <insert id="insertByKnowledgeGardenNodeVersionVO" parameterType="KnowledgeGardenNodeVersionVO" useGeneratedKeys="true" keyProperty="idx">
         INSERT INTO knowledge_garden_node_version
             (node_idx, version_no, title, content, create_date)
@@ -37,4 +36,10 @@ public class KnowledgeGardenNodeVersionVO {
             NOW()
         );
     </insert>
+
+    <select id="selectByIdx" resultType="KnowledgeGardenNodeVersionVO">
+        SELECT *
+          FROM knowledge_garden_node_version
+         WHERE idx = #{idx}
+    </select>
 </mapper>

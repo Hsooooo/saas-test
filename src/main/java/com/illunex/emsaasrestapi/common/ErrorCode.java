@@ -95,6 +95,8 @@ public enum ErrorCode {
      * 지식정원
      */
     KNOWLEDGE_NOTE_CONTENT_EMPTY(1100, "노트 내용이 없습니다."),
+    KNOWLEDGE_LINK_TYPE_INVALID(1101, "유효하지 않은 링크 타입입니다."),
+    KNOWLEDGE_NODE_TYPE_INVALID(1102, "유효하지 않은 노드 타입입니다.")
     ;
 
     private final int status;
