@@ -30,4 +30,24 @@ public class KnowledgeGardenLinkVO {
         WHERE start_node_idx = #{parentNodeIdx}
           AND end_node_idx   = #{nodeIdx}
     </delete>
+
+    <select id="selectByNodeIds" resultType="KnowledgeGardenLinkVO">
+        SELECT
+        *
+        FROM knowledge_garden_link l
+        WHERE
+        (
+            l.start_node_idx IN
+            <foreach collection="neighborNodeIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        )
+        OR
+        (
+            l.end_node_idx IN
+            <foreach collection="neighborNodeIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        )
+    </select>
 </mapper>
