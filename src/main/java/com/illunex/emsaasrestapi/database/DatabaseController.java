@@ -78,8 +78,21 @@ public class DatabaseController {
      */
     @GetMapping("/node-type")
     public CustomResponse<?> searchDatabaseNodeType(@RequestParam(name = "projectIdx") Integer projectIdx) throws CustomException {
-        log.info("Received request to get database collection for project index: {}", projectIdx);
+        log.info("Received request to get database node type for project index: {}", projectIdx);
         return databaseService.searchDatabaseNodeType(projectIdx);
+    }
+
+    /**
+     * 프로젝트 노드 컬럼 타입 검색
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @return
+     */
+    @PostMapping("/node/column-type")
+    public CustomResponse<?> searchDatabaseNodeColumnType(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                                          @RequestBody RequestDatabaseDTO.SearchTemplate request) throws CustomException {
+        log.info("Received request to get database node column type for project index: {}", projectIdx);
+        return databaseService.searchDatabaseNodeColumnType(projectIdx, request);
     }
 
     /**

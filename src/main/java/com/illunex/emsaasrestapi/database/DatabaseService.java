@@ -279,6 +279,12 @@ public class DatabaseService {
                 .build();
     }
 
+    /**
+     * 프로젝트 노드 타입 검색
+     *
+     * @param projectIdx  프로젝트 인덱스
+     * @return 검색 결과를 포함한 CustomResponse 객체
+     */
     public CustomResponse<?> searchDatabaseNodeType(Integer projectIdx) throws CustomException {
         // 1. 프로젝트 조회
         Query query = Query.query(
@@ -294,6 +300,44 @@ public class DatabaseService {
         List<ProjectNode> projectNodeList = project.getProjectNodeList();
         return CustomResponse.builder()
                 .data(projectNodeList)
+                .build();
+    }
+
+    /**
+     * 프로젝트 노드 컬럼 타입 검색
+     *
+     * @param projectIdx 프로젝트 인덱스
+     * @param request
+     * @return 검색 결과를 포함한 CustomResponse 객체
+     */
+    public CustomResponse<?> searchDatabaseNodeColumnType(Integer projectIdx,
+                                                          RequestDatabaseDTO.SearchTemplate request) throws CustomException {
+        String nodeType = request.getNodeType();
+
+        // 1. 프로젝트 조회 (projectIdx 유효성 검사)
+        Query query = Query.query(
+                Criteria.where("_id").is(projectIdx)
+        );
+
+        Project project = mongoTemplate.findOne(query, Project.class);
+        if (project == null) {
+            throw new CustomException(ErrorCode.PROJECT_NOT_FOUND);
+        }
+
+        // 2. 컬럼 조회
+        Query findColumnQuery = Query.query(
+                Criteria.where(MongoDBUtils.Column.PROJECT_IDX.getField()).is(projectIdx)
+                        .and(MongoDBUtils.Column.TYPE.getField()).is(nodeType)
+        );
+
+        Column column = (mongoTemplate.findOne(findColumnQuery, Column.class));
+        if (column == null) {
+            throw new CustomException(ErrorCode.PROJECT_INVALID_NODE_TYPE);
+        }
+
+        List<ColumnDetail> columnDetailList = column.getColumnDetailList();
+        return CustomResponse.builder()
+                .data(columnDetailList)
                 .build();
     }
 
