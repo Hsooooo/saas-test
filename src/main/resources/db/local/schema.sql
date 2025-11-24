@@ -863,7 +863,6 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`knowledge_garden_node_version` (
      `content` LONGTEXT NOT NULL COMMENT '내용' COLLATE 'utf8mb4_general_ci',
      `state_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '노드 상태 코드' COLLATE 'utf8mb4_general_ci',
      `note_status_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '문서 상태' COLLATE 'utf8mb4_general_ci',
-     `change_type` VARCHAR(7) NULL DEFAULT NULL COMMENT '변경 유형' COLLATE 'utf8mb4_general_ci',
      `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
      PRIMARY KEY (`idx`) USING BTREE,
      UNIQUE KEY `ui_knowledge_garden_node_version` (`node_idx`, `version_no`) USING BTREE,

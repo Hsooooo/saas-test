@@ -10,10 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -94,14 +91,8 @@ public class KnowledgeComponent {
         // 3. 엣지 → DTO 변환 + 중복 제거
         List<ResponseKnowledgeDTO.EdgeInfo> newEdgeInfos = edgeList.stream()
                 .filter(e -> !existingEdgeIds.contains(e.getIdx()))
-                .map(e -> ResponseKnowledgeDTO.EdgeInfo.builder()
-                        .edgeId(e.getIdx())
-                        .startNodeId(e.getStartNodeIdx())
-                        .endNodeId(e.getEndNodeIdx())
-                        .type(e.getTypeCd())
-                        .weight(e.getWeight())
-                        .build()
-                ).toList();
+                .map(this::toEdgeInfo)
+                .toList();
 
         if (!newEdgeInfos.isEmpty()) {
             List<ResponseKnowledgeDTO.EdgeInfo> mutableLinkList = new ArrayList<>(response.getEdges());
@@ -130,12 +121,8 @@ public class KnowledgeComponent {
         // 새 노드 → DTO
         List<ResponseKnowledgeDTO.NodeInfo> newNodeInfos = neighborNodes.stream()
                 .filter(n -> !existingNodeIds.contains(n.getIdx()))
-                .map(n -> ResponseKnowledgeDTO.NodeInfo.builder()
-                        .nodeId(n.getIdx())
-                        .type(n.getTypeCd())
-                        .label(n.getLabel())
-                        .build()
-                ).toList();
+                .map(this::toNodeInfo)
+                .toList();
 
         if (!newNodeInfos.isEmpty()) {
             List<ResponseKnowledgeDTO.NodeInfo> mutableNodeList = new ArrayList<>(response.getNodes());
@@ -171,4 +158,49 @@ public class KnowledgeComponent {
         }
         return node;
     }
+
+    private Map<String, Object> buildNodeProperties(KnowledgeGardenNodeVO n) {
+        Map<String, Object> props = new HashMap<>();
+
+        props.put("stateCd", n.getStateCd());
+        props.put("viewCount", n.getViewCount());
+        props.put("depth", n.getDepth());
+        props.put("parentNodeIdx", n.getParentNodeIdx());
+        props.put("createDate", n.getCreateDate());
+
+        if (EnumCode.KnowledgeGardenNode.TypeCd.NOTE.getCode().equals(n.getTypeCd())) {
+            props.put("noteStatusCd", n.getNoteStatusCd());
+            props.put("currentVersionIdx", n.getCurrentVersionIdx());
+        }
+
+        return props;
+    }
+
+    public ResponseKnowledgeDTO.NodeInfo toNodeInfo(KnowledgeGardenNodeVO n) {
+        return ResponseKnowledgeDTO.NodeInfo.builder()
+                .nodeId(n.getIdx())
+                .type(n.getTypeCd())
+                .label(n.getLabel())
+                .properties(buildNodeProperties(n))
+                .build();
+    }
+
+    private Map<String, Object> buildEdgeProperties(KnowledgeGardenLinkVO l) {
+        Map<String, Object> props = new HashMap<>();
+        props.put("stateCd", l.getStateCd());
+        props.put("typeCd", l.getTypeCd());
+        return props;
+    }
+
+    public ResponseKnowledgeDTO.EdgeInfo toEdgeInfo(KnowledgeGardenLinkVO l) {
+        return ResponseKnowledgeDTO.EdgeInfo.builder()
+                .edgeId(l.getIdx())
+                .startNodeId(l.getStartNodeIdx())
+                .endNodeId(l.getEndNodeIdx())
+                .type(l.getTypeCd())
+                .weight(l.getWeight())
+                .properties(buildEdgeProperties(l))
+                .build();
+    }
+
 }

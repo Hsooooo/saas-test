@@ -190,44 +190,10 @@ public class KnowledgeService {
         // 5) DTO 변환
         t1 = System.currentTimeMillis();
         List<ResponseKnowledgeDTO.NodeInfo> nodeInfoList = nodes.stream()
-                .map(n -> {
-                    Map<String, Object> props = new HashMap<>();
-
-                    props.put("stateCd", n.getStateCd());          // ACTIVE/TRASH 필터용
-                    props.put("viewCount", n.getViewCount());      // 노드 사이즈용
-                    props.put("depth", n.getDepth());              // (옵션) 시각화 힌트
-                    props.put("parentNodeIdx", n.getParentNodeIdx()); // (옵션) 트리 힌트
-                    props.put("createDate", n.getCreateDate());
-
-                    // NOTE일 때만 의미 있는 값
-                    if (EnumCode.KnowledgeGardenNode.TypeCd.NOTE.getCode().equals(n.getTypeCd())) {
-                        props.put("noteStatusCd", n.getNoteStatusCd()); // 초안/리뷰/완료 필터/색상
-                        props.put("currentVersionIdx", n.getCurrentVersionIdx());
-                    }
-
-                    return ResponseKnowledgeDTO.NodeInfo.builder()
-                            .nodeId(n.getIdx())
-                            .type(n.getTypeCd())
-                            .label(n.getLabel())
-                            .properties(props)
-                            .build();
-                }).toList();
-
+                .map(knowledgeComponent::toNodeInfo).toList();
         List<ResponseKnowledgeDTO.EdgeInfo> edgeInfoList = links.stream()
-                .map(l -> {
-                    Map<String, Object> props = new HashMap<>();
-                    props.put("stateCd", l.getStateCd());  // 링크도 soft delete 쓰므로 필터용
-                    props.put("typeCd", l.getTypeCd());   // 중복이지만 props에도 넣어두면 통일성
+                .map(knowledgeComponent::toEdgeInfo).toList();
 
-                    return ResponseKnowledgeDTO.EdgeInfo.builder()
-                            .edgeId(l.getIdx())
-                            .startNodeId(l.getStartNodeIdx())
-                            .endNodeId(l.getEndNodeIdx())
-                            .type(l.getTypeCd())
-                            .weight(l.getWeight())
-                            .properties(props)
-                            .build();
-                }).toList();
         t2 = System.currentTimeMillis();
         log.info("DTO 변환 완료 - 소요시간: {}ms", (t2 - t1));
 
@@ -270,7 +236,36 @@ public class KnowledgeService {
      * @throws CustomException
      */
     public ResponseKnowledgeDTO.SearchNetwork getKnowledgeGardenNetworkExtend(RequestKnowledgeDTO.ExtendSearch req, MemberVO memberVO) throws CustomException {
-        return null;
+        // 파트너쉽 회원 여부 체크 (기존 구조와 맞추기)
+        PartnershipMemberVO partnershipMemberVO = partnershipComponent.checkPartnershipMember(
+                memberVO,
+                req.getPartnershipIdx()
+        );
+
+        Integer partnershipMemberIdx = partnershipMemberVO.getIdx();
+
+        // 시작 노드 조회
+        KnowledgeGardenNodeVO startNode = knowledgeComponent.selectNotTrashedByIdx(req.getNodeIdx());
+
+        ResponseKnowledgeDTO.SearchNetwork response = new ResponseKnowledgeDTO.SearchNetwork();
+
+        ResponseKnowledgeDTO.NodeInfo startNodeInfo = knowledgeComponent.toNodeInfo(startNode);
+
+        response.setNodes(new ArrayList<>(List.of(startNodeInfo)));
+        response.setEdges(new ArrayList<>());
+
+        // 관계망 확장 (depth 단계)
+        knowledgeComponent.networkSearch(
+                response,
+                List.of(startNode),
+                partnershipMemberIdx,
+                req.getDepth()
+        );
+
+        if (response.getNodes() != null) response.setNodeSize(response.getNodes().size());
+        if (response.getEdges() != null) response.setEdgeSize(response.getEdges().size());
+
+        return response;
     }
 
 
