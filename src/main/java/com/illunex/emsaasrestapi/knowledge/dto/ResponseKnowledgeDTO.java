@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Map;
 
 public class ResponseKnowledgeDTO {
     @Setter
@@ -34,6 +35,7 @@ public class ResponseKnowledgeDTO {
         private Integer nodeId;
         private String label;
         private String type;
+        private Map<String, Object> properties;
     }
 
     @Getter
@@ -46,6 +48,7 @@ public class ResponseKnowledgeDTO {
         private Integer endNodeId;
         private String type;
         private Float weight;
+        private Map<String, Object> properties;
     }
 
     @Getter

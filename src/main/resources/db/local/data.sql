@@ -390,4 +390,4 @@ K-방산 산업은 현재 높은 성장 잠재력을 보유하고 있으며, 저
 - [한화에어로스페이스, 폴란드 2차 이행계약 체결...K-방산 수출 확대 기대](https://www.hankyung.com/article/2024111900000)
 - [한화시스템, 위성통신 사업 확장...미래 모빌리티 시장 선점](https://www.etoday.co.kr/news/view/2405387)
 - [휴니드, K-방산 최초 전술통신 수출에 강세](https://www.etoday.co.kr/news/view/2405387)', '2025-11-20 07:05:38');
-INSERT INTO em_saas.knowledge_garden_link (idx, start_node_idx, end_node_idx, type_cd, weight, create_date) VALUES (1, 1, 2, 'KLT0001', null, '2025-11-20 07:05:38');
+INSERT INTO em_saas.knowledge_garden_link (idx, start_node_idx, end_node_idx, type_cd, weight, state_cd, create_date) VALUES (1, 1, 2, 'KLT0001', null, 'KLS0001', '2025-11-20 07:05:38');
