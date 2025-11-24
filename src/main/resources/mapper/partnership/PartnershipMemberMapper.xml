@@ -84,14 +84,8 @@
 
     <update id="updateProfileImageByIdx">
         UPDATE partnership_member
-        <set>
-            <if test="profileImageUrl != null">
-                profile_image_url = #{profileImageUrl},
-            </if>
-            <if test="profileImagePath != null">
-                profile_image_path = #{profileImagePath},
-            </if>
-        </set>
+            profile_image_url = #{profileImageUrl},
+            profile_image_path = #{profileImagePath},
         WHERE idx = #{idx}
     </update>
 
