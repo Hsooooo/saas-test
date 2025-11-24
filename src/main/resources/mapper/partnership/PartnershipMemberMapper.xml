@@ -84,8 +84,10 @@
 
     <update id="updateProfileImageByIdx">
         UPDATE partnership_member
+        <set>
             profile_image_url = #{profileImageUrl},
-            profile_image_path = #{profileImagePath},
+            profile_image_path = #{profileImagePath}
+        </set>
         WHERE idx = #{idx}
     </update>
 
