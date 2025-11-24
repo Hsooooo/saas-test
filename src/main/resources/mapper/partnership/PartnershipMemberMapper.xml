@@ -19,18 +19,18 @@
             update_date,
             create_date
         ) VALUES (
-            #{partnershipIdx},
-            #{partnershipTeamIdx},
-            #{memberIdx},
-            #{partnershipPositionIdx},
-            #{managerCd},
-            #{stateCd},
-            #{profileImageUrl},
-            #{profileImagePath},
-            #{disableFunctions},
-            now(),
-            now()
-        )
+                     #{partnershipIdx},
+                     #{partnershipTeamIdx},
+                     #{memberIdx},
+                     #{partnershipPositionIdx},
+                     #{managerCd},
+                     #{stateCd},
+                     #{profileImageUrl},
+                     #{profileImagePath},
+                     #{disableFunctions},
+                     now(),
+                     now()
+                 )
     </insert>
 
     <select id="isMemberManagerOfPartnership" resultType="boolean">
@@ -56,17 +56,17 @@
             disable_functions,
             update_date,
             create_date
-          FROM partnership_member
-         WHERE member_idx = #{memberIdx}
-           AND partnership_idx = #{partnershipIdx}
+        FROM partnership_member
+        WHERE member_idx = #{memberIdx}
+          AND partnership_idx = #{partnershipIdx}
     </select>
 
     <select id="isDuplicateMemberByEmail" resultType="boolean">
         SELECT COUNT(*) > 0
-          FROM partnership_member pm
-          JOIN member m ON pm.member_idx = m.idx
-         WHERE pm.partnership_idx = #{partnershipIdx}
-           AND m.email = #{email}
+        FROM partnership_member pm
+                 JOIN member m ON pm.member_idx = m.idx
+        WHERE pm.partnership_idx = #{partnershipIdx}
+          AND m.email = #{email}
     </select>
 
     <update id="updatePositionIdxAndPhoneByIdx">
@@ -79,7 +79,7 @@
                 phone = #{phone},
             </if>
         </set>
-         WHERE idx = #{idx}
+        WHERE idx = #{idx}
     </update>
 
     <update id="updateProfileImageByIdx">
