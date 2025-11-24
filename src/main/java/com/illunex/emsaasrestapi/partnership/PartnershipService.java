@@ -833,4 +833,34 @@ public class PartnershipService {
 
         return null;
     }
+
+    /**
+     * 파트너쉽 멤버 프로필 이미지 삭제
+     * @param partnershipIdx
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> deleteProfileImage(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
+        PartnershipMemberVO partnershipMember =
+                partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
+                        .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+
+        // 기존 이미지 있으면 삭제
+        if (partnershipMember.getProfileImagePath() != null &&
+                !partnershipMember.getProfileImagePath().isEmpty()) {
+
+            awsS3Component.delete(partnershipMember.getProfileImagePath());
+        }
+
+        // DB 값 초기화
+        partnershipMember.setProfileImageUrl(null);
+        partnershipMember.setProfileImagePath(null);
+
+        partnershipMemberMapper.updateProfileImageByIdx(partnershipMember);
+
+        return CustomResponse.builder()
+                .data(null)
+                .build();
+    }
 }

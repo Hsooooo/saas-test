@@ -158,6 +158,19 @@ public class PartnershipController {
         return partnershipService.updateProfileImage(partnershipIdx, memberVO, file);
     }
 
+    /**
+     * 파트너쉽 회원 프로필 이미지 삭제
+     * @param partnershipIdx
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @DeleteMapping("/{partnershipIdx}/profile")
+    public CustomResponse<?> deleteProfileImage(@PathVariable("partnershipIdx") Integer partnershipIdx,
+                                                @CurrentMember MemberVO memberVO) throws CustomException {
+        return partnershipService.deleteProfileImage(partnershipIdx, memberVO);
+    }
+
 
     /**
      * 파트너쉽 회원 목록 조회
