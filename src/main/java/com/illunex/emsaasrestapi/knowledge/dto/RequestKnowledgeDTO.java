@@ -20,6 +20,7 @@ public class RequestKnowledgeDTO {
         @NotNull
         private String label;
         private String content;
+        private String noteStatusCd;
         private Integer chatHistoryIdx;
         private Integer parentNodeIdx;
     }
@@ -31,6 +32,7 @@ public class RequestKnowledgeDTO {
         private Integer nodeIdx;
         private String label;
         private String content;
+        private String noteStatusCd;
         private List<Integer> keywordNodeIdxList;
         private List<Integer> referenceNodeIdxList;
     }
@@ -73,5 +75,15 @@ public class RequestKnowledgeDTO {
             BEFORE,
             AFTER
         }
+    }
+
+    @Getter
+    @Setter
+    public static class TrashSearch {
+        @NotNull
+        private Integer partnershipIdx;
+        private String searchStr = "";
+        private String[] includeTypes;
+        private Integer limit = 50;
     }
 }

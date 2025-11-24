@@ -35,4 +35,12 @@ public interface KnowledgeGardenNodeMapper {
     List<KnowledgeGardenNodeVO> selectByPmIdxAndSearchStrAndTypeCdInWithLimit(Integer partnershipMemberIdx, String searchStr, String[] includeTypes, Integer limit);
 
     List<KnowledgeGardenNodeVO> selectLinkedNodeByStartNodeIdxAndTypeCd(Integer startNodeIdx, String typeCd);
+
+    void updateCurrentVersionIdx(Integer nodeIdx, Integer currentVersionIdx);
+
+    void updateStateByNodeIds(Integer partnershipMemberIdx, List<Integer> nodeIds, String stateCd);
+
+    List<KnowledgeGardenNodeVO> selectSubtreeNodes(Integer partnershipMemberIdx, Integer rootNodeIdx);
+
+    List<KnowledgeGardenNodeVO> selectTrashNodes(Integer partnershipMemberIdx, String[] includeTypes, String searchStr, Integer limit);
 }

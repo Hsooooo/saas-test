@@ -56,4 +56,20 @@ public class KnowledgeGardenLinkVO {
             </foreach>
         )
     </select>
+
+    <update id="updateStateByNodeIds">
+        UPDATE knowledge_garden_link
+           SET state_cd = #{stateCd}
+         WHERE (
+               start_node_idx IN
+                <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+               OR
+               end_node_idx IN
+                <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+           )
+    </update>
 </mapper>

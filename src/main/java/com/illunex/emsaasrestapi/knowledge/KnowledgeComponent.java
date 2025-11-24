@@ -36,9 +36,7 @@ public class KnowledgeComponent {
             nodeVO.setParentNodeIdx(null);
         } else {
             // 부모 노드 조회
-            KnowledgeGardenNodeVO parent = knowledgeGardenNodeMapper
-                    .selectByIdx(parentNodeIdx)
-                    .orElseThrow(() -> new IllegalArgumentException("부모 노드를 찾을 수 없습니다. idx=" + parentNodeIdx));
+            KnowledgeGardenNodeVO parent = selectNotTrashedByIdx(parentNodeIdx);
 
             nodeVO.setDepth(parent.getDepth() + 1);
             nodeVO.setParentNodeIdx(parent.getIdx());
@@ -58,6 +56,7 @@ public class KnowledgeComponent {
         linkVO.setStartNodeIdx(parentNodeIdx);
         linkVO.setEndNodeIdx(nodeVO.getIdx());
         linkVO.setTypeCd(EnumCode.KnowledgeGardenLink.TypeCd.TREE.getCode());
+        linkVO.setStateCd(EnumCode.KnowledgeGardenLink.StateCd.ACTIVE.getCode());
         knowledgeGardenLinkMapper.insertByKnowledgeGardenLinkVO(linkVO);
     }
 
@@ -161,5 +160,15 @@ public class KnowledgeComponent {
         for (KnowledgeGardenNodeVO child : children) {
             updateSubtreeDepth(child.getIdx(), newDepth);
         }
+    }
+
+    public KnowledgeGardenNodeVO selectNotTrashedByIdx(Integer idx) {
+        KnowledgeGardenNodeVO node = knowledgeGardenNodeMapper
+                .selectByIdx(idx)
+                .orElseThrow(() -> new IllegalArgumentException("노드를 찾을 수 없습니다. idx=" + idx));
+        if (node.getStateCd() != null && node.getStateCd().equals(EnumCode.KnowledgeGardenNode.StateCd.TRASH.getCode())) {
+            throw new IllegalArgumentException("노드가 휴지통 상태입니다. idx=" + idx);
+        }
+        return node;
     }
 }

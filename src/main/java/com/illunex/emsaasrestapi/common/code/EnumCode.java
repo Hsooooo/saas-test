@@ -552,7 +552,7 @@ public class EnumCode {
 
     public static class KnowledgeGardenNode {
         /**
-         * 지식정원 노드 상태 코드
+         * 지식정원 노드 타입 코드
          */
         @Getter
         @AllArgsConstructor
@@ -560,6 +560,35 @@ public class EnumCode {
             NOTE("KNT0001", "노트"),
             FOLDER("KNT0002", "폴더"),
             KEYWORD("KNT0003", "키워드");
+
+            private final String code;
+            private final String value;
+        }
+
+        /**
+         * 지식정원 노드 상태 코드
+         *  - 초안
+         *  - 리뷰중
+         *  - 완료
+         *  - 보류
+         */
+        @Getter
+        @AllArgsConstructor
+        public enum NoteStatusCode implements BaseCodeEnum {
+            DRAFT("NSS0001", "초안"),
+            REVIEW("NSS0002", "리뷰중"),
+            COMPLETE("NSS0003", "완료"),
+            HOLD("NSS0004", "보류");
+
+            private final String code;
+            private final String value;
+        }
+
+        @Getter
+        @AllArgsConstructor
+        public enum StateCd implements BaseCodeEnum {
+            ACTIVE("KNS0001", "활성"),
+            TRASH("KNS0002", "휴지통");
 
             private final String code;
             private final String value;
@@ -573,6 +602,16 @@ public class EnumCode {
             TREE("KLT0001", "트리"),
             REF("KLT0002", "참조"),
             KEYWORD("KLT0003", "키워드");
+
+            private final String code;
+            private final String value;
+        }
+
+        @Getter
+        @AllArgsConstructor
+        public enum StateCd implements BaseCodeEnum {
+            ACTIVE("KLS0001", "활성"),
+            TRASH("KLS0002", "휴지통");
 
             private final String code;
             private final String value;

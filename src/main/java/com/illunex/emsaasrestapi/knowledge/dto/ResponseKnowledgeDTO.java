@@ -58,6 +58,7 @@ public class ResponseKnowledgeDTO {
         private String label;
         private String content;
         private Integer currentVersionIdx;
+        private String noteStatusCd;
         private List<NodeInfo> keywordNodeList;
         private List<NodeInfo> referenceNodeList;
     }
@@ -72,6 +73,7 @@ public class ResponseKnowledgeDTO {
         private Integer versionNo;
         private String label;
         private String content;
+        private String noteStatusCd;
         private String createdAt;
         private Boolean isCurrent;
     }

@@ -31,6 +31,7 @@ public class KnowledgeGardenLinkVO {
     private Integer startNodeIdx;
     private Integer endNodeIdx;
     private String typeCd;
+    private String stateCd;
     private Float weight;
     private String createDate;
 }

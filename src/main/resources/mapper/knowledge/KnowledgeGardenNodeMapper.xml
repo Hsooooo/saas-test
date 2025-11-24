@@ -4,6 +4,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <!-- @Getter
+@Getter
 @Setter
 @Alias("KnowledgeGardenNodeVO")
 public class KnowledgeGardenNodeVO {
@@ -12,20 +13,24 @@ public class KnowledgeGardenNodeVO {
     private String label;
     private String typeCd;
     private Integer parentNodeIdx;
-    private Integer sortOrder;
+    private Double sortOrder;
     private Integer depth;
     private Integer currentVersionIdx;
+    private String stateCd;
+    private String noteStatusCd;
+    private Integer viewCount;
     private String updateDate;
     private String createDate;
 }
+
  -->
 <mapper namespace="com.illunex.emsaasrestapi.knowledge.mapper.KnowledgeGardenNodeMapper">
 
     <insert id="insertByKnowledgeGardenNodeVO" parameterType="KnowledgeGardenNodeVO" useGeneratedKeys="true" keyProperty="idx">
         INSERT INTO knowledge_garden_node
-        (partnership_member_idx, label, type_cd, parent_node_idx, sort_order, depth, current_version_idx, update_date, create_date)
+            (partnership_member_idx, label, type_cd, parent_node_idx, sort_order, depth, current_version_idx, state_cd, note_status_cd, view_count, create_date, update_date)
         VALUES
-        (#{partnershipMemberIdx}, #{label}, #{typeCd}, #{parentNodeIdx}, #{sortOrder}, #{depth}, #{currentVersionIdx}, NOW(), NOW())
+            (#{partnershipMemberIdx}, #{label}, #{typeCd}, #{parentNodeIdx}, #{sortOrder}, #{depth}, #{currentVersionIdx}, #{stateCd}, #{noteStatusCd}, #{viewCount}, NOW(), NOW());
     </insert>
 
     <select id="selectByIdx" resultType="KnowledgeGardenNodeVO">
@@ -40,6 +45,7 @@ public class KnowledgeGardenNodeVO {
         FROM knowledge_garden_node n
         WHERE n.partnership_member_idx = #{partnershipMemberIdx}
           AND n.type_cd = #{typeCd}
+          AND n.state_cd = 'KNS0001'
           AND n.label LIKE CONCAT('%', #{searchStr}, '%')     -- 부분 일치
         ORDER BY n.label
         LIMIT #{limit}
@@ -54,9 +60,11 @@ public class KnowledgeGardenNodeVO {
             SELECT parent_node_idx, COUNT(*) AS child_cnt
             FROM knowledge_garden_node
             WHERE partnership_member_idx = #{partnershipMemberIdx}
+              AND state_cd = 'KNS0001'
             GROUP BY parent_node_idx
         ) c ON c.parent_node_idx = n.idx
         WHERE n.partnership_member_idx = #{partnershipMemberIdx}
+          AND n.state_cd = 'KNS0001'
           /* parentId가 NULL이면 루트, 아니면 해당 parent의 자식 */
           AND (
                 (#{parentNodeIdx} IS NULL AND n.parent_node_idx IS NULL)
@@ -70,7 +78,7 @@ public class KnowledgeGardenNodeVO {
                 #{type}
             </foreach>
         </if>
-        <if test="includeTypes == null and includeTypes.length == 0">
+        <if test="includeTypes == null or includeTypes.length == 0">
             AND n.type_cd IN ('KNT0001', 'KNT0002')
         </if>
         ORDER BY n.sort_order, n.label
@@ -81,6 +89,7 @@ public class KnowledgeGardenNodeVO {
         SELECT *
           FROM knowledge_garden_node
          WHERE partnership_member_idx = #{partnershipMemberIdx}
+           AND state_cd = 'KNS0001'
         ORDER BY create_date DESC
         LIMIT #{limit}
     </select>
@@ -93,12 +102,14 @@ public class KnowledgeGardenNodeVO {
             #{item}
         </foreach>
            AND partnership_member_idx = #{partnershipMemberIdx}
+           AND state_cd = 'KNS0001'
     </select>
 
     <select id="selectNextSortOrder" resultType="Double">
         SELECT COALESCE(MAX(sort_order), 0) + 1
         FROM knowledge_garden_node
         WHERE partnership_member_idx = #{partnershipMemberIdx}
+          AND state_cd = 'KNS0001'
           AND parent_node_idx <![CDATA[<=>]]> #{parentNodeIdx}
     </select>
 
@@ -106,6 +117,7 @@ public class KnowledgeGardenNodeVO {
         SELECT *
           FROM knowledge_garden_node
          WHERE partnership_member_idx = #{partnershipMemberIdx}
+           AND state_cd = 'KNS0001'
            AND parent_node_idx <![CDATA[<=>]]> #{parentNodeIdx}
         ORDER BY sort_order, label
     </select>
@@ -113,7 +125,8 @@ public class KnowledgeGardenNodeVO {
     <select id="selectPrevByNodeIdx" resultType="KnowledgeGardenNodeVO">
         SELECT *
         FROM knowledge_garden_node
-        WHERE parent_node_idx <![CDATA[<=>]]> (
+        WHERE state_cd = 'KNS0001'
+          AND parent_node_idx <![CDATA[<=>]]> (
             SELECT parent_node_idx
             FROM knowledge_garden_node
             WHERE idx = #{targetNodeIdx}
@@ -130,7 +143,8 @@ public class KnowledgeGardenNodeVO {
     <select id="selectNextByNodeIdx" resultType="KnowledgeGardenNodeVO">
         SELECT *
         FROM knowledge_garden_node
-        WHERE parent_node_idx <![CDATA[<=>]]> (
+        WHERE state_cd = 'KNS0001'
+          AND parent_node_idx <![CDATA[<=>]]> (
             SELECT parent_node_idx
             FROM knowledge_garden_node
             WHERE idx = #{targetNodeIdx}
@@ -152,6 +166,9 @@ public class KnowledgeGardenNodeVO {
                sort_order = #{sortOrder},
                depth = #{depth},
                current_version_idx = #{currentVersionIdx},
+               state_cd = #{stateCd},
+               note_status_cd = #{noteStatusCd},
+               view_count = #{viewCount},
                update_date = NOW()
          WHERE idx = #{idx}
     </update>
@@ -160,7 +177,7 @@ public class KnowledgeGardenNodeVO {
         UPDATE knowledge_garden_node
            SET depth = #{newDepth},
                update_date = NOW()
-         WHERE idx = #{nodeIdx,}
+         WHERE idx = #{nodeIdx}
     </update>
 
     <select id="selectChildrenByNodeIdx" resultType="KnowledgeGardenNodeVO">
@@ -168,6 +185,7 @@ public class KnowledgeGardenNodeVO {
             *
         FROM knowledge_garden_node
         WHERE parent_node_idx = #{nodeIdx}
+          AND state_cd = 'KNS0001'
         ORDER BY sort_order ASC
     </select>
 
@@ -179,6 +197,7 @@ public class KnowledgeGardenNodeVO {
             ON v.idx = n.current_version_idx   <!-- 마지막 버전만 -->
         <where>
             n.partnership_member_idx = #{partnershipMemberIdx}
+            AND n.state_cd = 'KNS0001'
             <!-- includeTypes 가 있을 때만 type 필터 -->
             <if test="includeTypes != null and includeTypes.length > 0">
                 AND n.type_cd IN
@@ -213,5 +232,61 @@ public class KnowledgeGardenNodeVO {
             ON n.idx = l.end_node_idx
         WHERE l.start_node_idx = #{startNodeIdx}
           AND l.type_cd = #{typeCd}
+          AND l.state_cd = 'KLS0001'
+          AND n.state_cd = 'KNS0001'
+    </select>
+
+    <select id="selectSubtreeNodes" resultType="KnowledgeGardenNodeVO">
+        WITH RECURSIVE subtree AS (
+            SELECT *
+            FROM knowledge_garden_node
+            WHERE idx = #{rootNodeIdx}
+              AND partnership_member_idx = #{partnershipMemberIdx}
+
+            UNION ALL
+
+            SELECT n.*
+            FROM knowledge_garden_node n
+            JOIN subtree s ON n.parent_node_idx = s.idx
+            WHERE n.partnership_member_idx = #{partnershipMemberIdx}
+        )
+        SELECT *
+        FROM subtree
+    </select>
+
+    <update id="updateStateByNodeIds">
+        UPDATE knowledge_garden_node
+        SET state_cd = #{stateCd},
+        update_date = NOW()
+        WHERE partnership_member_idx = #{partnershipMemberIdx}
+        AND idx IN
+        <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="updateCurrentVersionIdx">
+        UPDATE knowledge_garden_node
+           SET current_version_idx = #{currentVersionIdx},
+               update_date = NOW()
+         WHERE idx = #{nodeIdx}
+    </update>
+
+    <select id="selectTrashNodes" resultType="KnowledgeGardenNodeVO">
+        SELECT *
+          FROM knowledge_garden_node n
+         WHERE n.partnership_member_idx = #{partnershipMemberIdx}
+           AND n.state_cd = 'KNS0002' <!-- TRASH -->
+        <if test="includeTypes != null and includeTypes.length > 0">
+           AND n.type_cd IN
+           <foreach collection="includeTypes" item="t" open="(" separator="," close=")">
+               #{t}
+           </foreach>
+        </if>
+        <if test="searchStr != null and searchStr != ''">
+           AND n.label LIKE CONCAT('%', #{searchStr}, '%')
+        </if>
+         ORDER BY n.update_date DESC
+         LIMIT #{limit}
     </select>
 </mapper>

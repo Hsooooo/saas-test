@@ -25,7 +25,7 @@ public class KnowledgeController {
      */
     @PostMapping("/node")
     public CustomResponse<?> createNode(@RequestBody @Valid RequestKnowledgeDTO.CreateNode req,
-                           @CurrentMember MemberVO memberVO) throws CustomException {
+                                        @CurrentMember MemberVO memberVO) throws CustomException {
         return CustomResponse.builder()
                 .data(knowledgeService.createKnowledgeNode(req, memberVO))
                 .build();
@@ -43,6 +43,39 @@ public class KnowledgeController {
                                         @CurrentMember MemberVO memberVO) throws CustomException {
         knowledgeService.updateKnowledgeNode(req, memberVO);
         return CustomResponse.builder()
+                .build();
+    }
+
+    /**
+     * 노드 휴지통 이동
+     */
+    @PatchMapping("/node/trash/{nodeIdx}")
+    public CustomResponse<?> moveToTrash(@PathVariable Integer nodeIdx,
+                                         @RequestParam Integer partnershipIdx,
+                                         @CurrentMember MemberVO memberVO) throws CustomException {
+        knowledgeService.moveToTrash(partnershipIdx, nodeIdx, memberVO);
+        return CustomResponse.builder().build();
+    }
+
+    /**
+     * 노드 휴지통 복구
+     */
+    @PatchMapping("/node/restore/{nodeIdx}")
+    public CustomResponse<?> restoreTrash(@PathVariable Integer nodeIdx,
+                                          @RequestParam Integer partnershipIdx,
+                                          @CurrentMember MemberVO memberVO) throws CustomException {
+        knowledgeService.restoreTrash(partnershipIdx, nodeIdx, memberVO);
+        return CustomResponse.builder().build();
+    }
+
+    /**
+     * 휴지통 목록 조회
+     */
+    @PatchMapping("/node/trash/list")
+    public CustomResponse<?> getTrashList(@RequestBody @Valid RequestKnowledgeDTO.TrashSearch req,
+                                          @CurrentMember MemberVO memberVO) throws CustomException {
+        return CustomResponse.builder()
+                .data(knowledgeService.getTrashNodes(req, memberVO))
                 .build();
     }
 
@@ -137,7 +170,7 @@ public class KnowledgeController {
      */
     @GetMapping("/folders/search")
     public CustomResponse<?> searchFolders(@RequestParam Integer partnershipIdx,
-                                        @RequestParam String searchStr,
+                                        @RequestParam(required = false) String searchStr,
                                         @RequestParam Integer limit,
                                         @CurrentMember MemberVO memberVO) throws CustomException {
         return CustomResponse.builder()

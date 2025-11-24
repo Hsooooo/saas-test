@@ -316,8 +316,8 @@ INSERT INTO subscription_change_event (license_partnership_idx, occurred_date, t
 
 
 -- 지식정원
-INSERT INTO em_saas.knowledge_garden_node (idx, partnership_member_idx, label, type_cd, parent_node_idx, sort_order, depth, current_version_idx, update_date, create_date) VALUES (1, 1, '주식', 'KNT0002', null, 1, 0, null, '2025-11-20 07:04:27', '2025-11-20 07:04:27');
-INSERT INTO em_saas.knowledge_garden_node (idx, partnership_member_idx, label, type_cd, parent_node_idx, sort_order, depth, current_version_idx, update_date, create_date) VALUES (2, 1, 'K-방산 저평가 수주 증가 종목 분석', 'KNT0001', 1, 1, 1, 2, '2025-11-20 07:05:38', '2025-11-20 07:05:38');
+INSERT INTO em_saas.knowledge_garden_node (idx, partnership_member_idx, label, type_cd, parent_node_idx, sort_order, depth, current_version_idx, state_cd, update_date, create_date) VALUES (1, 1, '주식', 'KNT0002', null, 1, 0, null, 'KNS0001', '2025-11-20 07:04:27', '2025-11-20 07:04:27');
+INSERT INTO em_saas.knowledge_garden_node (idx, partnership_member_idx, label, type_cd, parent_node_idx, sort_order, depth, current_version_idx, state_cd, update_date, create_date) VALUES (2, 1, 'K-방산 저평가 수주 증가 종목 분석', 'KNT0001', 1, 1, 1, 2, 'KNS0001', '2025-11-20 07:05:38', '2025-11-20 07:05:38');
 INSERT INTO em_saas.knowledge_garden_node_version (idx, node_idx, version_no, title, content, create_date) VALUES (1, 1, 1, '주식', '', '2025-11-20 07:04:27');
 INSERT INTO em_saas.knowledge_garden_node_version (idx, node_idx, version_no, title, content, create_date) VALUES (2, 2, 1, 'K-방산 저평가 수주 증가 종목 분석', '# K-방산 저평가 종목 분석: 수주잔고 증가 및 PER 15 이하 기업
 
