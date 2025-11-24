@@ -71,7 +71,6 @@ public class KnowledgeService {
                 throw new CustomException(ErrorCode.KNOWLEDGE_NOTE_CONTENT_EMPTY);
             }
         }
-        String noteStatusCd = req.getNoteStatusCd() == null ? EnumCode.KnowledgeGardenNode.NoteStatusCode.HOLD.getCode() : req.getNoteStatusCd();
 
         // Create Knowledge Garden Node
         KnowledgeGardenNodeVO nodeVO = new KnowledgeGardenNodeVO();
@@ -80,8 +79,6 @@ public class KnowledgeService {
         nodeVO.setLabel(req.getLabel());
         nodeVO.setSortOrder(0.0);
         nodeVO.setTypeCd(req.getTypeCd());
-        nodeVO.setStateCd(EnumCode.KnowledgeGardenNode.StateCd.ACTIVE.getCode());
-        nodeVO.setNoteStatusCd(noteStatusCd);
         knowledgeComponent.insertByNodeVOAndParentNodeIdx(nodeVO, req.getParentNodeIdx());
 
         // Create Knowledge Garden Node Version
@@ -89,8 +86,6 @@ public class KnowledgeService {
         versionVO.setContent(content);
         versionVO.setNodeIdx(nodeVO.getIdx());
         versionVO.setTitle(req.getLabel());
-        versionVO.setNoteStatusCd(noteStatusCd);
-        versionVO.setStateCd(EnumCode.KnowledgeGardenNode.StateCd.ACTIVE.getCode());
         knowledgeGardenNodeVersionMapper.insertByKnowledgeGardenNodeVersionVO(versionVO);
 
         nodeVO.setCurrentVersionIdx(versionVO.getIdx());
@@ -137,7 +132,6 @@ public class KnowledgeService {
      * @throws CustomException
      */
     public List<KnowledgeGardenNodeVO> searchKnowledgeFolders(Integer partnershipIdx, String searchStr, Integer limit, MemberVO memberVO) throws CustomException {
-        searchStr = searchStr == null ? "" : searchStr;
         PartnershipMemberVO pmVO = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
         return knowledgeGardenNodeMapper.selectBySearchFolder(
                         pmVO.getIdx(),
@@ -168,7 +162,8 @@ public class KnowledgeService {
 
         // 2) 노드 조회
         long t1 = System.currentTimeMillis();
-        List<KnowledgeGardenNodeVO> nodes = knowledgeGardenNodeMapper.selectByPartnershipMemberIdxWithLimit(partnershipMemberIdx, maxNodeSize);
+        List<KnowledgeGardenNodeVO> nodes = knowledgeGardenNodeMapper
+                .selectByPartnershipMemberIdxWithLimit(partnershipMemberIdx, maxNodeSize);
         long t2 = System.currentTimeMillis();
         log.info("노드 조회 완료 - 소요시간: {}ms, 노드개수: {}", (t2 - t1), nodes.size());
 
@@ -183,7 +178,8 @@ public class KnowledgeService {
 
         // 4) 엣지 조회 (현재 노드들과 연결된 링크만)
         t1 = System.currentTimeMillis();
-        List<KnowledgeGardenLinkVO> links = knowledgeGardenLinkMapper.selectByNodeIds(nodeIds);
+        List<KnowledgeGardenLinkVO> links = knowledgeGardenLinkMapper
+                .selectByNodeIds(nodeIds);    // 아래에 SQL 예시
         t2 = System.currentTimeMillis();
         log.info("엣지 조회 완료 - 소요시간: {}ms, 엣지개수: {}", (t2 - t1), links.size());
 
@@ -209,7 +205,7 @@ public class KnowledgeService {
         t2 = System.currentTimeMillis();
         log.info("DTO 변환 완료 - 소요시간: {}ms", (t2 - t1));
 
-        // 6) 노드 정렬 및 중복 제거
+        // 6) 노드 정렬 및 중복 제거 (원래 코드처럼)
         t1 = System.currentTimeMillis();
         nodeInfoList = nodeInfoList.stream()
                 .distinct()
@@ -391,7 +387,8 @@ public class KnowledgeService {
                 memberVO, req.getPartnershipIdx());
 
         // 2) 노드 조회 + 소유자 확인
-        KnowledgeGardenNodeVO node = knowledgeComponent.selectNotTrashedByIdx(req.getNodeIdx());
+        KnowledgeGardenNodeVO node = knowledgeGardenNodeMapper.selectByIdx(req.getNodeIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
 
         if (!Objects.equals(node.getPartnershipMemberIdx(), pmVO.getIdx())) {
             throw new CustomException(ErrorCode.COMMON_INVALID);
@@ -408,17 +405,6 @@ public class KnowledgeService {
             node.setLabel(newLabel);
             nodeChanged = true;
         }
-
-        String oldNoteStatusCd = node.getNoteStatusCd();
-        String newNoteStatusCd = oldNoteStatusCd;
-        boolean noteStatusChanged = false;
-        if (req.getNoteStatusCd() != null && !req.getNoteStatusCd().equals(oldNoteStatusCd)) {
-            newNoteStatusCd = req.getNoteStatusCd();
-            node.setNoteStatusCd(newNoteStatusCd);
-            nodeChanged = true;
-            noteStatusChanged = true;
-        }
-
 
         // NOTE 타입 여부
         boolean isNote = EnumCode.KnowledgeGardenNode.TypeCd.NOTE.getCode().equals(node.getTypeCd());
@@ -441,12 +427,11 @@ public class KnowledgeService {
             boolean labelChanged = !Objects.equals(newLabel, currentVersion.getTitle());
 
             // 라벨/컨텐츠 둘 중 하나라도 바뀌었으면 새 버전 생성
-            if (labelChanged || contentChanged || noteStatusChanged) {
+            if (labelChanged || contentChanged) {
                 KnowledgeGardenNodeVersionVO version = new KnowledgeGardenNodeVersionVO();
                 version.setNodeIdx(node.getIdx());
                 version.setTitle(newLabel);      // 새 제목
                 version.setContent(newContent);  // 새 내용 or 기존 내용
-                version.setNoteStatusCd(newNoteStatusCd); // 새 노트 상태 코드
                 knowledgeGardenNodeVersionMapper.insertByKnowledgeGardenNodeVersionVO(version);
 
                 node.setCurrentVersionIdx(version.getIdx());
@@ -522,7 +507,8 @@ public class KnowledgeService {
      * @throws CustomException
      */
     public ResponseKnowledgeDTO.KnowledgeNode getKnowledgeNodeDetail(Integer nodeIdx, MemberVO memberVO) throws CustomException {
-        KnowledgeGardenNodeVO node = knowledgeComponent.selectNotTrashedByIdx(nodeIdx);
+        KnowledgeGardenNodeVO node = knowledgeGardenNodeMapper.selectByIdx(nodeIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
         // 파트너십 회원 체크
         PartnershipMemberVO pmVO = partnershipMemberMapper.selectByIdx(node.getPartnershipMemberIdx())
                 .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
@@ -628,137 +614,4 @@ public class KnowledgeService {
         node.setCurrentVersionIdx(version.getIdx());
         knowledgeGardenNodeMapper.updateByKnowledgeGardenNodeVO(node);
     }
-
-    /**
-     * 지식 노드 삭제 휴지통 이동
-     * @param partnershipIdx
-     * @param nodeIdx
-     * @param memberVO
-     * @throws CustomException
-     */
-    @Transactional
-    public void moveToTrash(Integer partnershipIdx, Integer nodeIdx, MemberVO memberVO) throws CustomException {
-        PartnershipMemberVO pmVO = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
-
-        KnowledgeGardenNodeVO root = knowledgeComponent.selectNotTrashedByIdx(nodeIdx);
-        if (!Objects.equals(root.getPartnershipMemberIdx(), pmVO.getIdx())) {
-            throw new CustomException(ErrorCode.COMMON_INVALID);
-        }
-
-        // 1) 서브트리 전체 조회 (root 포함)
-        List<KnowledgeGardenNodeVO> subtree =
-                knowledgeGardenNodeMapper.selectSubtreeNodes(pmVO.getIdx(), nodeIdx);
-
-        if (subtree.isEmpty()) return;
-
-        List<Integer> nodeIds = subtree.stream().map(KnowledgeGardenNodeVO::getIdx).toList();
-
-        // 2) NOTE만 삭제 스냅샷 버전 생성
-        for (KnowledgeGardenNodeVO n : subtree) {
-            if (!EnumCode.KnowledgeGardenNode.TypeCd.NOTE.getCode().equals(n.getTypeCd())) continue;
-
-            KnowledgeGardenNodeVersionVO cur =
-                    knowledgeGardenNodeVersionMapper.selectByIdx(n.getCurrentVersionIdx())
-                            .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
-
-            KnowledgeGardenNodeVersionVO v = new KnowledgeGardenNodeVersionVO();
-            v.setNodeIdx(n.getIdx());
-            v.setTitle(n.getLabel());
-            v.setContent(cur.getContent());
-            v.setNoteStatusCd(n.getNoteStatusCd());
-            v.setStateCd(EnumCode.KnowledgeGardenNode.StateCd.TRASH.getCode());
-
-            knowledgeGardenNodeVersionMapper.insertByKnowledgeGardenNodeVersionVO(v);
-
-            // 현재 버전도 "삭제 스냅샷"으로 이동
-            knowledgeGardenNodeMapper.updateCurrentVersionIdx(n.getIdx(), v.getIdx());
-        }
-
-        // 3) 노드 전체 TRASH
-        knowledgeGardenNodeMapper.updateStateByNodeIds(
-                pmVO.getIdx(),
-                nodeIds,
-                EnumCode.KnowledgeGardenNode.StateCd.TRASH.getCode()
-        );
-
-        // 4) 링크 전체 TRASH
-        knowledgeGardenLinkMapper.updateStateByNodeIds(
-                nodeIds,
-                EnumCode.KnowledgeGardenLink.StateCd.TRASH.getCode()
-        );
-    }
-
-    /**
-     * 지식 노드 삭제 복원
-     * @param partnershipIdx
-     * @param nodeIdx
-     * @param memberVO
-     * @throws CustomException
-     */
-    @Transactional
-    public void restoreTrash(Integer partnershipIdx, Integer nodeIdx, MemberVO memberVO) throws CustomException {
-        PartnershipMemberVO pmVO = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
-
-        KnowledgeGardenNodeVO root = knowledgeComponent.selectNotTrashedByIdx(nodeIdx);
-        if (!Objects.equals(root.getPartnershipMemberIdx(), pmVO.getIdx())) {
-            throw new CustomException(ErrorCode.COMMON_INVALID);
-        }
-
-        // 1) 서브트리 전체 조회 (root 포함)
-        List<KnowledgeGardenNodeVO> subtree =
-                knowledgeGardenNodeMapper.selectSubtreeNodes(pmVO.getIdx(), nodeIdx);
-
-        if (subtree.isEmpty()) return;
-
-        List<Integer> nodeIds = subtree.stream().map(KnowledgeGardenNodeVO::getIdx).toList();
-
-        // 2) NOTE만 복구 스냅샷 버전 생성
-        for (KnowledgeGardenNodeVO n : subtree) {
-            if (!EnumCode.KnowledgeGardenNode.TypeCd.NOTE.getCode().equals(n.getTypeCd())) continue;
-
-            KnowledgeGardenNodeVersionVO cur =
-                    knowledgeGardenNodeVersionMapper.selectByIdx(n.getCurrentVersionIdx())
-                            .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
-
-            KnowledgeGardenNodeVersionVO v = new KnowledgeGardenNodeVersionVO();
-            v.setNodeIdx(n.getIdx());
-            v.setTitle(n.getLabel());
-            v.setContent(cur.getContent());
-            v.setNoteStatusCd(n.getNoteStatusCd());
-            v.setStateCd(EnumCode.KnowledgeGardenNode.StateCd.ACTIVE.getCode());
-
-            knowledgeGardenNodeVersionMapper.insertByKnowledgeGardenNodeVersionVO(v);
-
-            knowledgeGardenNodeMapper.updateCurrentVersionIdx(n.getIdx(), v.getIdx());
-        }
-
-        // 3) 노드 전체 ACTIVE
-        knowledgeGardenNodeMapper.updateStateByNodeIds(
-                pmVO.getIdx(),
-                nodeIds,
-                EnumCode.KnowledgeGardenNode.StateCd.ACTIVE.getCode()
-        );
-
-        // 4) 링크 전체 ACTIVE
-        knowledgeGardenLinkMapper.updateStateByNodeIds(
-                nodeIds,
-                EnumCode.KnowledgeGardenLink.StateCd.ACTIVE.getCode()
-        );
-    }
-
-//    public List<KnowledgeGardenNodeVO> getTrashNodes(RequestKnowledgeDTO.TrashSearch req, MemberVO memberVO)
-//            throws CustomException {
-//
-//        PartnershipMemberVO pmVO = partnershipComponent.checkPartnershipMember(memberVO, req.getPartnershipIdx());
-//
-//        String searchStr = req.getSearchStr() == null ? "" : req.getSearchStr();
-//        Integer limit = req.getLimit() == null ? 50 : req.getLimit();
-//
-//        return knowledgeGardenNodeMapper.selectTrashNodes(
-//                pmVO.getIdx(),
-//                req.getIncludeTypes(),
-//                searchStr,
-//                limit
-//        );
-//    }
 }
