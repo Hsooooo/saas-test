@@ -47,6 +47,52 @@ public class KnowledgeController {
     }
 
     /**
+     * 지식 노드 상세 조회
+     * @param nodeIdx
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/node/{nodeIdx}")
+    public CustomResponse<?> getNodeDetail(@PathVariable Integer nodeIdx,
+                                           @CurrentMember MemberVO memberVO) throws CustomException {
+        return CustomResponse.builder()
+                .data(knowledgeService.getKnowledgeNodeDetail(nodeIdx, memberVO))
+                .build();
+    }
+
+    /**
+     * 지식 노드 버전 목록 조회
+     * @param nodeIdx
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @GetMapping("/node/{nodeIdx}/versions")
+    public CustomResponse<?> getNodeVersions(@PathVariable Integer nodeIdx,
+                                             @CurrentMember MemberVO memberVO,
+                                             CustomPageRequest pageRequest) throws CustomException {
+        return knowledgeService.getKnowledgeNodeVersions(nodeIdx, memberVO, pageRequest);
+    }
+
+    /**
+     * 지식 노드 버전 복원
+     * @param nodeIdx
+     * @param versionIdx
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    @PatchMapping("/node/{nodeIdx}/restore/{versionIdx}")
+    public CustomResponse<?> restoreNodeVersion(@PathVariable Integer nodeIdx,
+                                                @PathVariable Integer versionIdx,
+                                                @CurrentMember MemberVO memberVO) throws CustomException {
+        knowledgeService.restoreKnowledgeNodeVersion(nodeIdx, versionIdx, memberVO);
+        return CustomResponse.builder()
+                .build();
+    }
+
+    /**
      * 지식 노드 트리 조회
      * @param partnershipIdx
      * @param parentNodeIdx

@@ -42,4 +42,23 @@ public class KnowledgeGardenNodeVersionVO {
           FROM knowledge_garden_node_version
          WHERE idx = #{idx}
     </select>
+
+    <select id="selectByNodeIdxWithPageable" resultType="KnowledgeGardenNodeVersionVO">
+        SELECT *
+          FROM knowledge_garden_node_version
+         WHERE node_idx = #{nodeIdx}
+        <if test="pageable != null and pageable.sort != null">
+            ORDER BY
+            <foreach collection="pageable.sort.orders" item="order" separator=",">
+                ${order.property} ${order.direction}
+            </foreach>
+        </if>
+        LIMIT #{pageable.pageSize} OFFSET #{pageable.offset}
+    </select>
+
+    <select id="countByNodeIdx" resultType="long">
+        SELECT COUNT(*)
+          FROM knowledge_garden_node_version
+         WHERE node_idx = #{nodeIdx}
+    </select>
 </mapper>

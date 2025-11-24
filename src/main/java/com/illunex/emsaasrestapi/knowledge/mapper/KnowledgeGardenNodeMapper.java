@@ -33,4 +33,6 @@ public interface KnowledgeGardenNodeMapper {
     List<KnowledgeGardenNodeVO> selectChildrenByNodeIdx(Integer nodeIdx);
 
     List<KnowledgeGardenNodeVO> selectByPmIdxAndSearchStrAndTypeCdInWithLimit(Integer partnershipMemberIdx, String searchStr, String[] includeTypes, Integer limit);
+
+    List<KnowledgeGardenNodeVO> selectLinkedNodeByStartNodeIdxAndTypeCd(Integer startNodeIdx, String typeCd);
 }

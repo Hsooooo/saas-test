@@ -204,4 +204,14 @@ public class KnowledgeGardenNodeVO {
         </if>
         LIMIT #{limit}
     </select>
+
+    <select id="selectLinkedNodeByStartNodeIdxAndTypeCd" resultType="KnowledgeGardenNodeVO">
+        SELECT
+            n.*
+        FROM knowledge_garden_link l
+        JOIN knowledge_garden_node n
+            ON n.idx = l.end_node_idx
+        WHERE l.start_node_idx = #{startNodeIdx}
+          AND l.type_cd = #{typeCd}
+    </select>
 </mapper>

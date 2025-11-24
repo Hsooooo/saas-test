@@ -4,6 +4,7 @@ import com.illunex.emsaasrestapi.chat.mapper.ChatHistoryMapper;
 import com.illunex.emsaasrestapi.chat.vo.ChatHistoryVO;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
+import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.knowledge.dto.RequestKnowledgeDTO;
@@ -17,18 +18,18 @@ import com.illunex.emsaasrestapi.knowledge.vo.KnowledgeGardenNodeVersionVO;
 import com.illunex.emsaasrestapi.knowledge.vo.KnowledgeGardenNodeViewVO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.PartnershipComponent;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -42,6 +43,7 @@ public class KnowledgeService {
     private final PartnershipComponent partnershipComponent;
     private final KnowledgeComponent knowledgeComponent;
     private final ModelMapper modelMapper;
+    private final PartnershipMemberMapper partnershipMemberMapper;
 
 
     /**
@@ -90,6 +92,7 @@ public class KnowledgeService {
         knowledgeGardenNodeMapper.updateByKnowledgeGardenNodeVO(nodeVO);
 
         modelMapper.map(nodeVO, response);
+        response.setNodeIdx(nodeVO.getIdx());
         return response;
     }
 
@@ -494,5 +497,121 @@ public class KnowledgeService {
         if (nodeChanged) {
             knowledgeGardenNodeMapper.updateByKnowledgeGardenNodeVO(node);
         }
+    }
+
+    /**
+     * 지식 노드 상세 조회
+     * @param nodeIdx
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    public ResponseKnowledgeDTO.KnowledgeNode getKnowledgeNodeDetail(Integer nodeIdx, MemberVO memberVO) throws CustomException {
+        KnowledgeGardenNodeVO node = knowledgeGardenNodeMapper.selectByIdx(nodeIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        // 파트너십 회원 체크
+        PartnershipMemberVO pmVO = partnershipMemberMapper.selectByIdx(node.getPartnershipMemberIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        if (!Objects.equals(memberVO.getIdx(), pmVO.getMemberIdx())) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        Optional<KnowledgeGardenNodeVersionVO> version = knowledgeGardenNodeVersionMapper.selectByIdx(node.getCurrentVersionIdx());
+
+        String label = node.getLabel();
+        String content = version.isPresent() ? version.get().getContent() : "";
+
+        List<ResponseKnowledgeDTO.NodeInfo> keywordNodes = knowledgeGardenNodeMapper.selectLinkedNodeByStartNodeIdxAndTypeCd(node.getIdx(), EnumCode.KnowledgeGardenLink.TypeCd.KEYWORD.getCode()).stream()
+                .map(n -> ResponseKnowledgeDTO.NodeInfo.builder()
+                        .nodeId(n.getIdx())
+                        .label(n.getLabel())
+                        .type(n.getTypeCd())
+                        .build()
+                ).toList();
+        List<ResponseKnowledgeDTO.NodeInfo> referenceNodes = knowledgeGardenNodeMapper.selectLinkedNodeByStartNodeIdxAndTypeCd(node.getIdx(), EnumCode.KnowledgeGardenLink.TypeCd.REF.getCode()).stream()
+                .map(n -> ResponseKnowledgeDTO.NodeInfo.builder()
+                        .nodeId(n.getIdx())
+                        .label(n.getLabel())
+                        .type(n.getTypeCd())
+                        .build()
+                ).toList();
+
+        return ResponseKnowledgeDTO.KnowledgeNode.builder()
+                .content(content)
+                .currentVersionIdx(node.getCurrentVersionIdx())
+                .nodeIdx(node.getIdx())
+                .label(label)
+                .partnershipIdx(pmVO.getPartnershipIdx())
+                .keywordNodeList(keywordNodes)
+                .referenceNodeList(referenceNodes)
+                .build();
+    }
+
+    /**
+     * 지식 노드 버전 목록 조회
+     * @param nodeIdx
+     * @param memberVO
+     * @param pageRequest
+     * @return
+     * @throws CustomException
+     */
+    public CustomResponse<?> getKnowledgeNodeVersions(Integer nodeIdx, MemberVO memberVO, CustomPageRequest pageRequest) throws CustomException {
+        KnowledgeGardenNodeVO node = knowledgeGardenNodeMapper.selectByIdx(nodeIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        // 파트너십 회원 체크
+        PartnershipMemberVO pmVO = partnershipMemberMapper.selectByIdx(node.getPartnershipMemberIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        if (!Objects.equals(memberVO.getIdx(), pmVO.getMemberIdx())) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        Pageable pageable = pageRequest.of(new String[]{"idx,DESC"});
+
+        List<ResponseKnowledgeDTO.KnowledgeNodeVersion> versions = knowledgeGardenNodeVersionMapper.selectByNodeIdxWithPageable(nodeIdx, pageable).stream()
+                .map(v -> ResponseKnowledgeDTO.KnowledgeNodeVersion.builder()
+                        .idx(v.getIdx())
+                        .nodeIdx(v.getNodeIdx())
+                        .label(v.getTitle())
+                        .versionNo(v.getVersionNo())
+                        .createdAt(v.getCreateDate())
+                        .content(v.getContent())
+                        .isCurrent(Objects.equals(v.getIdx(), node.getCurrentVersionIdx()))
+                        .build()
+                ).toList();
+        long totalCount = knowledgeGardenNodeVersionMapper.countByNodeIdx(nodeIdx);
+
+
+        return CustomResponse.builder()
+                .data(new PageImpl<>(versions, pageable, totalCount))
+                .build();
+    }
+
+    /**
+     * 지식 노드 버전 복원
+     * @param nodeIdx
+     * @param versionIdx
+     * @param memberVO
+     * @throws CustomException
+     */
+    @Transactional
+    public void restoreKnowledgeNodeVersion(Integer nodeIdx, Integer versionIdx, MemberVO memberVO) throws CustomException {
+        KnowledgeGardenNodeVO node = knowledgeGardenNodeMapper.selectByIdx(nodeIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        // 파트너십 회원 체크
+        PartnershipMemberVO pmVO = partnershipMemberMapper.selectByIdx(node.getPartnershipMemberIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        if (!Objects.equals(memberVO.getIdx(), pmVO.getMemberIdx())) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        KnowledgeGardenNodeVersionVO version = knowledgeGardenNodeVersionMapper.selectByIdx(versionIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.COMMON_INVALID));
+        if (!Objects.equals(version.getNodeIdx(), node.getIdx())) {
+            throw new CustomException(ErrorCode.COMMON_INVALID);
+        }
+
+        node.setLabel(version.getTitle());
+        node.setCurrentVersionIdx(version.getIdx());
+        knowledgeGardenNodeMapper.updateByKnowledgeGardenNodeVO(node);
     }
 }

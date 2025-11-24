@@ -47,4 +47,32 @@ public class ResponseKnowledgeDTO {
         private String type;
         private Float weight;
     }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @Builder
+    public static class KnowledgeNode {
+        private Integer partnershipIdx;
+        private Integer nodeIdx;
+        private String label;
+        private String content;
+        private Integer currentVersionIdx;
+        private List<NodeInfo> keywordNodeList;
+        private List<NodeInfo> referenceNodeList;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @Builder
+    public static class KnowledgeNodeVersion {
+        private Integer idx;
+        private Integer nodeIdx;
+        private Integer versionNo;
+        private String label;
+        private String content;
+        private String createdAt;
+        private Boolean isCurrent;
+    }
 }
