@@ -581,6 +581,7 @@ public class KnowledgeService {
                 .currentVersionIdx(node.getCurrentVersionIdx())
                 .nodeIdx(node.getIdx())
                 .label(label)
+                .viewCount(node.getViewCount())
                 .noteStatusCd(node.getNoteStatusCd())
                 .partnershipIdx(pmVO.getPartnershipIdx())
                 .keywordNodeList(keywordNodes)

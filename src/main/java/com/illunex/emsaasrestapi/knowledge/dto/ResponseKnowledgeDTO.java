@@ -62,6 +62,7 @@ public class ResponseKnowledgeDTO {
         private String content;
         private Integer currentVersionIdx;
         private String noteStatusCd;
+        private Integer viewCount;
         private List<NodeInfo> keywordNodeList;
         private List<NodeInfo> referenceNodeList;
     }
