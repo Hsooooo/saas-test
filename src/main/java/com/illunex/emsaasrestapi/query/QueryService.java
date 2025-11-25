@@ -1,14 +1,11 @@
 package com.illunex.emsaasrestapi.query;
 
-import com.illunex.emsaasrestapi.common.code.EnumCode;
-import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import com.illunex.emsaasrestapi.project.document.database.Column;
-import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
@@ -17,15 +14,14 @@ import com.illunex.emsaasrestapi.query.mapper.ProjectQueryCategoryMapper;
 import com.illunex.emsaasrestapi.query.mapper.ProjectQueryMapper;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryCategoryVO;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryVO;
-import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -33,7 +29,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -173,47 +168,39 @@ public class QueryService {
         );
     }
 
-
-
+    @Transactional
     public void saveQuery(MemberVO memberVO, RequestQueryDTO.SaveQuery saveQuery) {
+        // 1. 파트너십 멤버 조회
         PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(saveQuery.getPartnershipIdx(), memberVO.getIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
-        if (saveQuery.getProjectIdx() == null) {
+
+        // 2. 필수값 검증
+        Integer projectIdx = saveQuery.getProjectIdx();
+        if (projectIdx == null) {
             throw new IllegalArgumentException("projectIdx는 필수입니다.");
         }
-        if (saveQuery.getRawQuery() == null || saveQuery.getRawQuery().isBlank()) {
-            throw new IllegalArgumentException("rawQuery는 필수입니다.");
-        }
-        // 쿼리 카테고리 정보 전달 시
-        ProjectQueryCategoryVO categoryVO = null;
-        if (saveQuery.getQueryCategory() != null && StringUtils.isNotBlank(saveQuery.getQueryCategory().getCategoryName())) {
-            if (saveQuery.getQueryCategory().getQueryCategoryIdx() != null) {
-                categoryVO = projectQueryCategoryMapper.selectByIdx(saveQuery.getQueryCategory().getQueryCategoryIdx())
-                    .map(vo -> {
-                        vo.setName(saveQuery.getQueryCategory().getCategoryName());
-                        projectQueryCategoryMapper.updateByProjectQueryCategoryVO(vo);
-                        return vo;
-                    }).orElseThrow(() -> new IllegalArgumentException("해당 카테고리가 존재하지 않습니다."));
-            } else {
-                // 카테고리 인덱스가 전달되지 않은 경우, 새로 생성
-                categoryVO = new ProjectQueryCategoryVO();
-                categoryVO.setProjectIdx(saveQuery.getProjectIdx());
-                categoryVO.setName(saveQuery.getQueryCategory().getCategoryName());
-                categoryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-                projectQueryCategoryMapper.insertByProjectQueryCategoryVO(categoryVO);
-            }
-        }
 
-        ProjectQueryVO projectQueryVO = new ProjectQueryVO();
-        projectQueryVO.setProjectIdx(saveQuery.getProjectIdx());
-        projectQueryVO.setTitle(saveQuery.getQueryTitle());
-        projectQueryVO.setRawQuery(saveQuery.getRawQuery());
-        projectQueryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-        projectQueryVO.setProjectQueryCategoryIdx(categoryVO != null ? categoryVO.getIdx() : null);
-        projectQueryVO.setTypeCd(EnumCode.ProjectQuery.TypeCd.Mongo_Shell.getCode());
+        // 3. 쿼리 카테고리 생성
+        ProjectQueryCategoryVO projectQueryCategoryVO = new ProjectQueryCategoryVO();
+        projectQueryCategoryVO.setProjectIdx(projectIdx);
+        projectQueryCategoryVO.setName(saveQuery.getQueryCategoryName());
+        projectQueryCategoryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+        projectQueryCategoryMapper.insertByProjectQueryCategoryVO(projectQueryCategoryVO);
 
-        // 쿼리 저장
-        projectQueryMapper.insertByProjectQueryVO(projectQueryVO);
+        // 4. 쿼리 생성
+        List<RequestQueryDTO.RequestProjectQuery> queryList = saveQuery.getQueryList();
+
+        for (RequestQueryDTO.RequestProjectQuery requestQuery : queryList) {
+            ProjectQueryVO projectQueryVO = new ProjectQueryVO();
+            projectQueryVO.setProjectIdx(projectIdx);
+            projectQueryVO.setTitle(requestQuery.getQueryTitle());
+            projectQueryVO.setRawQuery(requestQuery.getRawQuery().toString());
+            projectQueryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+            projectQueryVO.setProjectQueryCategoryIdx(projectQueryCategoryVO.getIdx());
+            projectQueryVO.setTypeCd(requestQuery.getQueryType().getCode());
+
+            projectQueryMapper.insertByProjectQueryVO(projectQueryVO);
+        }
     }
 
     public Object aiQuery(MemberVO memberVO, RequestQueryDTO.AIQuery aiQuery) {
