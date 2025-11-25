@@ -51,9 +51,10 @@ public class QueryController {
 
     @GetMapping("/categories")
     public CustomResponse<?> getQueryCategories(@CurrentMember MemberVO memberVO,
-                                                @RequestParam Integer projectIdx) {
+                                                @RequestParam Integer projectIdx,
+                                                @RequestParam Integer partnershipIdx) {
         return CustomResponse.builder()
-                .data(queryService.getQueryCategories(memberVO, projectIdx))
+                .data(queryService.getQueryCategories(memberVO, projectIdx, partnershipIdx))
                 .message("Query categories retrieved successfully")
                 .build();
     }

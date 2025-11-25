@@ -109,33 +109,26 @@ public class QueryService {
 
     /**
      * 프로젝트에 속한 쿼리 카테고리 목록 조회
+     *
      * @param memberVO
      * @param projectIdx
+     * @param partnershipIdx
      * @return
      */
-    public Object getQueryCategories(MemberVO memberVO, Integer projectIdx) {
-        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(projectIdx, memberVO.getIdx())
+    public Object getQueryCategories(MemberVO memberVO, Integer projectIdx, Integer partnershipIdx) {
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
+
         List<ProjectQueryCategoryVO> categories = projectQueryCategoryMapper.selectByProjectIdxAndPartnershipMemberIdx(projectIdx, partnershipMemberVO.getIdx());
+
         List<ResponseQueryDTO.Categories> responseCategories = new ArrayList<>();
         for (ProjectQueryCategoryVO category : categories) {
             ResponseQueryDTO.Categories responseCategory = new ResponseQueryDTO.Categories();
             responseCategory.setCategoryName(category.getName());
             responseCategory.setQueryCategoryIdx(category.getIdx());
-            List<ResponseQueryDTO.Query> queries = projectQueryMapper.selectByProjectQueryCategoryIdx(category.getIdx())
-                    .stream()
-                    .map(query -> {
-                        ResponseQueryDTO.Query responseQuery = new ResponseQueryDTO.Query();
-                        responseQuery.setIdx(query.getIdx());
-                        responseQuery.setTitle(query.getTitle());
-                        responseQuery.setRawQuery(query.getRawQuery());
-                        responseQuery.setTypeCd(query.getTypeCd());
-                        responseQuery.setUpdateDate(query.getUpdateDate());
-                        responseQuery.setCreateDate(query.getCreateDate());
-                        return responseQuery;
-                    }).toList();
-            responseCategory.setQueries(queries);
+            responseCategories.add(responseCategory);
         }
+
         return responseCategories;
     }
 
