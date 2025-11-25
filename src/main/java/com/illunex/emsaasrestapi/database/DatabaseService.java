@@ -23,6 +23,7 @@ import com.illunex.emsaasrestapi.project.vo.ProjectTableVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.mongodb.client.result.DeleteResult;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.BsonType;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageImpl;
@@ -40,6 +41,7 @@ import org.springframework.util.StringUtils;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DatabaseService {
@@ -224,19 +226,38 @@ public class DatabaseService {
                 .and(MongoDBUtils.Node._ID_TYPE.getField()).is(nodeType);
 
         // 2. 필터 조건 추가
-        List<Criteria> filterCriteriaList = new ArrayList<>();
-
         List<RequestDatabaseDTO.SearchFilter> searchFilterList = Optional.ofNullable(filters)
                 .orElse(List.of());
+        
+        Criteria filterCriteriaResult = null;
         for (RequestDatabaseDTO.SearchFilter searchFilter : searchFilterList) {
             Criteria filterCriteria = createFilterCriteria(searchFilter);
-            if (filterCriteria != null) {
-                filterCriteriaList.add(filterCriteria);
+
+            if (filterCriteria == null) {
+                continue;
+            }
+
+            if (filterCriteriaResult == null) {
+                // - 첫 번째 유효한 필터
+                filterCriteriaResult = filterCriteria;
+            } else {
+                RequestDatabaseDTO.FilterOperator operator = searchFilter.getFilterOperator();
+                // - 연산자 기본값: AND
+                if (operator == null) {
+                    operator = RequestDatabaseDTO.FilterOperator.AND;
+                }
+
+                if (operator == RequestDatabaseDTO.FilterOperator.AND) {
+                    filterCriteriaResult = new Criteria().andOperator(filterCriteriaResult, filterCriteria);
+                } else {
+                    filterCriteriaResult = new Criteria().orOperator(filterCriteriaResult, filterCriteria);
+                }
             }
         }
 
-        if (!filterCriteriaList.isEmpty()) {
-            criteria = criteria.andOperator(filterCriteriaList.toArray(new Criteria[0]));
+        // - 기본 조건과 필터 조건을 AND로 결합
+        if (filterCriteriaResult != null) {
+            criteria = new Criteria().andOperator(criteria, filterCriteriaResult);
         }
 
         // 3. 정렬 조건 생성
@@ -244,19 +265,24 @@ public class DatabaseService {
 
         List<RequestDatabaseDTO.SearchSort> searchSortList = Optional.ofNullable(sorts)
                 .orElse(List.of());
-        for (RequestDatabaseDTO.SearchSort searchSort : searchSortList) {
-            String columnName = searchSort.getColumnName();
-            Boolean isAsc = searchSort.getIsAsc();
 
-            if (columnName == null || columnName.isEmpty()) {
-                throw new IllegalArgumentException("정렬 기준의 컬럼명이 비어있습니다.");
+        if (searchSortList.isEmpty()) {
+            sortList.add("id,DESC");
+        } else {
+            for (RequestDatabaseDTO.SearchSort searchSort : searchSortList) {
+                String columnName = searchSort.getColumnName();
+                Boolean isAsc = searchSort.getIsAsc();
+
+                if (columnName == null || columnName.isEmpty()) {
+                    throw new IllegalArgumentException("정렬 기준의 컬럼명이 비어있습니다.");
+                }
+
+                String sortColumn = MongoDBUtils.Node.PROPERTIES.getPropertyField(columnName);
+                String sortDirection = isAsc ? "ASC" : "DESC";
+                String sort = sortColumn + "," + sortDirection;
+
+                sortList.add(sort);
             }
-
-            String sortColumn = MongoDBUtils.Node.PROPERTIES.getPropertyField(columnName);
-            String sortDirection = isAsc ? "ASC" : "DESC";
-            String sort = sortColumn + "," + sortDirection;
-
-            sortList.add(sort);
         }
 
         Pageable pageable = pageRequest.of(sortList.toArray(new String[0]));
@@ -264,6 +290,9 @@ public class DatabaseService {
         // 4. 데이터 조회
         Query findNodeQuery = Query.query(criteria).with(pageable);
         Query countNodeQuery = Query.query(criteria);
+
+        // - 생성된 쿼리 로그 출력
+        log.info("[searchDatabaseByTemplate] findQuery={}", findNodeQuery);
 
         List<Node> nodes = mongoTemplate.find(findNodeQuery, Node.class);
         long totalCount = mongoTemplate.count(countNodeQuery, Node.class);
