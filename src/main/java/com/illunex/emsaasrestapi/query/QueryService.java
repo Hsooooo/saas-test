@@ -134,20 +134,18 @@ public class QueryService {
 
     /**
      * 특정 카테고리에 속한 쿼리 목록을 조회
-     * @param memberVO
-     * @param projectIdx
-     * @param queryCategoryIdx
-     * @return
      */
-    public Object getQueriesByCategory(MemberVO memberVO, Integer projectIdx, Integer queryCategoryIdx) {
-        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(projectIdx, memberVO.getIdx())
+    public Object getQueriesByCategory(MemberVO memberVO, Integer partnershipIdx, Integer queryCategoryIdx) {
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
-        ProjectQueryCategoryVO queryCategoryVO = projectQueryCategoryMapper.selectByIdx(queryCategoryIdx)
+
+        ProjectQueryCategoryVO projectQueryCategoryVO = projectQueryCategoryMapper.selectByIdx(queryCategoryIdx)
                 .orElseThrow(() -> new IllegalArgumentException("해당 카테고리가 존재하지 않습니다."));
-        List<ProjectQueryVO> queries = projectQueryMapper.selectByProjectQueryCategoryIdxAndPartnershipMemberIdx(queryCategoryIdx, partnershipMemberVO.getIdx());
+
+        List<ProjectQueryVO> queries = projectQueryMapper.selectByProjectQueryCategoryIdxAndPartnershipMemberIdx(projectQueryCategoryVO.getIdx(), partnershipMemberVO.getIdx());
         return new ResponseQueryDTO.QueriesByCategory(
-                queryCategoryVO.getIdx(),
-                queryCategoryVO.getName(),
+                projectQueryCategoryVO.getIdx(),
+                projectQueryCategoryVO.getName(),
                 queries.stream().map(query -> {
                     ResponseQueryDTO.Query responseQuery = new ResponseQueryDTO.Query();
                     responseQuery.setIdx(query.getIdx());
