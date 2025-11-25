@@ -1,5 +1,6 @@
 package com.illunex.emsaasrestapi.query;
 
+import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
@@ -171,26 +172,62 @@ public class QueryService {
             throw new IllegalArgumentException("projectIdx는 필수입니다.");
         }
 
-        // 3. 쿼리 카테고리 생성
-        ProjectQueryCategoryVO projectQueryCategoryVO = new ProjectQueryCategoryVO();
-        projectQueryCategoryVO.setProjectIdx(projectIdx);
-        projectQueryCategoryVO.setName(saveQuery.getQueryCategoryName());
-        projectQueryCategoryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-        projectQueryCategoryMapper.insertByProjectQueryCategoryVO(projectQueryCategoryVO);
+        // 3. 쿼리 카테고리 처리
+        Integer queryCategoryIdx;
+        if (saveQuery.getQueryCategoryIdx() == null) {
+            // - queryCategoryIdx null인 경우 : 쿼리 카테고리 생성
+            ProjectQueryCategoryVO projectQueryCategoryVO = new ProjectQueryCategoryVO();
+            projectQueryCategoryVO.setProjectIdx(projectIdx);
+            projectQueryCategoryVO.setName(saveQuery.getQueryCategoryName());
+            projectQueryCategoryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
 
-        // 4. 쿼리 생성
+            projectQueryCategoryMapper.insertByProjectQueryCategoryVO(projectQueryCategoryVO);
+            queryCategoryIdx = projectQueryCategoryVO.getIdx();
+        } else {
+            queryCategoryIdx = saveQuery.getQueryCategoryIdx();
+        }
+
+        // 4. 쿼리 처리
         List<RequestQueryDTO.RequestProjectQuery> queryList = saveQuery.getQueryList();
-
         for (RequestQueryDTO.RequestProjectQuery requestQuery : queryList) {
-            ProjectQueryVO projectQueryVO = new ProjectQueryVO();
-            projectQueryVO.setProjectIdx(projectIdx);
-            projectQueryVO.setTitle(requestQuery.getQueryTitle());
-            projectQueryVO.setRawQuery(requestQuery.getRawQuery().toString());
-            projectQueryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-            projectQueryVO.setProjectQueryCategoryIdx(projectQueryCategoryVO.getIdx());
-            projectQueryVO.setTypeCd(requestQuery.getQueryType().getCode());
+            String typeCd = null;
 
-            projectQueryMapper.insertByProjectQueryVO(projectQueryVO);
+            if (requestQuery.getQueryType() != null) {
+                if (requestQuery.getQueryType().equals(EnumCode.ProjectQuery.TypeCd.Select.name())) {
+                    typeCd = EnumCode.ProjectQuery.TypeCd.Select.getCode();
+                }
+
+                if (requestQuery.getQueryType().equals(EnumCode.ProjectQuery.TypeCd.Update.name())) {
+                    typeCd = EnumCode.ProjectQuery.TypeCd.Update.getCode();
+                }
+            }
+
+            if (requestQuery.getIdx() == null) {
+                // - queryIdx null인 경우 : 쿼리 생성
+                ProjectQueryVO projectQueryVO = new ProjectQueryVO();
+                projectQueryVO.setProjectIdx(projectIdx);
+                projectQueryVO.setTitle(requestQuery.getTitle());
+                projectQueryVO.setRawQuery(requestQuery.getRawQuery().toString());
+                projectQueryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+                projectQueryVO.setProjectQueryCategoryIdx(queryCategoryIdx);
+                projectQueryVO.setTypeCd(typeCd);
+
+                projectQueryMapper.insertByProjectQueryVO(projectQueryVO);
+
+            } else {
+                // - queryIdx null이 아닌 경우 : 쿼리 업데이트
+                ProjectQueryVO existingQuery = projectQueryMapper.selectByIdx(requestQuery.getIdx())
+                        .orElseThrow(() -> new IllegalArgumentException("해당 쿼리가 존재하지 않습니다."));
+
+                existingQuery.setTitle(requestQuery.getTitle());
+                existingQuery.setRawQuery(requestQuery.getRawQuery().toString());
+
+                if (typeCd != null) {
+                    existingQuery.setTypeCd(typeCd);
+                }
+
+                projectQueryMapper.updateByProjectQueryVO(existingQuery);
+            }
         }
     }
 

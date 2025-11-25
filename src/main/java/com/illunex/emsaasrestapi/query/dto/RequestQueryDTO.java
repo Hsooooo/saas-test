@@ -1,7 +1,6 @@
 package com.illunex.emsaasrestapi.query.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.illunex.emsaasrestapi.common.code.EnumCode;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -23,14 +22,16 @@ public class RequestQueryDTO {
     public static class SaveQuery {
         private Integer projectIdx;
         private Integer partnershipIdx;
+        private Integer queryCategoryIdx;
         private String queryCategoryName;
         private List<RequestProjectQuery> queryList;
     }
 
     @Getter
     public static class RequestProjectQuery {
-        private EnumCode.ProjectQuery.TypeCd queryType;  // 쿼리 종류 (Select, Update)
-        private String queryTitle;   // 쿼리 이름
+        private Integer idx;   // 쿼리 idx
+        private String queryType;  // 쿼리 종류 (Select, Update)
+        private String title;   // 쿼리 이름
         private JsonNode rawQuery;    // raw 쿼리
     }
 
