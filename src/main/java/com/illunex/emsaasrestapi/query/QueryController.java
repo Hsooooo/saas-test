@@ -2,6 +2,7 @@ package com.illunex.emsaasrestapi.query;
 
 import com.illunex.emsaasrestapi.common.CurrentMember;
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
@@ -25,9 +26,11 @@ public class QueryController {
 
     @PostMapping("/execute")
     public CustomResponse<?> queryExecute(@CurrentMember MemberVO memberVO,
-                                          @RequestBody RequestQueryDTO.ExecuteQuery executeQuery) {
+                                          @RequestBody RequestQueryDTO.ExecuteRawQuery executeQuery,
+                                          CustomPageRequest pageRequest,
+                                          String[] sort) {
         return CustomResponse.builder()
-                .data(queryService.executeQuery(memberVO, executeQuery))
+                .data(queryService.executeQuery(memberVO, executeQuery, pageRequest.of(sort)))
                 .message("Query executed successfully")
                 .build();
     }
@@ -47,6 +50,15 @@ public class QueryController {
         queryService.saveQuery(memberVO, saveQuery);
         return CustomResponse.builder()
                 .message("Query saved successfully")
+                .build();
+    }
+
+    @PutMapping("/edit")
+    public CustomResponse<?> queryEdit(@CurrentMember MemberVO memberVO,
+                                       @RequestBody RequestQueryDTO.EditQuery editQuery) throws CustomException {
+        return CustomResponse.builder()
+                .data(queryService.queryEdit(memberVO, editQuery))
+                .message("Query edited successfully")
                 .build();
     }
 
