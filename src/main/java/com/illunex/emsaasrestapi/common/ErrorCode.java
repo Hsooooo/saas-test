@@ -99,7 +99,13 @@ public enum ErrorCode {
      */
     KNOWLEDGE_NOTE_CONTENT_EMPTY(1100, "노트 내용이 없습니다."),
     KNOWLEDGE_LINK_TYPE_INVALID(1101, "유효하지 않은 링크 타입입니다."),
-    KNOWLEDGE_NODE_TYPE_INVALID(1102, "유효하지 않은 노드 타입입니다.")
+    KNOWLEDGE_NODE_TYPE_INVALID(1102, "유효하지 않은 노드 타입입니다."),
+
+    /**
+     * 쿼리
+     */
+    QUERY_NOT_FOUND(1200, "해당 쿼리가 존재하지 않습니다."),
+    QUERY_DELETE_UNAUTHORIZED(1201, "해당 쿼리를 삭제할 권한이 없습니다.")
     ;
 
     private final int status;

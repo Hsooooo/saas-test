@@ -1,5 +1,7 @@
 package com.illunex.emsaasrestapi.query;
 
+import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
@@ -266,5 +268,24 @@ public class QueryService {
 
         return graphResp;
 
+    }
+
+    @Transactional
+    public void deleteQuery(MemberVO memberVO, Integer queryIdx) throws CustomException {
+        // 1. 쿼리 조회
+        ProjectQueryVO projectQueryVO = projectQueryMapper.selectByIdx(queryIdx)
+                .orElseThrow(() -> new CustomException(ErrorCode.QUERY_NOT_FOUND));
+
+        // 2. 쿼리를 생성한 파트너십 멤버 조회
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByIdx(projectQueryVO.getPartnershipMemberIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+
+        // 3. 쿼리를 생성한 회원과 삭제 요청한 회원이 동일한지 확인
+        if (!partnershipMemberVO.getMemberIdx().equals(memberVO.getIdx())) {
+            throw new CustomException(ErrorCode.QUERY_DELETE_UNAUTHORIZED);
+        }
+
+        // 4. 쿼리 삭제
+        projectQueryMapper.deleteByIdx(queryIdx);
     }
 }

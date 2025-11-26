@@ -10,6 +10,7 @@ import java.util.Optional;
 public interface ProjectQueryMapper {
     void insertByProjectQueryVO(ProjectQueryVO projectQueryVO);
     void updateByProjectQueryVO(ProjectQueryVO projectQueryVO);
+    void deleteByIdx(Integer idx);
     Optional<ProjectQueryVO> selectByIdx(Integer idx);
     List<ProjectQueryVO> selectByProjectQueryCategoryIdx(Integer projectQueryCategoryIdx);
     List<ProjectQueryVO> selectByProjectQueryCategoryIdxAndPartnershipMemberIdx(Integer projectQueryCategoryIdx, Integer partnershipMemberIdx);

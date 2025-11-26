@@ -72,4 +72,9 @@
             create_date DESC
     </select>
 
+    <delete id="deleteByIdx" parameterType="Integer">
+        DELETE FROM project_query
+        WHERE idx = #{idx}
+    </delete>
+
 </mapper>
