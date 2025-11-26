@@ -273,8 +273,7 @@ public class EnumCode {
         @AllArgsConstructor
         public enum SenderType implements BaseCodeEnum {
             USER("RST0001", "USER"),
-            GEMINI("RST0002", "GEMINI"),
-            GPT("RST0003", "GPT");
+            ASSISTANT("RST0002", "ASSISTANT");
 
             private final String code;
             private final String value;

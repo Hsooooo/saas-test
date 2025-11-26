@@ -60,8 +60,7 @@ INSERT INTO em_saas.code (code, first_code, second_code, third_code, code_value,
 
 ('RST0000', 'RST', '00', '00', '- LLM sender Type', 0),
 ('RST0001', 'RST', '00', '01', 'USER', 1),
-('RST0002', 'RST', '00', '02', 'GEMINI', 2),
-('RST0003', 'RST', '00', '03', 'GPT', 3),
+('RST0002', 'RST', '00', '02', 'ASSISTANT', 2),
 
 
 ('TTC0000', 'TTC', '00', '00', '- LLM 외부 도구 타입', 0),

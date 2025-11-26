@@ -130,7 +130,6 @@ public class AiProxyController {
         if (model != null) {
             payload.put("model", model);
         }
-        String senderType = resolveAssistantSenderType(model).getCode();
 
         // 4) 스트림 상태 변수
         final var tee = new java.io.ByteArrayOutputStream(32 * 1024);
@@ -234,7 +233,7 @@ public class AiProxyController {
                 try {
                     final int historyIdx = chatService.saveHistory(
                             chatRoomIdx,
-                            senderType,
+                            EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
                             EnumCode.ChatHistory.CategoryType.ERROR.getCode(),
                             "죄송합니다. 답변 생성에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
                     );
@@ -275,7 +274,7 @@ public class AiProxyController {
             // 1) 최종 어시스턴트 메시지 저장 (flush 보장 권장)
             final int historyIdx = chatService.saveHistory(
                     chatRoomIdx,
-                    senderType,
+                    EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
                     cateCode,
                     finalText
             );
@@ -311,7 +310,7 @@ public class AiProxyController {
                     "history", Map.of(
                             "idx", historyIdx,
                             "chatRoomIdx", chatRoomIdx,
-                            "senderType", senderType,
+                            "senderType", EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
                             "categoryType", cateCode,
                             "message", finalText
                     ),
@@ -929,17 +928,5 @@ public class AiProxyController {
             }
         }
         return sb.toString();
-    }
-
-    private EnumCode.ChatRoom.SenderType resolveAssistantSenderType(String model) {
-        if (model == null) {
-            return EnumCode.ChatRoom.SenderType.GEMINI;
-        } else if ("gemini".equalsIgnoreCase(model)) {
-            return EnumCode.ChatRoom.SenderType.GEMINI;
-        } else if ("gpt".equalsIgnoreCase(model)) {
-            return EnumCode.ChatRoom.SenderType.GPT;
-        } else {
-            return EnumCode.ChatRoom.SenderType.GEMINI;
-        }
     }
 }
