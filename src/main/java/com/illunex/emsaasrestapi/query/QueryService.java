@@ -1,6 +1,7 @@
 package com.illunex.emsaasrestapi.query;
 
 import com.illunex.emsaasrestapi.common.CustomException;
+import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.common.ErrorCode;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
@@ -9,6 +10,7 @@ import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import com.illunex.emsaasrestapi.project.document.database.Column;
+import com.illunex.emsaasrestapi.project.document.network.Node;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
@@ -18,8 +20,12 @@ import com.illunex.emsaasrestapi.query.mapper.ProjectQueryMapper;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryCategoryVO;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.BasicQuery;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.ResponseEntity;
@@ -32,7 +38,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class QueryService {
@@ -71,44 +79,45 @@ public class QueryService {
     }
 
     /**
-     * 쿼리 실행 (MYSQL, PostgreSQL 등 관계형 DB용)
+     * 쿼리 실행
      * @param memberVO 현재 멤버 정보
      * @param req 쿼리 요청 DTO
+     * @param pageable 페이지 정보
      * @return
      */
-    public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteQuery req) {
+    public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteRawQuery req, Pageable pageable) {
+        // 1. 프로젝트 조회
         ProjectVO projectVO = projectMapper.selectByIdx(req.getProjectIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다."));
+
+        // 2. 파트너십 조회
         PartnershipVO partnershipVO = partnershipMapper.selectByIdx(projectVO.getPartnershipIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 파트너십이 존재하지 않습니다."));
+
+        // 3. 파트너십 멤버 조회
         PartnershipMemberVO pm = partnershipMemberMapper
                 .selectByPartnershipIdxAndMemberIdx(partnershipVO.getIdx(), memberVO.getIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
 
-        QueryResult qr = queryComponent.resolveSql(req);
+        // 4. rawQuery를 Query로 변환
+        String rawQuery = req.getRawQuery().toString();
+        Query findNodeQuery = new BasicQuery(rawQuery).with(pageable);
+        Query countNodeQuery = new BasicQuery(rawQuery);
 
-        // 실제 적용된 limit/skip
-        int appliedLimit = qr.query().getLimit();
-        int appliedSkip  = (int) qr.query().getSkip();
+        log.info("[searchDatabaseByTemplate] findQuery={}", findNodeQuery);
 
-        Long total = mongoTemplate.count(Query.of(qr.query()).limit(0).skip(0), qr.collection());
+        // 5. 노드 조회
+        List<Node> nodes = mongoTemplate.find(findNodeQuery, Node.class);
+        long totalCount = mongoTemplate.count(countNodeQuery, Node.class);
 
-        int page = (appliedLimit > 0) ? (appliedSkip / appliedLimit) + 1 : 1;
-        int size = appliedLimit;
+        List<Map> mappedResults = nodes.stream()
+                .map(Node::getProperties)
+                .collect(Collectors.toList());
 
-        List<Map> results = mongoTemplate.find(qr.query(), Map.class, qr.collection());
-
-        return ResponseEntity.ok(ResponseQueryDTO.ExecuteFind.builder()
-                .total(total)
-                .page(page)
-                .size(size)
-                .skip(appliedSkip)
-                .limit(size)
-                .result(results)
-                .build());
+        return CustomResponse.builder()
+                .data(new PageImpl<>(mappedResults, pageable, totalCount))
+                .build();
     }
-
-
 
     /**
      * 프로젝트에 속한 쿼리 카테고리 목록 조회

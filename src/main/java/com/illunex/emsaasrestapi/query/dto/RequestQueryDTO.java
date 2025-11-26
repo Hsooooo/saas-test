@@ -52,6 +52,12 @@ public class RequestQueryDTO {
     }
 
     @Getter
+    public static class ExecuteRawQuery {
+        private Integer projectIdx;
+        private JsonNode rawQuery;
+    }
+
+    @Getter
     public static class AIQuery {
         private Integer projectIdx;
         private String queryPrompt;
