@@ -203,4 +203,41 @@ public class KnowledgeComponent {
                 .build();
     }
 
+
+    /**
+     * NOTE A, B 사이 weight 계산
+     * weight = 0.7 * sharedTagCount + 0.3 * hasRef(A,B)
+     */
+    public double computeNoteRelationWeight(int noteA, int noteB) {
+        int sharedTagCount = Optional.ofNullable(knowledgeGardenLinkMapper.countSharedKeywordsBetweenNotes(noteA, noteB)).orElse(0);
+
+        int refCount = Optional.ofNullable(knowledgeGardenLinkMapper.countRefLinksBetweenNotes(noteA, noteB)).orElse(0);
+
+        double tagScore = sharedTagCount;
+        double linkScore = refCount > 0 ? 1.0 : 0.0;
+
+        return 0.7 * tagScore + 0.3 * linkScore;
+    }
+
+    @Transactional
+    public void rebuildSimilarRelationsForNote(int noteIdx) {
+        // 1) 이전 SIMILAR 링크 삭제
+        knowledgeGardenLinkMapper.deleteSimilarLinksByNodeIdx(noteIdx);
+
+        // 2) 이웃 노트 목록 조회
+        List<Integer> neighbors = knowledgeGardenLinkMapper.selectNeighborNotesForRelation(noteIdx);
+
+        if (neighbors == null || neighbors.isEmpty()) return;
+
+        for (Integer other : neighbors) {
+            if (other == null || other.equals(noteIdx)) continue;
+
+            double weight = computeNoteRelationWeight(noteIdx, other);
+
+            int start = Math.min(noteIdx, other);
+            int end   = Math.max(noteIdx, other);
+
+            knowledgeGardenLinkMapper.upsertSimilarLink(start, end, weight);
+        }
+    }
 }

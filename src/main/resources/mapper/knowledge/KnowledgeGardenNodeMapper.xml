@@ -191,35 +191,41 @@ public class KnowledgeGardenNodeVO {
 
     <select id="selectByPmIdxAndSearchStrAndTypeCdInWithLimit" resultType="KnowledgeGardenNodeVO">
         SELECT
-            n.*
+            DISTINCT n.*
         FROM knowledge_garden_node n
-        JOIN knowledge_garden_node_version v
-            ON v.idx = n.current_version_idx   <!-- 마지막 버전만 -->
+        LEFT JOIN knowledge_garden_node_version v
+            ON v.idx = n.current_version_idx
+        LEFT JOIN knowledge_garden_link l
+            ON l.start_node_idx = n.idx
+           AND l.type_cd = 'KLT0003'
+        LEFT JOIN knowledge_garden_node k
+            ON k.idx = l.end_node_idx
+           AND k.type_cd = 'KNT0003'
         <where>
             n.partnership_member_idx = #{partnershipMemberIdx}
             AND n.state_cd = 'KNS0001'
-            <!-- includeTypes 가 있을 때만 type 필터 -->
             <if test="includeTypes != null and includeTypes.length > 0">
                 AND n.type_cd IN
                 <foreach collection="includeTypes" item="type" open="(" separator="," close=")">
                     #{type}
                 </foreach>
             </if>
-            <!-- searchStr 있을 때만 FULLTEXT 검색 -->
             <if test="searchStr != null and searchStr != ''">
-                AND MATCH(v.title, v.content)
-                    AGAINST(#{searchStr} IN NATURAL LANGUAGE MODE)
+                AND (
+                    n.label LIKE CONCAT('%', #{searchStr}, '%')
+                    OR k.label LIKE CONCAT('%', #{searchStr}, '%')
+                )
             </if>
         </where>
-        <!-- 정렬: 검색어 있을 때는 FULLTEXT 점수 우선, 없으면 최신 버전 순 -->
         <if test="searchStr != null and searchStr != ''">
             ORDER BY
-                MATCH(v.title, v.content)
-                    AGAINST(#{searchStr} IN NATURAL LANGUAGE MODE) DESC,
-                v.create_date DESC
+                COALESCE(v.create_date, n.update_date) DESC,
+                n.idx DESC
         </if>
         <if test="searchStr == null or searchStr == ''">
-            ORDER BY v.create_date DESC
+            ORDER BY
+                COALESCE(v.create_date, n.update_date) DESC,
+                n.idx DESC
         </if>
         LIMIT #{limit}
     </select>

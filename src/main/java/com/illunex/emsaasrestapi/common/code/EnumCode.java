@@ -601,7 +601,9 @@ public class EnumCode {
         public enum TypeCd implements BaseCodeEnum {
             TREE("KLT0001", "트리"),
             REF("KLT0002", "참조"),
-            KEYWORD("KLT0003", "키워드");
+            KEYWORD("KLT0003", "키워드"),
+            SIMILARITY("KLT0004", "유사")
+            ;
 
             private final String code;
             private final String value;

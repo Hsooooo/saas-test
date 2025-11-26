@@ -529,6 +529,7 @@ public class KnowledgeService {
         if (nodeChanged) {
             knowledgeGardenNodeMapper.updateByKnowledgeGardenNodeVO(node);
         }
+        knowledgeComponent.rebuildSimilarRelationsForNote(node.getIdx());
     }
 
     /**

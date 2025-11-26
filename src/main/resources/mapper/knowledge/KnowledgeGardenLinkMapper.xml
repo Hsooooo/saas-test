@@ -57,6 +57,20 @@ public class KnowledgeGardenLinkVO {
         )
     </select>
 
+    <select id="selectGraphLinksByNodeIds" resultType="KnowledgeGardenLinkVO">
+        SELECT *
+          FROM knowledge_garden_link
+         WHERE (start_node_idx IN
+                <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+                OR end_node_idx IN
+                <foreach collection="nodeIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>)
+           AND type_cd IN ('KLT0003', 'KLT0004')  <!-- REF, SIMILAR -->
+    </select>
+
     <update id="updateStateByNodeIds">
         UPDATE knowledge_garden_link
            SET state_cd = #{stateCd}
@@ -72,4 +86,86 @@ public class KnowledgeGardenLinkVO {
                 </foreach>
            )
     </update>
+
+    <!-- 1) 특정 노드와 관련된 SIMILAR 링크 삭제 -->
+    <delete id="deleteSimilarLinksByNodeIdx">
+        DELETE FROM knowledge_garden_link
+         WHERE type_cd = 'KLT0004'  <!-- SIMILAR -->
+           AND (start_node_idx = #{nodeIdx}
+                OR end_node_idx = #{nodeIdx})
+    </delete>
+
+    <!-- 2) 유사도 재계산 대상 이웃 노트 조회
+         - 같은 키워드를 공유하는 노트
+         - REF 링크로 직접 연결된 노트
+         - NOTE 타입만 (node.type_cd = NOTE) -->
+    <select id="selectNeighborNotesForRelation" resultType="int">
+        (
+            <!-- 같은 키워드를 공유하는 노트 -->
+            SELECT DISTINCT n2.idx AS note_idx
+            FROM knowledge_garden_link lk1
+            JOIN knowledge_garden_link lk2
+              ON lk1.end_node_idx = lk2.end_node_idx
+            JOIN knowledge_garden_node n2
+              ON n2.idx = lk2.start_node_idx
+            WHERE lk1.start_node_idx = #{noteIdx}
+              AND lk1.type_cd = 'KLT0003'          <!-- KEYWORD -->
+              AND lk2.type_cd = 'KLT0003'          <!-- KEYWORD -->
+              AND lk2.start_node_idx != #{noteIdx}
+              AND n2.type_cd = 'KNT0001'           <!-- NOTE -->
+        )
+        UNION
+        (
+            <!-- REF 링크로 바로 연결된 노트 -->
+            SELECT DISTINCT
+                CASE
+                    WHEN l.start_node_idx = #{noteIdx} THEN l.end_node_idx
+                    ELSE l.start_node_idx
+                END AS note_idx
+            FROM knowledge_garden_link l
+            JOIN knowledge_garden_node n
+              ON n.idx = CASE
+                            WHEN l.start_node_idx = #{noteIdx} THEN l.end_node_idx
+                            ELSE l.start_node_idx
+                         END
+            WHERE l.type_cd = 'KLT0002'            <!-- REF -->
+              AND (l.start_node_idx = #{noteIdx}
+                   OR l.end_node_idx = #{noteIdx})
+              AND n.type_cd = 'KNT0001'            <!-- NOTE -->
+        )
+    </select>
+
+    <!-- 3) 두 노트가 공유하는 키워드 개수 -->
+    <select id="countSharedKeywordsBetweenNotes" resultType="int">
+        SELECT COUNT(*) AS shared_cnt
+        FROM knowledge_garden_link a
+        JOIN knowledge_garden_link b
+          ON a.end_node_idx = b.end_node_idx      <!-- 같은 키워드 노드 -->
+        WHERE a.start_node_idx = #{noteA}
+          AND b.start_node_idx = #{noteB}
+          AND a.type_cd = 'KLT0003'                <!-- KEYWORD -->
+          AND b.type_cd = 'KLT0003'                <!-- KEYWORD -->
+    </select>
+
+    <!-- 4) 두 노트 사이 REF 링크 개수 -->
+    <select id="countRefLinksBetweenNotes" resultType="int">
+        SELECT COUNT(*) AS cnt
+        FROM knowledge_garden_link l
+        WHERE l.type_cd = 'KLT0002'                <!-- REF -->
+          AND (
+                (l.start_node_idx = #{noteA} AND l.end_node_idx = #{noteB})
+             OR (l.start_node_idx = #{noteB} AND l.end_node_idx = #{noteA})
+          )
+    </select>
+
+    <!-- 5) SIMILAR 링크 upsert
+         - UNIQUE KEY (type_cd, start_node_idx, end_node_idx) 전제 -->
+    <insert id="upsertSimilarLink">
+        INSERT INTO knowledge_garden_link
+            (start_node_idx, end_node_idx, type_cd, weight, state_cd, create_date)
+        VALUES
+            (#{startNodeIdx}, #{endNodeIdx}, 'KLT0004', #{weight}, 'KNS0001', NOW())
+        ON DUPLICATE KEY UPDATE
+            weight = VALUES(weight)
+    </insert>
 </mapper>
