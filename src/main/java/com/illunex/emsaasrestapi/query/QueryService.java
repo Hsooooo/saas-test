@@ -21,6 +21,10 @@ import com.illunex.emsaasrestapi.query.vo.ProjectQueryCategoryVO;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
+import org.bson.codecs.DecoderContext;
+import org.bson.codecs.DocumentCodec;
+import org.bson.json.JsonReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -85,7 +89,7 @@ public class QueryService {
      * @param pageable 페이지 정보
      * @return
      */
-    public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteRawQuery req, Pageable pageable) {
+    public Object executeQuery(MemberVO memberVO, RequestQueryDTO.ExecuteRawQuery req, Pageable pageable) throws CustomException {
         // 1. 프로젝트 조회
         ProjectVO projectVO = projectMapper.selectByIdx(req.getProjectIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다."));
@@ -99,23 +103,62 @@ public class QueryService {
                 .selectByPartnershipIdxAndMemberIdx(partnershipVO.getIdx(), memberVO.getIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
 
-        // 4. rawQuery를 Query로 변환
-        String rawQuery = req.getRawQuery().toString();
-        Query findNodeQuery = new BasicQuery(rawQuery).with(pageable);
-        Query countNodeQuery = new BasicQuery(rawQuery);
+        // - queryType 검증
+        String queryType = req.getQueryType();
+        if (queryType == null || queryType.isEmpty()) {
+            throw new CustomException(ErrorCode.DATABASE_QUERY_TYPE_EMPTY);
+        }
 
-        log.info("[searchDatabaseByTemplate] findQuery={}", findNodeQuery);
+        // 5. SELECT 쿼리 실행
+        if (queryType.equals(EnumCode.ProjectQuery.TypeCd.Select.name())) {
+            String rawQuery = req.getRawQuery().toString();
+            Query findNodeQuery = new BasicQuery(rawQuery).with(pageable);
+            Query countNodeQuery = new BasicQuery(rawQuery);
 
-        // 5. 노드 조회
-        List<Node> nodes = mongoTemplate.find(findNodeQuery, Node.class);
-        long totalCount = mongoTemplate.count(countNodeQuery, Node.class);
+            log.info("[executeQuery] SELECT - findQuery={}", findNodeQuery);
 
-        List<Map> mappedResults = nodes.stream()
-                .map(Node::getProperties)
-                .collect(Collectors.toList());
+            List<Node> nodes = mongoTemplate.find(findNodeQuery, Node.class);
+            long totalCount = mongoTemplate.count(countNodeQuery, Node.class);
+
+            List<Map> mappedResults = nodes.stream()
+                    .map(Node::getProperties)
+                    .collect(Collectors.toList());
+
+            return CustomResponse.builder()
+                    .data(new PageImpl<>(mappedResults, pageable, totalCount))
+                    .build();
+        }
+
+        // 6. UPDATE 쿼리 실행
+        // rawQuery 형식: { "filter": {...}, "update": {...} }
+        com.fasterxml.jackson.databind.JsonNode filterNode = req.getRawQuery().get("filter");
+        com.fasterxml.jackson.databind.JsonNode updateNode = req.getRawQuery().get("update");
+
+        if (filterNode == null || updateNode == null) {
+            throw new IllegalArgumentException("UPDATE 쿼리는 filter와 update가 필요합니다.");
+        }
+
+        // Extended JSON을 BSON Document로 변환 (JsonReader 사용)
+        DocumentCodec codec = new DocumentCodec();
+        DecoderContext decoderContext = DecoderContext.builder().build();
+
+        Document filterDocument = codec.decode(new JsonReader(filterNode.toString()), decoderContext);
+        Document updateDocument = codec.decode(new JsonReader(updateNode.toString()), decoderContext);
+
+        log.info("[executeQuery] UPDATE - filter={}, update={}", filterDocument.toJson(), updateDocument.toJson());
+
+        // MongoDB 컬렉션에 직접 updateMany 실행
+        com.mongodb.client.result.UpdateResult updateResult = mongoTemplate
+                .getCollection(mongoTemplate.getCollectionName(Node.class))
+                .updateMany(filterDocument, updateDocument);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("matchedCount", updateResult.getMatchedCount());
+        result.put("modifiedCount", updateResult.getModifiedCount());
 
         return CustomResponse.builder()
-                .data(new PageImpl<>(mappedResults, pageable, totalCount))
+                .data(result)
+                .message("업데이트가 완료되었습니다.")
                 .build();
     }
 

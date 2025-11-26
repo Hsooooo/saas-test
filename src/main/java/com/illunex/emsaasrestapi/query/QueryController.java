@@ -28,7 +28,7 @@ public class QueryController {
     public CustomResponse<?> queryExecute(@CurrentMember MemberVO memberVO,
                                           @RequestBody RequestQueryDTO.ExecuteRawQuery executeQuery,
                                           CustomPageRequest pageRequest,
-                                          String[] sort) {
+                                          String[] sort) throws CustomException {
         return CustomResponse.builder()
                 .data(queryService.executeQuery(memberVO, executeQuery, pageRequest.of(sort)))
                 .message("Query executed successfully")

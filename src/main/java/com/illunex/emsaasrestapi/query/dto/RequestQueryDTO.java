@@ -54,6 +54,7 @@ public class RequestQueryDTO {
     @Getter
     public static class ExecuteRawQuery {
         private Integer projectIdx;
+        private String queryType; // 쿼리 종류 (Select, Update)
         private JsonNode rawQuery;
     }
 
