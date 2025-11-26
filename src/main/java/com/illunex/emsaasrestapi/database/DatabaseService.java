@@ -1,5 +1,7 @@
 package com.illunex.emsaasrestapi.database;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
@@ -30,6 +32,9 @@ import com.mongodb.client.result.DeleteResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.BsonType;
+import org.bson.Document;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -296,8 +301,23 @@ public class DatabaseService {
         // - 생성된 쿼리 로그 출력
         log.info("[searchDatabaseByTemplate] findQuery={}", findNodeQuery);
 
+        // - Document를 Extended JSON 형식으로 변환
+        Document queryDocument = findNodeQuery.getQueryObject();
+        JsonWriterSettings settings = JsonWriterSettings.builder()
+                .outputMode(JsonMode.EXTENDED)
+                .build();
+        String queryJson = queryDocument.toJson(settings);
+
+        // - JSON 문자열을 JsonNode로 변환
+        JsonNode queryJsonNode;
+        try {
+            queryJsonNode = new ObjectMapper().readTree(queryJson);
+        } catch (Exception e) {
+            throw new RuntimeException("쿼리 JSON 변환 중 오류 발생", e);
+        }
+
         return CustomResponse.builder()
-                .data(findNodeQuery.getQueryObject())
+                .data(queryJsonNode)
                 .build();
     }
 
