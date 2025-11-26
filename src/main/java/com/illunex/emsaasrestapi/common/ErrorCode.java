@@ -105,7 +105,14 @@ public enum ErrorCode {
      * 쿼리
      */
     QUERY_NOT_FOUND(1200, "해당 쿼리가 존재하지 않습니다."),
-    QUERY_DELETE_UNAUTHORIZED(1201, "해당 쿼리를 삭제할 권한이 없습니다.")
+    QUERY_DELETE_UNAUTHORIZED(1201, "해당 쿼리를 삭제할 권한이 없습니다."),
+
+    /**
+     * 데이터베이스
+     */
+    DATABASE_UPDATE_FIELD_EMPTY(1300, "UPDATE 쿼리에는 업데이트할 필드가 필요합니다."),
+    DATABASE_UPDATE_COLUMN_NAME_EMPTY(1301, "업데이트 필드의 컬럼명이 비어있습니다."),
+    DATABASE_QUERY_TYPE_EMPTY(1302, "쿼리 타입이 비어있습니다.")
     ;
 
     private final int status;

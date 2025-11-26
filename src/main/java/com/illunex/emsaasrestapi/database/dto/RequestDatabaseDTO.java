@@ -59,8 +59,19 @@ public class RequestDatabaseDTO {
     @Getter
     public static class SearchTemplate {
         private String nodeType; // Node 타입
+        private String queryType; // 쿼리 종류 (Select: 조회, Update: 수정)
         private List<SearchFilter> filters; // 검색할 컬럼 이름들
         private List<SearchSort> sorts; // 정렬 조건들
+        private List<UpdateField> updates; // 업데이트할 필드들 (UPDATE 쿼리에서 사용)
+    }
+
+    /**
+     * 업데이트 필드 DTO
+     */
+    @Getter
+    public static class UpdateField {
+        private String columnName; // 업데이트할 컬럼 이름
+        private String value; // 업데이트할 값
     }
 
     /**

@@ -47,6 +47,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -145,7 +149,7 @@ public class DatabaseService {
                         filterCriteriaList.add(new Criteria().orOperator(
                                 emptyCriteria(field),
                                 new Criteria().andOperator(
-                                        Criteria.where(field).type(org.bson.BsonType.STRING.getValue()),
+                                        Criteria.where(field).type(BsonType.STRING.getValue()),
                                         Criteria.where(field).not().regex(raw, "i")
                                 )
                         ));
@@ -226,10 +230,15 @@ public class DatabaseService {
      * @param query       검색 쿼리
      * @return 검색 결과를 포함한 CustomResponse 객체
      */
-    public CustomResponse<?> createQueryByTemplate(Integer projectIdx, RequestDatabaseDTO.SearchTemplate query) {
+    public CustomResponse<?> createQueryByTemplate(Integer projectIdx, RequestDatabaseDTO.SearchTemplate query) throws CustomException {
         String nodeType = query.getNodeType();
         List<RequestDatabaseDTO.SearchFilter> filters = query.getFilters();
-        List<RequestDatabaseDTO.SearchSort> sorts = query.getSorts();
+        String queryType = query.getQueryType();
+
+        // - queryType 검증
+        if (queryType == null || queryType.isEmpty()) {
+            throw new CustomException(ErrorCode.DATABASE_QUERY_TYPE_EMPTY);
+        }
 
         // 1. 기본 검색 조건 생성
         Criteria criteria = Criteria.where(MongoDBUtils.Node._ID_PROJECT_IDX.getField()).is(projectIdx)
@@ -270,54 +279,69 @@ public class DatabaseService {
             criteria = new Criteria().andOperator(criteria, filterCriteriaResult);
         }
 
-        // 3. 정렬 조건 생성
-        List<String> sortList = new ArrayList<>();
-
-        List<RequestDatabaseDTO.SearchSort> searchSortList = Optional.ofNullable(sorts)
-                .orElse(List.of());
-
-        if (searchSortList.isEmpty()) {
-            sortList.add("id,DESC");
-        } else {
-            for (RequestDatabaseDTO.SearchSort searchSort : searchSortList) {
-                String columnName = searchSort.getColumnName();
-                Boolean isAsc = searchSort.getIsAsc();
-
-                if (columnName == null || columnName.isEmpty()) {
-                    throw new IllegalArgumentException("정렬 기준의 컬럼명이 비어있습니다.");
-                }
-
-                String sortColumn = MongoDBUtils.Node.PROPERTIES.getPropertyField(columnName);
-                String sortDirection = isAsc ? "ASC" : "DESC";
-                String sort = sortColumn + "," + sortDirection;
-
-                sortList.add(sort);
-            }
-        }
-
-        // 4. 쿼리 생성
+        // 3. 필터 쿼리 생성
         Query findNodeQuery = Query.query(criteria);
-
-        // - 생성된 쿼리 로그 출력
-        log.info("[searchDatabaseByTemplate] findQuery={}", findNodeQuery);
 
         // - Document를 Extended JSON 형식으로 변환
         Document queryDocument = findNodeQuery.getQueryObject();
         JsonWriterSettings settings = JsonWriterSettings.builder()
-                .outputMode(JsonMode.EXTENDED)
+                .outputMode(JsonMode.RELAXED)
                 .build();
-        String queryJson = queryDocument.toJson(settings);
 
-        // - JSON 문자열을 JsonNode로 변환
-        JsonNode queryJsonNode;
-        try {
-            queryJsonNode = new ObjectMapper().readTree(queryJson);
-        } catch (Exception e) {
-            throw new RuntimeException("쿼리 JSON 변환 중 오류 발생", e);
+        String filterJson = queryDocument.toJson(settings);
+        ObjectMapper objectMapper = new ObjectMapper();
+        Object responseData = null;
+
+        // 4. 쿼리 JsonNode 생성
+        // - SELECT 쿼리인 경우: 조회용 쿼리 반환
+        if (queryType.equals(EnumCode.ProjectQuery.TypeCd.Select.name())) {
+            try {
+                responseData = objectMapper.readTree(filterJson);
+            } catch (Exception e) {
+                throw new RuntimeException("쿼리 JSON 변환 중 오류 발생", e);
+            }
+        }
+
+        // - UPDATE 쿼리인 경우: filter + update 조건 반환
+        if (queryType.equals(EnumCode.ProjectQuery.TypeCd.Update.name())) {
+            List<RequestDatabaseDTO.UpdateField> updates = query.getUpdates();
+            if (updates == null || updates.isEmpty()) {
+                throw new CustomException(ErrorCode.DATABASE_UPDATE_FIELD_EMPTY);
+            }
+
+            // Update 객체 생성 ($set 연산자 사용)
+            Update update = new Update();
+            for (RequestDatabaseDTO.UpdateField updateField : updates) {
+                String columnName = updateField.getColumnName();
+                String value = updateField.getValue();
+
+                if (columnName == null || columnName.isEmpty()) {
+                    throw new CustomException(ErrorCode.DATABASE_UPDATE_COLUMN_NAME_EMPTY);
+                }
+
+                String field = MongoDBUtils.Node.PROPERTIES.getPropertyField(columnName);
+                update.set(field, value);
+            }
+
+            // Update Document 생성
+            Document updateDocument = update.getUpdateObject();
+            String updateJson = updateDocument.toJson(settings);
+
+            Map<String, JsonNode> result = new LinkedHashMap<>();
+            try {
+                result.put("filter", objectMapper.readTree(filterJson));
+                result.put("update", objectMapper.readTree(updateJson));
+            } catch (Exception e) {
+                throw new RuntimeException("쿼리 JSON 변환 중 오류 발생", e);
+            }
+
+            log.info("[createQueryByTemplate] UPDATE query - filter={}, update={}", filterJson, updateJson);
+
+            responseData = result;
         }
 
         return CustomResponse.builder()
-                .data(queryJsonNode)
+                .data(responseData)
                 .build();
     }
 
@@ -654,10 +678,10 @@ public class DatabaseService {
                 Aggregation.group("_id.type").count().as("cnt")
         );
 
-        AggregationResults<org.bson.Document> results =
-                mongoTemplate.aggregate(agg, collectionClass, org.bson.Document.class);
+        AggregationResults<Document> results =
+                mongoTemplate.aggregate(agg, collectionClass, Document.class);
 
-        for (org.bson.Document d : results.getMappedResults()) {
+        for (Document d : results.getMappedResults()) {
             // type 읽기 (group("_id.type")이므로 _id가 곧 type 값)
             Object id = d.get("_id");
             String type = (id == null) ? null : String.valueOf(id);
@@ -902,10 +926,10 @@ public class DatabaseService {
         };
         for (String p : patterns) {
             try {
-                java.time.format.DateTimeFormatter f = java.time.format.DateTimeFormatter.ofPattern(p)
-                        .withZone(java.time.ZoneId.systemDefault());
-                java.time.temporal.TemporalAccessor ta = f.parse(s);
-                java.time.Instant inst = java.time.Instant.from(ta);
+                DateTimeFormatter f = DateTimeFormatter.ofPattern(p)
+                        .withZone(ZoneId.systemDefault());
+                TemporalAccessor ta = f.parse(s);
+                Instant inst = Instant.from(ta);
                 asDate = Date.from(inst);
                 break;
             } catch (Exception ignored) {
