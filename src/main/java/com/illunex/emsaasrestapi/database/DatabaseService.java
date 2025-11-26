@@ -418,23 +418,28 @@ public class DatabaseService {
 
     private Criteria createFilterCriteria(RequestDatabaseDTO.SearchFilter filter) {
         String field = MongoDBUtils.Node.PROPERTIES.getPropertyField(filter.getColumnName());
-        String raw = filter.getSearchString() == null ? "" : filter.getSearchString();
-        ParsedCandidates c = parseCandidates(raw);
+        String searchString = filter.getSearchString() == null ? "" : filter.getSearchString();
 
         RequestDatabaseDTO.FilterCondition filterCondition = filter.getFilterCondition();
         switch (filterCondition) {
             case EQUALS, IS:
-                return createEqualsCriteria(field, c);
+                return Criteria.where(field).is(searchString);
             case NOT_EQUALS, IS_NOT:
-                return createNotEqualsCriteria(field, c);
-            case LESS_THAN, LESS_THAN_OR_EQUAL, GREATER_THAN, GREATER_THAN_OR_EQUAL:
-                return createComparisonCriteria(field, filter.getFilterCondition(), c);
+                return Criteria.where(field).ne(searchString);
+            case LESS_THAN:
+                return Criteria.where(field).lt(searchString);
+            case LESS_THAN_OR_EQUAL:
+                return Criteria.where(field).lte(searchString);
+            case GREATER_THAN:
+                return Criteria.where(field).gt(searchString);
+            case GREATER_THAN_OR_EQUAL:
+                return Criteria.where(field).gte(searchString);
             case EMPTY:
                 return emptyCriteria(field);
             case NOT_EMPTY:
                 return notEmptyCriteria(field);
             case CONTAINS:
-                return Criteria.where(field).regex(escapeCharacter(raw), "i");
+                return Criteria.where(field).regex(escapeCharacter(searchString), "i");
             case NOT_CONTAINS:
                 return new Criteria().orOperator(
                         // - 조건 1: 필드가 비어있는 경우 (null, 빈 문자열, 필드 없음)
@@ -443,96 +448,12 @@ public class DatabaseService {
                         // - 조건 2: 필드가 있고 문자열인데, 검색어와 매치되지 않는 경우
                         new Criteria().andOperator(
                                 Criteria.where(field).type(BsonType.STRING.getValue()),
-                                Criteria.where(field).not().regex(escapeCharacter(raw), "i")
+                                Criteria.where(field).not().regex(escapeCharacter(searchString), "i")
                         )
                 );
             default:
                 return null;
         }
-    }
-
-    private Criteria createEqualsCriteria(String field, ParsedCandidates c) {
-        List<Criteria> orParts = new ArrayList<>();
-        orParts.add(Criteria.where(field).is(c.asString()));
-
-        if (c.asNumber() != null) orParts.add(Criteria.where(field).is(c.asNumber()));
-        if (c.asBoolean() != null) orParts.add(Criteria.where(field).is(c.asBoolean()));
-        if (c.asDate() != null) orParts.add(Criteria.where(field).is(c.asDate()));
-
-        return orParts.size() == 1 ? orParts.get(0) : new Criteria().orOperator(orParts.toArray(new Criteria[0]));
-    }
-
-    private Criteria createNotEqualsCriteria(String field, ParsedCandidates c) {
-        List<Criteria> andParts = new ArrayList<>();
-        andParts.add(Criteria.where(field).ne(c.asString()));
-
-        if (c.asNumber() != null) andParts.add(Criteria.where(field).ne(c.asNumber()));
-        if (c.asBoolean() != null) andParts.add(Criteria.where(field).ne(c.asBoolean()));
-        if (c.asDate() != null) andParts.add(Criteria.where(field).ne(c.asDate()));
-
-        return andParts.size() == 1 ? andParts.get(0) : new Criteria().andOperator(andParts.toArray(new Criteria[0]));
-    }
-
-    private Criteria createComparisonCriteria(String field, RequestDatabaseDTO.FilterCondition condition, ParsedCandidates c) {
-        if (c.asNumber() == null && c.asDate() == null) {
-            return Criteria.where("_id").is("__no_match__");
-        }
-
-        List<Criteria> orParts = new ArrayList<>();
-
-        // 1. 숫자 비교
-        if (c.asNumber() != null) {
-            Criteria numberComparison;
-            Long number = c.asNumber();
-
-            switch (condition) {
-                case LESS_THAN:
-                    numberComparison = Criteria.where(field).lt(number);
-                    break;
-                case LESS_THAN_OR_EQUAL:
-                    numberComparison = Criteria.where(field).lte(number);
-                    break;
-                case GREATER_THAN:
-                    numberComparison = Criteria.where(field).gt(number);
-                    break;
-                case GREATER_THAN_OR_EQUAL:
-                    numberComparison = Criteria.where(field).gte(number);
-                    break;
-                default:
-                    numberComparison = null;
-                    break;
-            }
-
-            orParts.add(numberComparison);
-        }
-
-        // 2. 날짜 비교
-        if (c.asDate() != null) {
-            Criteria dateComparison;
-            Date date = c.asDate();
-
-            switch (condition) {
-                case LESS_THAN:
-                    dateComparison = Criteria.where(field).lt(date);
-                    break;
-                case LESS_THAN_OR_EQUAL:
-                    dateComparison = Criteria.where(field).lte(date);
-                    break;
-                case GREATER_THAN:
-                    dateComparison = Criteria.where(field).gt(date);
-                    break;
-                case GREATER_THAN_OR_EQUAL:
-                    dateComparison = Criteria.where(field).gte(date);
-                    break;
-                default:
-                    dateComparison = null;
-                    break;
-            }
-
-            orParts.add(dateComparison);
-        }
-
-        return orParts.size() == 1 ? orParts.get(0) : new Criteria().orOperator(orParts.toArray(new Criteria[0]));
     }
 
     private String escapeCharacter(String raw) {
