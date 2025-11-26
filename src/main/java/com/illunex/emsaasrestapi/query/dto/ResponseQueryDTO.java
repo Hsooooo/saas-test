@@ -1,6 +1,5 @@
 package com.illunex.emsaasrestapi.query.dto;
 
-import com.illunex.emsaasrestapi.common.code.BaseCodeEnum;
 import com.illunex.emsaasrestapi.common.code.EnumCode;
 import lombok.Builder;
 import lombok.Getter;
@@ -31,7 +30,6 @@ public class ResponseQueryDTO {
     public static class Categories {
         private Integer queryCategoryIdx;
         private String categoryName;
-        private List<Query> queries;
     }
 
     @Setter

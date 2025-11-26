@@ -33,6 +33,15 @@ public class RequestDatabaseDTO {
         CONTAINS,
         NOT_CONTAINS
     }
+
+    /**
+     * 필터 연산자
+     */
+    public enum FilterOperator {
+        AND,
+        OR
+    }
+
     /**
      * 검색 요청 DTO
      */
@@ -62,6 +71,7 @@ public class RequestDatabaseDTO {
         private String columnName; // 검색할 컬럼 이름
         private FilterCondition filterCondition; // 검색 조건 (예: equals, contains 등)
         private String searchString; // 검색어
+        private FilterOperator filterOperator; // 이전 조건과의 결합 연산자 (AND/OR), 기본값: AND
     }
 
     @Getter

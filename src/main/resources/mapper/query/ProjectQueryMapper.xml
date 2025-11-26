@@ -40,6 +40,15 @@
             idx = #{idx}
     </update>
 
+    <select id="selectByIdx" parameterType="Integer" resultType="ProjectQueryVO">
+        SELECT
+            *
+        FROM
+            project_query
+        WHERE
+            idx = #{idx}
+    </select>
+
     <select id="selectByProjectQueryCategoryIdx" parameterType="Integer" resultType="ProjectQueryVO">
         SELECT
             *

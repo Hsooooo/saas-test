@@ -55,19 +55,17 @@ public class DatabaseController {
     }
 
     /**
-     * 템플릿 데이터베이스 검색
+     * 템플릿 쿼리 생성
      *
      * @param projectIdx 프로젝트 인덱스
      * @param query 검색 조건
-     * @param pageRequest 페이지 요청 정보
      * @return 검색 결과
      */
-    @PostMapping("/search/template")
-    public CustomResponse<?> searchDatabaseByTemplate(@RequestParam(name = "projectIdx") Integer projectIdx,
-                                                      @RequestBody RequestDatabaseDTO.SearchTemplate query,
-                                                      CustomPageRequest pageRequest) throws CustomException {
+    @PostMapping("/query/template")
+    public CustomResponse<?> createQueryByTemplate(@RequestParam(name = "projectIdx") Integer projectIdx,
+                                                   @RequestBody RequestDatabaseDTO.SearchTemplate query) throws CustomException {
         log.info("Received database search request with query: {}, projectIdx = {}", query, projectIdx);
-        return databaseService.searchDatabaseByTemplate(projectIdx, query, pageRequest);
+        return databaseService.createQueryByTemplate(projectIdx, query);
     }
 
     /**

@@ -51,19 +51,20 @@ public class QueryController {
 
     @GetMapping("/categories")
     public CustomResponse<?> getQueryCategories(@CurrentMember MemberVO memberVO,
-                                                @RequestParam Integer projectIdx) {
+                                                @RequestParam Integer projectIdx,
+                                                @RequestParam Integer partnershipIdx) {
         return CustomResponse.builder()
-                .data(queryService.getQueryCategories(memberVO, projectIdx))
+                .data(queryService.getQueryCategories(memberVO, projectIdx, partnershipIdx))
                 .message("Query categories retrieved successfully")
                 .build();
     }
 
     @GetMapping("/category/queries")
     public CustomResponse<?> getQueriesByCategory(@CurrentMember MemberVO memberVO,
-                                                  @RequestParam Integer projectIdx,
+                                                  @RequestParam Integer partnershipIdx,
                                                   @RequestParam Integer queryCategoryIdx) {
         return CustomResponse.builder()
-                .data(queryService.getQueriesByCategory(memberVO, projectIdx, queryCategoryIdx))
+                .data(queryService.getQueriesByCategory(memberVO, partnershipIdx, queryCategoryIdx))
                 .message("Queries by category retrieved successfully")
                 .build();
     }

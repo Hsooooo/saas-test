@@ -1,14 +1,12 @@
 package com.illunex.emsaasrestapi.query;
 
 import com.illunex.emsaasrestapi.common.code.EnumCode;
-import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
 import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMapper;
 import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.partnership.vo.PartnershipVO;
 import com.illunex.emsaasrestapi.project.document.database.Column;
-import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.mapper.ProjectMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
 import com.illunex.emsaasrestapi.query.dto.RequestQueryDTO;
@@ -17,15 +15,14 @@ import com.illunex.emsaasrestapi.query.mapper.ProjectQueryCategoryMapper;
 import com.illunex.emsaasrestapi.query.mapper.ProjectQueryMapper;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryCategoryVO;
 import com.illunex.emsaasrestapi.query.vo.ProjectQueryVO;
-import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -33,7 +30,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -114,52 +110,43 @@ public class QueryService {
 
     /**
      * 프로젝트에 속한 쿼리 카테고리 목록 조회
+     *
      * @param memberVO
      * @param projectIdx
+     * @param partnershipIdx
      * @return
      */
-    public Object getQueryCategories(MemberVO memberVO, Integer projectIdx) {
-        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(projectIdx, memberVO.getIdx())
+    public Object getQueryCategories(MemberVO memberVO, Integer projectIdx, Integer partnershipIdx) {
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
+
         List<ProjectQueryCategoryVO> categories = projectQueryCategoryMapper.selectByProjectIdxAndPartnershipMemberIdx(projectIdx, partnershipMemberVO.getIdx());
+
         List<ResponseQueryDTO.Categories> responseCategories = new ArrayList<>();
         for (ProjectQueryCategoryVO category : categories) {
             ResponseQueryDTO.Categories responseCategory = new ResponseQueryDTO.Categories();
             responseCategory.setCategoryName(category.getName());
             responseCategory.setQueryCategoryIdx(category.getIdx());
-            List<ResponseQueryDTO.Query> queries = projectQueryMapper.selectByProjectQueryCategoryIdx(category.getIdx())
-                    .stream()
-                    .map(query -> {
-                        ResponseQueryDTO.Query responseQuery = new ResponseQueryDTO.Query();
-                        responseQuery.setIdx(query.getIdx());
-                        responseQuery.setTitle(query.getTitle());
-                        responseQuery.setRawQuery(query.getRawQuery());
-                        responseQuery.setTypeCd(query.getTypeCd());
-                        responseQuery.setUpdateDate(query.getUpdateDate());
-                        responseQuery.setCreateDate(query.getCreateDate());
-                        return responseQuery;
-                    }).toList();
-            responseCategory.setQueries(queries);
+            responseCategories.add(responseCategory);
         }
+
         return responseCategories;
     }
 
     /**
      * 특정 카테고리에 속한 쿼리 목록을 조회
-     * @param memberVO
-     * @param projectIdx
-     * @param queryCategoryIdx
-     * @return
      */
-    public Object getQueriesByCategory(MemberVO memberVO, Integer projectIdx, Integer queryCategoryIdx) {
-        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(projectIdx, memberVO.getIdx())
+    public Object getQueriesByCategory(MemberVO memberVO, Integer partnershipIdx, Integer queryCategoryIdx) {
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(partnershipIdx, memberVO.getIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
-        ProjectQueryCategoryVO queryCategoryVO = projectQueryCategoryMapper.selectByIdx(queryCategoryIdx)
+
+        ProjectQueryCategoryVO projectQueryCategoryVO = projectQueryCategoryMapper.selectByIdx(queryCategoryIdx)
                 .orElseThrow(() -> new IllegalArgumentException("해당 카테고리가 존재하지 않습니다."));
-        List<ProjectQueryVO> queries = projectQueryMapper.selectByProjectQueryCategoryIdxAndPartnershipMemberIdx(queryCategoryIdx, partnershipMemberVO.getIdx());
+
+        List<ProjectQueryVO> queries = projectQueryMapper.selectByProjectQueryCategoryIdxAndPartnershipMemberIdx(projectQueryCategoryVO.getIdx(), partnershipMemberVO.getIdx());
         return new ResponseQueryDTO.QueriesByCategory(
-                queryCategoryVO.getIdx(),
-                queryCategoryVO.getName(),
+                projectQueryCategoryVO.getIdx(),
+                projectQueryCategoryVO.getName(),
                 queries.stream().map(query -> {
                     ResponseQueryDTO.Query responseQuery = new ResponseQueryDTO.Query();
                     responseQuery.setIdx(query.getIdx());
@@ -173,47 +160,75 @@ public class QueryService {
         );
     }
 
-
-
+    @Transactional
     public void saveQuery(MemberVO memberVO, RequestQueryDTO.SaveQuery saveQuery) {
+        // 1. 파트너십 멤버 조회
         PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(saveQuery.getPartnershipIdx(), memberVO.getIdx())
                 .orElseThrow(() -> new IllegalArgumentException("해당 파트너십 멤버가 존재하지 않습니다."));
-        if (saveQuery.getProjectIdx() == null) {
+
+        // 2. 필수값 검증
+        Integer projectIdx = saveQuery.getProjectIdx();
+        if (projectIdx == null) {
             throw new IllegalArgumentException("projectIdx는 필수입니다.");
         }
-        if (saveQuery.getRawQuery() == null || saveQuery.getRawQuery().isBlank()) {
-            throw new IllegalArgumentException("rawQuery는 필수입니다.");
+
+        // 3. 쿼리 카테고리 처리
+        Integer queryCategoryIdx;
+        if (saveQuery.getQueryCategoryIdx() == null) {
+            // - queryCategoryIdx null인 경우 : 쿼리 카테고리 생성
+            ProjectQueryCategoryVO projectQueryCategoryVO = new ProjectQueryCategoryVO();
+            projectQueryCategoryVO.setProjectIdx(projectIdx);
+            projectQueryCategoryVO.setName(saveQuery.getQueryCategoryName());
+            projectQueryCategoryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+
+            projectQueryCategoryMapper.insertByProjectQueryCategoryVO(projectQueryCategoryVO);
+            queryCategoryIdx = projectQueryCategoryVO.getIdx();
+        } else {
+            queryCategoryIdx = saveQuery.getQueryCategoryIdx();
         }
-        // 쿼리 카테고리 정보 전달 시
-        ProjectQueryCategoryVO categoryVO = null;
-        if (saveQuery.getQueryCategory() != null && StringUtils.isNotBlank(saveQuery.getQueryCategory().getCategoryName())) {
-            if (saveQuery.getQueryCategory().getQueryCategoryIdx() != null) {
-                categoryVO = projectQueryCategoryMapper.selectByIdx(saveQuery.getQueryCategory().getQueryCategoryIdx())
-                    .map(vo -> {
-                        vo.setName(saveQuery.getQueryCategory().getCategoryName());
-                        projectQueryCategoryMapper.updateByProjectQueryCategoryVO(vo);
-                        return vo;
-                    }).orElseThrow(() -> new IllegalArgumentException("해당 카테고리가 존재하지 않습니다."));
+
+        // 4. 쿼리 처리
+        List<RequestQueryDTO.RequestProjectQuery> queryList = saveQuery.getQueryList();
+        for (RequestQueryDTO.RequestProjectQuery requestQuery : queryList) {
+            String typeCd = null;
+
+            if (requestQuery.getQueryType() != null) {
+                if (requestQuery.getQueryType().equals(EnumCode.ProjectQuery.TypeCd.Select.name())) {
+                    typeCd = EnumCode.ProjectQuery.TypeCd.Select.getCode();
+                }
+
+                if (requestQuery.getQueryType().equals(EnumCode.ProjectQuery.TypeCd.Update.name())) {
+                    typeCd = EnumCode.ProjectQuery.TypeCd.Update.getCode();
+                }
+            }
+
+            if (requestQuery.getIdx() == null) {
+                // - queryIdx null인 경우 : 쿼리 생성
+                ProjectQueryVO projectQueryVO = new ProjectQueryVO();
+                projectQueryVO.setProjectIdx(projectIdx);
+                projectQueryVO.setTitle(requestQuery.getTitle());
+                projectQueryVO.setRawQuery(requestQuery.getRawQuery().toString());
+                projectQueryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
+                projectQueryVO.setProjectQueryCategoryIdx(queryCategoryIdx);
+                projectQueryVO.setTypeCd(typeCd);
+
+                projectQueryMapper.insertByProjectQueryVO(projectQueryVO);
+
             } else {
-                // 카테고리 인덱스가 전달되지 않은 경우, 새로 생성
-                categoryVO = new ProjectQueryCategoryVO();
-                categoryVO.setProjectIdx(saveQuery.getProjectIdx());
-                categoryVO.setName(saveQuery.getQueryCategory().getCategoryName());
-                categoryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-                projectQueryCategoryMapper.insertByProjectQueryCategoryVO(categoryVO);
+                // - queryIdx null이 아닌 경우 : 쿼리 업데이트
+                ProjectQueryVO existingQuery = projectQueryMapper.selectByIdx(requestQuery.getIdx())
+                        .orElseThrow(() -> new IllegalArgumentException("해당 쿼리가 존재하지 않습니다."));
+
+                existingQuery.setTitle(requestQuery.getTitle());
+                existingQuery.setRawQuery(requestQuery.getRawQuery().toString());
+
+                if (typeCd != null) {
+                    existingQuery.setTypeCd(typeCd);
+                }
+
+                projectQueryMapper.updateByProjectQueryVO(existingQuery);
             }
         }
-
-        ProjectQueryVO projectQueryVO = new ProjectQueryVO();
-        projectQueryVO.setProjectIdx(saveQuery.getProjectIdx());
-        projectQueryVO.setTitle(saveQuery.getQueryTitle());
-        projectQueryVO.setRawQuery(saveQuery.getRawQuery());
-        projectQueryVO.setPartnershipMemberIdx(partnershipMemberVO.getIdx());
-        projectQueryVO.setProjectQueryCategoryIdx(categoryVO != null ? categoryVO.getIdx() : null);
-        projectQueryVO.setTypeCd(EnumCode.ProjectQuery.TypeCd.Mongo_Shell.getCode());
-
-        // 쿼리 저장
-        projectQueryMapper.insertByProjectQueryVO(projectQueryVO);
     }
 
     public Object aiQuery(MemberVO memberVO, RequestQueryDTO.AIQuery aiQuery) {
