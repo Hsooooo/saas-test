@@ -50,6 +50,15 @@ public class QueryController {
                 .build();
     }
 
+    @PutMapping("/edit")
+    public CustomResponse<?> queryEdit(@CurrentMember MemberVO memberVO,
+                                       @RequestBody RequestQueryDTO.EditQuery editQuery) throws CustomException {
+        return CustomResponse.builder()
+                .data(queryService.queryEdit(memberVO, editQuery))
+                .message("Query edited successfully")
+                .build();
+    }
+
     @GetMapping("/categories")
     public CustomResponse<?> getQueryCategories(@CurrentMember MemberVO memberVO,
                                                 @RequestParam Integer projectIdx,

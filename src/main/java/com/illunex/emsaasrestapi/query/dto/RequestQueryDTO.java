@@ -28,6 +28,14 @@ public class RequestQueryDTO {
     }
 
     @Getter
+    public static class EditQuery {
+        private Integer queryIdx; // 쿼리 idx
+        private String queryType; // 쿼리 종류 (Select, Update)
+        private String title; // 쿼리 이름
+        private JsonNode rawQuery; // raw 쿼리
+    }
+
+    @Getter
     public static class RequestProjectQuery {
         private Integer idx;   // 쿼리 idx
         private String queryType;  // 쿼리 종류 (Select, Update)

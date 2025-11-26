@@ -288,4 +288,55 @@ public class QueryService {
         // 4. 쿼리 삭제
         projectQueryMapper.deleteByIdx(queryIdx);
     }
+
+    @Transactional
+    public Object queryEdit(MemberVO memberVO, RequestQueryDTO.EditQuery editQuery) throws CustomException {
+        // 1. 쿼리 조회
+        ProjectQueryVO projectQueryVO = projectQueryMapper.selectByIdx(editQuery.getQueryIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.QUERY_NOT_FOUND));
+
+        // 2. 쿼리를 생성한 파트너십 멤버 조회
+        PartnershipMemberVO partnershipMemberVO = partnershipMemberMapper.selectByIdx(projectQueryVO.getPartnershipMemberIdx())
+                .orElseThrow(() -> new CustomException(ErrorCode.PARTNERSHIP_INVALID_MEMBER));
+
+        // 3. 쿼리를 생성한 회원과 수정 요청한 회원이 동일한지 확인
+        if (!partnershipMemberVO.getMemberIdx().equals(memberVO.getIdx())) {
+            throw new CustomException(ErrorCode.QUERY_DELETE_UNAUTHORIZED);
+        }
+
+        // 4. 쿼리 타입 코드 변환
+        String typeCd = null;
+        if (editQuery.getQueryType() != null) {
+            if (editQuery.getQueryType().equals(EnumCode.ProjectQuery.TypeCd.Select.name())) {
+                typeCd = EnumCode.ProjectQuery.TypeCd.Select.getCode();
+            }
+            if (editQuery.getQueryType().equals(EnumCode.ProjectQuery.TypeCd.Update.name())) {
+                typeCd = EnumCode.ProjectQuery.TypeCd.Update.getCode();
+            }
+        }
+
+        // 5. 쿼리 정보 업데이트
+        if (typeCd != null) {
+            projectQueryVO.setTypeCd(typeCd);
+        }
+        if (editQuery.getTitle() != null) {
+            projectQueryVO.setTitle(editQuery.getTitle());
+        }
+        if (editQuery.getRawQuery() != null) {
+            projectQueryVO.setRawQuery(editQuery.getRawQuery().toString());
+        }
+
+        projectQueryMapper.updateByProjectQueryVO(projectQueryVO);
+
+        // 6. 수정된 쿼리 정보 반환
+        ResponseQueryDTO.Query responseQuery = new ResponseQueryDTO.Query();
+        responseQuery.setIdx(projectQueryVO.getIdx());
+        responseQuery.setTitle(projectQueryVO.getTitle());
+        responseQuery.setRawQuery(projectQueryVO.getRawQuery());
+        responseQuery.setTypeCd(projectQueryVO.getTypeCd());
+        responseQuery.setUpdateDate(projectQueryVO.getUpdateDate());
+        responseQuery.setCreateDate(projectQueryVO.getCreateDate());
+
+        return responseQuery;
+    }
 }
