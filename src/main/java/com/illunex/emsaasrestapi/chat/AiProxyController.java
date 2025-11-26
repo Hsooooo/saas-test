@@ -57,8 +57,8 @@ public class AiProxyController {
 
     @PostMapping(value = "ai/gpt/v2/api/convert-excel-graph")
     public ResponseEntity<?> convertExcelGraph(@CurrentMember MemberVO memberVO,
-                                        @RequestParam("partnershipMemberIdx") Integer pmIdx,
-                                        @RequestParam("chatHistoryIdx") Integer chatHistoryIdx) throws Exception {
+                                               @RequestParam("partnershipMemberIdx") Integer pmIdx,
+                                               @RequestParam("chatHistoryIdx") Integer chatHistoryIdx) throws Exception {
         ChatHistoryVO history =  chatService.getChatHistory(memberVO, pmIdx, chatHistoryIdx);
         final String graphUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
                 .path("/v2/api/convert-excel-graph").toUriString();
@@ -71,8 +71,8 @@ public class AiProxyController {
 
     @PostMapping(value = "ai/gpt/v2/api/generate-graph")
     public ResponseEntity<?> graphProxy(@CurrentMember MemberVO memberVO,
-                                   @RequestParam("partnershipMemberIdx") Integer pmIdx,
-                                   @RequestParam("chatHistoryIdx") Integer chatHistoryIdx) throws Exception {
+                                        @RequestParam("partnershipMemberIdx") Integer pmIdx,
+                                        @RequestParam("chatHistoryIdx") Integer chatHistoryIdx) throws Exception {
         ChatHistoryVO history =  chatService.getChatHistory(memberVO, pmIdx, chatHistoryIdx);
         final String graphUrl = UriComponentsBuilder.fromHttpUrl(aiGptBase)
                 .path("/v2/api/generate-graph").toUriString();
@@ -130,6 +130,7 @@ public class AiProxyController {
         if (model != null) {
             payload.put("model", model);
         }
+        String senderType = resolveAssistantSenderType(model);
 
         // 4) 스트림 상태 변수
         final var tee = new java.io.ByteArrayOutputStream(32 * 1024);
@@ -233,7 +234,7 @@ public class AiProxyController {
                 try {
                     final int historyIdx = chatService.saveHistory(
                             chatRoomIdx,
-                            EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
+                            senderType,
                             EnumCode.ChatHistory.CategoryType.ERROR.getCode(),
                             "죄송합니다. 답변 생성에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
                     );
@@ -274,7 +275,7 @@ public class AiProxyController {
             // 1) 최종 어시스턴트 메시지 저장 (flush 보장 권장)
             final int historyIdx = chatService.saveHistory(
                     chatRoomIdx,
-                    EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
+                    senderType,
                     cateCode,
                     finalText
             );
@@ -310,7 +311,7 @@ public class AiProxyController {
                     "history", Map.of(
                             "idx", historyIdx,
                             "chatRoomIdx", chatRoomIdx,
-                            "senderType", EnumCode.ChatRoom.SenderType.ASSISTANT.getCode(),
+                            "senderType", senderType,
                             "categoryType", cateCode,
                             "message", finalText
                     ),
@@ -340,66 +341,66 @@ public class AiProxyController {
 
             // 5) 외부 API 호출 + S3 업로드 + DB 인서트 (블로킹 작업 → boundedElastic)
             Mono.fromCallable(() -> {
-                Map<String, Object> result = new java.util.HashMap<>();
+                        Map<String, Object> result = new java.util.HashMap<>();
 
-                if (needPpt) {
-                    JsonNode pptRes = callPptxGenerate(professionalMsg.getMessage(), pmIdx, historyIdx);
+                        if (needPpt) {
+                            JsonNode pptRes = callPptxGenerate(professionalMsg.getMessage(), pmIdx, historyIdx);
 
-                    if (pptRes != null && pptRes.path("error").isMissingNode()) {
-                        Map<String, Object> pptMap = new LinkedHashMap<>();
-                        pptMap.put("attachmentIdx", pptRes.path("chat_file_idx").asInt(-1));
-                        pptMap.put("filename",      pptRes.path("filename").asText(""));
-                        pptMap.put("filesize",      pptRes.path("filesize").asLong(0L));
-                        pptMap.put("s3_url",        pptRes.path("s3_url").asText(""));
+                            if (pptRes != null && pptRes.path("error").isMissingNode()) {
+                                Map<String, Object> pptMap = new LinkedHashMap<>();
+                                pptMap.put("attachmentIdx", pptRes.path("chat_file_idx").asInt(-1));
+                                pptMap.put("filename",      pptRes.path("filename").asText(""));
+                                pptMap.put("filesize",      pptRes.path("filesize").asLong(0L));
+                                pptMap.put("s3_url",        pptRes.path("s3_url").asText(""));
 
-                        // slides 배열 → List<String>
-                        List<String> slides = toStringList(pptRes.get("slides"));
-                        if (!slides.isEmpty()) pptMap.put("slides", slides);
+                                // slides 배열 → List<String>
+                                List<String> slides = toStringList(pptRes.get("slides"));
+                                if (!slides.isEmpty()) pptMap.put("slides", slides);
 
-                        result.put("pptx", pptMap);
-                    } else {
-                        result.put("pptx", Map.of("error", pptRes == null
-                                ? "pptx generation failed"
-                                : pptRes.path("message").asText("pptx generation failed")));
-                    }
-                }
+                                result.put("pptx", pptMap);
+                            } else {
+                                result.put("pptx", Map.of("error", pptRes == null
+                                        ? "pptx generation failed"
+                                        : pptRes.path("message").asText("pptx generation failed")));
+                            }
+                        }
 
-                if (needDocx) {
-                    JsonNode docx = callDocxGenerate(professionalMsg.getMessage(), pmIdx, historyIdx);
+                        if (needDocx) {
+                            JsonNode docx = callDocxGenerate(professionalMsg.getMessage(), pmIdx, historyIdx);
 
-                    if (docx != null && docx.path("error").isMissingNode()) {
-                        Map<String, Object> docxMap = new LinkedHashMap<>();
-                        docxMap.put("attachmentIdx", docx.path("chat_file_idx").asInt(-1));
-                        docxMap.put("filename",      docx.path("filename").asText(""));
-                        docxMap.put("filesize",      docx.path("filesize").asLong(0L));
-                        docxMap.put("s3_url",        docx.path("s3_url").asText(""));
+                            if (docx != null && docx.path("error").isMissingNode()) {
+                                Map<String, Object> docxMap = new LinkedHashMap<>();
+                                docxMap.put("attachmentIdx", docx.path("chat_file_idx").asInt(-1));
+                                docxMap.put("filename",      docx.path("filename").asText(""));
+                                docxMap.put("filesize",      docx.path("filesize").asLong(0L));
+                                docxMap.put("s3_url",        docx.path("s3_url").asText(""));
 
-                        result.put("docx", docxMap);
-                    } else {
-                        result.put("docx", Map.of("error", docx == null
-                                ? "docx generation failed"
-                                : docx.path("message").asText("docx generation failed")));
-                    }
-                }
+                                result.put("docx", docxMap);
+                            } else {
+                                result.put("docx", Map.of("error", docx == null
+                                        ? "docx generation failed"
+                                        : docx.path("message").asText("docx generation failed")));
+                            }
+                        }
 
-                return result;
-            })
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe(post -> {
-                // 6) 결과 전달
-                try { emitter.send(SseEmitter.event().name("assets").data(post)); } catch (Exception ignore) {}
-                try { emitter.send(SseEmitter.event().name("done").data(Map.of("status", "ok"))); } catch (Exception ignore) {}
-                emitter.complete();
-            }, err -> {
-                log.error("postprocess failed", err);
-                try {
-                    emitter.send(SseEmitter.event().name("assets").data(
-                            Map.of("error", "파일 생성 중 오류: " + err.getMessage())
-                    ));
-                    emitter.send(SseEmitter.event().name("done").data(Map.of("status", "ok")));
-                } catch (Exception ignore) {}
-                emitter.complete();
-            });
+                        return result;
+                    })
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .subscribe(post -> {
+                        // 6) 결과 전달
+                        try { emitter.send(SseEmitter.event().name("assets").data(post)); } catch (Exception ignore) {}
+                        try { emitter.send(SseEmitter.event().name("done").data(Map.of("status", "ok"))); } catch (Exception ignore) {}
+                        emitter.complete();
+                    }, err -> {
+                        log.error("postprocess failed", err);
+                        try {
+                            emitter.send(SseEmitter.event().name("assets").data(
+                                    Map.of("error", "파일 생성 중 오류: " + err.getMessage())
+                            ));
+                            emitter.send(SseEmitter.event().name("done").data(Map.of("status", "ok")));
+                        } catch (Exception ignore) {}
+                        emitter.complete();
+                    });
         });
 
         // 5) 리소스 정리
@@ -928,5 +929,25 @@ public class AiProxyController {
             }
         }
         return sb.toString();
+    }
+
+    // TODO 추후 EnumCode와 함께 변경 필요
+    private String resolveAssistantSenderType(String model) {
+//        if (model == null) {
+//            return EnumCode.ChatRoom.SenderType.GEMINI;
+//        } else if ("gemini".equalsIgnoreCase(model)) {
+//            return EnumCode.ChatRoom.SenderType.GEMINI;
+//        } else if ("gpt".equalsIgnoreCase(model)) {
+//            return EnumCode.ChatRoom.SenderType.GPT;
+//        } else {
+//            return EnumCode.ChatRoom.SenderType.GEMINI;
+//        }
+        if (model == null) {
+            return "RST0002"; // GEMINI
+        } else if (model.toLowerCase().startsWith("gemini")) {
+            return "RST0002"; // GEMINI
+        } else {
+            return "RST0003"; // GPT
+        }
     }
 }
