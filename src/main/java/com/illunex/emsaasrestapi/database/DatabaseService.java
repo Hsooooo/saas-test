@@ -9,6 +9,9 @@ import com.illunex.emsaasrestapi.database.dto.EdgeDataDTO;
 import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
 import com.illunex.emsaasrestapi.database.dto.ResponseDatabaseDTO;
 import com.illunex.emsaasrestapi.database.dto.SaveResultRecord;
+import com.illunex.emsaasrestapi.member.vo.MemberVO;
+import com.illunex.emsaasrestapi.partnership.mapper.PartnershipMemberMapper;
+import com.illunex.emsaasrestapi.partnership.vo.PartnershipMemberVO;
 import com.illunex.emsaasrestapi.project.document.database.Column;
 import com.illunex.emsaasrestapi.project.document.database.ColumnDetail;
 import com.illunex.emsaasrestapi.project.document.network.Edge;
@@ -21,6 +24,8 @@ import com.illunex.emsaasrestapi.project.mapper.ProjectTableMapper;
 import com.illunex.emsaasrestapi.project.vo.ProjectCategoryVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectTableVO;
 import com.illunex.emsaasrestapi.project.vo.ProjectVO;
+import com.illunex.emsaasrestapi.query.mapper.ProjectQueryCategoryMapper;
+import com.illunex.emsaasrestapi.query.vo.ProjectQueryCategoryVO;
 import com.mongodb.client.result.DeleteResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +55,8 @@ public class DatabaseService {
     private final ProjectCategoryMapper projectCategoryMapper;
     private final ProjectTableMapper projectTableMapper;
     private final ModelMapper modelMapper;
+    private final PartnershipMemberMapper partnershipMemberMapper;
+    private final ProjectQueryCategoryMapper projectQueryCategoryMapper;
 
     /**
      * 데이터베이스 검색 기능
@@ -509,10 +516,11 @@ public class DatabaseService {
     /**
      * 데이터베이스 목록 조회 기능
      *
+     * @param memberVO 현재 로그인한 멤버 정보
      * @param projectIdx 프로젝트 인덱스
      * @return 데이터베이스 목록을 포함한 CustomResponse 객체
      */
-    public CustomResponse<?> getDatabaseList(Integer projectIdx, String searchString) {
+    public CustomResponse<?> getDatabaseList(MemberVO memberVO, Integer projectIdx, String searchString) {
         // --- 1) RDB에서 프로젝트 요약 + 카테고리 한 번에 확보 (Mongo Project 불필요하면 제거) ---
         ProjectVO projectVO = projectMapper.selectByIdx(projectIdx)
                 .orElseThrow(() -> new IllegalArgumentException("해당 프로젝트가 존재하지 않습니다: " + projectIdx));
@@ -589,6 +597,27 @@ public class DatabaseService {
 
         response.setNodeTableList(nodeTableList);
         response.setEdgeTableList(edgeTableList);
+
+        // --- 5) 쿼리 카테고리 목록 조회 ---
+        List<ResponseDatabaseDTO.QueryCategory> queryList = new ArrayList<>();
+
+        // - 파트너쉽 멤버 조회
+        Optional<PartnershipMemberVO> partnershipMemberOpt = partnershipMemberMapper.selectByPartnershipIdxAndMemberIdx(projectVO.getPartnershipIdx(), memberVO.getIdx());
+        if (partnershipMemberOpt.isPresent()) {
+            PartnershipMemberVO partnershipMemberVO = partnershipMemberOpt.get();
+
+            // - 프로젝트 쿼리 카테고리 조회
+            List<ProjectQueryCategoryVO> categories = projectQueryCategoryMapper.selectByProjectIdxAndPartnershipMemberIdx(projectIdx, partnershipMemberVO.getIdx());
+            for (ProjectQueryCategoryVO category : categories) {
+                ResponseDatabaseDTO.QueryCategory queryCategory = new ResponseDatabaseDTO.QueryCategory();
+                queryCategory.setQueryCategoryIdx(category.getIdx());
+                queryCategory.setCategoryName(category.getName());
+
+                queryList.add(queryCategory);
+            }
+        }
+
+        response.setQueryList(queryList);
 
         return CustomResponse.builder()
                 .data(response)

@@ -1,10 +1,12 @@
 package com.illunex.emsaasrestapi.database;
 
+import com.illunex.emsaasrestapi.common.CurrentMember;
 import com.illunex.emsaasrestapi.common.CustomException;
 import com.illunex.emsaasrestapi.common.CustomPageRequest;
 import com.illunex.emsaasrestapi.common.CustomResponse;
 import com.illunex.emsaasrestapi.database.dto.EdgeDataDTO;
 import com.illunex.emsaasrestapi.database.dto.RequestDatabaseDTO;
+import com.illunex.emsaasrestapi.member.vo.MemberVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -22,14 +24,16 @@ public class DatabaseController {
     /**
      * 프로젝트 데이터베이스 테이블 목록 조회
      *
+     * @param memberVO 현재 로그인한 멤버 정보
      * @param projectIdx 프로젝트 인덱스
      * @return 각 노드, 링크의 하위 타입 목록을 포함하는 데이터베이스 목록
      */
     @GetMapping("/list")
-    public CustomResponse<?> getDatabaseList(@RequestParam(name = "projectIdx") Integer projectIdx,
+    public CustomResponse<?> getDatabaseList(@CurrentMember MemberVO memberVO,
+                                             @RequestParam(name = "projectIdx") Integer projectIdx,
                                              @RequestParam(name = "searchString", required = false) String searchString) throws CustomException {
         log.info("Received request to get database list for project index: {}", projectIdx);
-        return databaseService.getDatabaseList(projectIdx, searchString);
+        return databaseService.getDatabaseList(memberVO, projectIdx, searchString);
     }
 
 //    @GetMapping("/summary")

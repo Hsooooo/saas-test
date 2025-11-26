@@ -1,6 +1,5 @@
 package com.illunex.emsaasrestapi.database.dto;
 
-import com.illunex.emsaasrestapi.project.dto.ResponseProjectDTO;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -34,6 +33,14 @@ public class ResponseDatabaseDTO {
         private String projectCategoryName;
         private List<TableData> nodeTableList = new ArrayList<>();
         private List<TableData> edgeTableList = new ArrayList<>();
+        private List<QueryCategory> queryList = new ArrayList<>();
+    }
+
+    @Getter
+    @Setter
+    public static class QueryCategory {
+        private Integer queryCategoryIdx;
+        private String categoryName;
     }
 
     @Getter
