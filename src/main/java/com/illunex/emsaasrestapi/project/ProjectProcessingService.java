@@ -1,6 +1,7 @@
 package com.illunex.emsaasrestapi.project;
 
 import com.alibaba.excel.ExcelReader;
+import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.read.builder.ExcelReaderBuilder;
 import com.alibaba.excel.read.listener.ReadListener;
 import com.alibaba.excel.read.metadata.ReadSheet;
@@ -415,8 +416,8 @@ public class ProjectProcessingService {
 
             // 3) 시트 전역 중복 Set
             final int expected = Math.max(sheetMeta.getTotalRowCnt(), 16);
-            final Set<String>  seenNodeKeys = (nodeDef != null) ? new HashSet<>(expected) : java.util.Collections.emptySet();
-            final Set<Integer> seenEdgeKeys = (edgeDef != null) ? new HashSet<>(expected) : java.util.Collections.emptySet();
+            final Set<String>  seenNodeKeys = (nodeDef != null) ? new HashSet<>(expected) : Collections.emptySet();
+            final Set<Integer> seenEdgeKeys = (edgeDef != null) ? new HashSet<>(expected) : Collections.emptySet();
 
             // 4) 벌크 준비(배열 래핑으로 재할당 허용)
             final BulkOperations[] nodeBulk = { mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Node.class) };
@@ -434,10 +435,9 @@ public class ProjectProcessingService {
             final int projectIdxFinal = projectIdx;
 
             // 5) EasyExcel 리스너 — Map<Integer,String> 사용
-            ReadListener<java.util.Map<Integer,String>> listener = new ReadListener<>() {
-                @Override public void invoke(java.util.Map<Integer,String> row, com.alibaba.excel.context.AnalysisContext ctx) {
-                    int r = rowNum[0]++;              // 0부터 증가
-                    if (r == 0) return;               // 헤더 스킵
+            ReadListener<Map<Integer,String>> listener = new ReadListener<>() {
+                @Override public void invoke(Map<Integer,String> row, AnalysisContext ctx) {
+                    int r = rowNum[0]++;
 
                     // props 구성
                     LinkedHashMap<String,Object> props = new LinkedHashMap<>(colCntFinal);
