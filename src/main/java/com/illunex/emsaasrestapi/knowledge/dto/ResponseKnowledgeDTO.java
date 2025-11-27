@@ -56,6 +56,16 @@ public class ResponseKnowledgeDTO {
     @Setter
     @AllArgsConstructor
     @Builder
+    public static class NodeBreadCrumb {
+        private Integer nodeIdx;
+        private Integer parentNodeIdx;
+        private String label;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @Builder
     public static class KnowledgeNode {
         private Integer partnershipIdx;
         private Integer nodeIdx;
@@ -66,7 +76,7 @@ public class ResponseKnowledgeDTO {
         private Integer viewCount;
         private List<NodeInfo> keywordNodeList;
         private List<NodeInfo> referenceNodeList;
-        private List<NodeInfo> pathNodeList;
+        private List<NodeBreadCrumb> pathNodeList;
     }
 
     @Getter

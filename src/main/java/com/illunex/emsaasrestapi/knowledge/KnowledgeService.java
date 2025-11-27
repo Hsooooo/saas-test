@@ -574,12 +574,11 @@ public class KnowledgeService {
         node.setViewCount(node.getViewCount() + 1);
         knowledgeGardenNodeMapper.updateByKnowledgeGardenNodeVO(node);
 
-        List<ResponseKnowledgeDTO.NodeInfo> pathNodes = knowledgeGardenNodeMapper.selectBreadCrumbByNodeIdx(node.getIdx(), node.getPartnershipMemberIdx()).stream()
-                .map(n -> ResponseKnowledgeDTO.NodeInfo.builder()
-                        .nodeId(n.getIdx())
+        List<ResponseKnowledgeDTO.NodeBreadCrumb> pathNodes = knowledgeGardenNodeMapper.selectBreadCrumbByNodeIdx(node.getIdx(), node.getPartnershipMemberIdx()).stream()
+                .map(n -> ResponseKnowledgeDTO.NodeBreadCrumb.builder()
+                        .nodeIdx(n.getIdx())
                         .label(n.getLabel())
-                        .type(n.getTypeCd())
-                        .depth(n.getDepth())
+                        .parentNodeIdx(n.getParentNodeIdx())
                         .build()
                 ).toList();
 
