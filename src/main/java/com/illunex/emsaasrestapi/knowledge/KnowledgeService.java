@@ -826,10 +826,64 @@ public class KnowledgeService {
      * @return
      * @throws CustomException
      */
-    public List<KnowledgeGardenNodeVO> getKnowledgeNodeTreeAll(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
+    public List<ResponseKnowledgeDTO.TreeNode> getKnowledgeNodeTreeAll(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
         // 파트너십 멤버 체크
         PartnershipMemberVO pmVO = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
         // 트리 노드 조회
-        return knowledgeGardenNodeMapper.selectTreeByPartnershipMemberIdx(pmVO.getIdx());
+        return buildTree(knowledgeGardenNodeMapper.selectTreeByPartnershipMemberIdx(pmVO.getIdx()));
+    }
+
+    private List<ResponseKnowledgeDTO.TreeNode> buildTree(List<KnowledgeGardenNodeVO> nodes) {
+        // 1) VO -> DTO 로 변환 + 맵으로 모으기
+        Map<Integer, ResponseKnowledgeDTO.TreeNode> nodeMap = new HashMap<>();
+        List<ResponseKnowledgeDTO.TreeNode> roots = new ArrayList<>();
+
+        for (KnowledgeGardenNodeVO n : nodes) {
+            ResponseKnowledgeDTO.TreeNode dto = ResponseKnowledgeDTO.TreeNode.builder()
+                    .nodeId(n.getIdx())
+                    .parentNodeId(n.getParentNodeIdx())
+                    .label(n.getLabel())
+                    .type(n.getTypeCd())
+                    .sortOrder(n.getSortOrder())
+                    .children(new ArrayList<>())
+                    .build();
+            nodeMap.put(n.getIdx(), dto);
+        }
+
+        // 2) 부모-자식 연결
+        for (ResponseKnowledgeDTO.TreeNode dto : nodeMap.values()) {
+            Integer parentId = dto.getParentNodeId();
+            if (parentId == null) {
+                // 루트
+                roots.add(dto);
+            } else {
+                ResponseKnowledgeDTO.TreeNode parent = nodeMap.get(parentId);
+                if (parent != null) {
+                    parent.getChildren().add(dto);
+                } else {
+                    // 데이터 깨진 경우: 부모 없으면 그냥 루트 취급하거나 무시
+                    roots.add(dto);
+                }
+            }
+        }
+
+        // 3) children 정렬 (sortOrder 기준)
+        sortTreeChildren(roots);
+
+        return roots;
+    }
+
+    private void sortTreeChildren(List<ResponseKnowledgeDTO.TreeNode> nodes) {
+        if (nodes == null) return;
+
+        nodes.sort(Comparator
+                .comparing((ResponseKnowledgeDTO.TreeNode n) ->
+                        n.getSortOrder() == null ? 0 : n.getSortOrder())
+                .thenComparing(ResponseKnowledgeDTO.TreeNode::getNodeId)
+        );
+
+        for (ResponseKnowledgeDTO.TreeNode n : nodes) {
+            sortTreeChildren(n.getChildren());
+        }
     }
 }

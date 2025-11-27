@@ -104,4 +104,19 @@ public class ResponseKnowledgeDTO {
         private String typeCd;
         private List<NodeBreadCrumb> pathNodeList;
     }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @Builder
+    public static class TreeNode {
+        private Integer nodeId;
+        private Integer parentNodeId;      // 루트면 null
+        private String label;
+        private String type;               // KNT0001, KNT0002 ...
+        private Integer depth;             // 선택
+        private Double sortOrder;        // 선택
+
+        private List<TreeNode> children;
+    }
 }
