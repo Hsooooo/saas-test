@@ -21,6 +21,7 @@ public class RequestKnowledgeDTO {
         private String label;
         private String content;
         private String noteStatusCd;
+        private String sourceCd;
         private Integer chatHistoryIdx;
         private Integer parentNodeIdx;
     }

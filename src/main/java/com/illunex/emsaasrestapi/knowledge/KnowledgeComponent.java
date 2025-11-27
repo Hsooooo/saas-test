@@ -240,4 +240,14 @@ public class KnowledgeComponent {
             knowledgeGardenLinkMapper.upsertSimilarLink(start, end, weight);
         }
     }
+
+    public EnumCode.KnowledgeGardenNode.SourceCd resolveNodeSourceCd(EnumCode.ChatRoom.SenderType senderType) {
+        if (senderType == null) return null;
+
+        return switch (senderType) {
+            case GEMINI -> EnumCode.KnowledgeGardenNode.SourceCd.GEMINI;
+            case GPT -> EnumCode.KnowledgeGardenNode.SourceCd.GPT;
+            default -> EnumCode.KnowledgeGardenNode.SourceCd.UNKNOWN;
+        };
+    }
 }

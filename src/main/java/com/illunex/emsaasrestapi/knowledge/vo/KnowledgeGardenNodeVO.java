@@ -43,6 +43,7 @@ public class KnowledgeGardenNodeVO {
     private Integer currentVersionIdx;
     private String stateCd;
     private String noteStatusCd;
+    private String sourceCd;
     private Integer viewCount = 0;
     private String updateDate;
     private String createDate;

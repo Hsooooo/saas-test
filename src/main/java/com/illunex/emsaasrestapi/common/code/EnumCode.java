@@ -273,7 +273,8 @@ public class EnumCode {
         @AllArgsConstructor
         public enum SenderType implements BaseCodeEnum {
             USER("RST0001", "USER"),
-            ASSISTANT("RST0002", "ASSISTANT");
+            GEMINI("RST0002", "GEMINI"),
+            GPT("RST0003", "GPT");
 
             private final String code;
             private final String value;
@@ -589,6 +590,18 @@ public class EnumCode {
         public enum StateCd implements BaseCodeEnum {
             ACTIVE("KNS0001", "활성"),
             TRASH("KNS0002", "휴지통");
+
+            private final String code;
+            private final String value;
+        }
+
+        @Getter
+        @AllArgsConstructor
+        public enum SourceCd implements BaseCodeEnum {
+            GEMINI("NSC0001", "Gemini"),
+            GPT("NSC0002", "GPT"),
+            UNKNOWN("NSC0003", "UNKNOWN"),
+            ;
 
             private final String code;
             private final String value;

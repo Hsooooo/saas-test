@@ -841,6 +841,7 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`knowledge_garden_node` (
      `current_version_idx` INT(11) NULL DEFAULT NULL COMMENT '현재 버전 노드 번호',
      `state_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '노드 상태 코드' COLLATE 'utf8mb4_general_ci',
      `note_status_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '문서 상태' COLLATE 'utf8mb4_general_ci',
+     `source_cd` VARCHAR(7) NULL COMMENT '노드 생성 출처 코드' COLLATE 'utf8mb4_general_ci',
      `view_count` INT(11) NOT NULL DEFAULT 0 COMMENT '조회수',
      `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
      `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
@@ -863,10 +864,10 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`knowledge_garden_node_version` (
      `content` LONGTEXT NOT NULL COMMENT '내용' COLLATE 'utf8mb4_general_ci',
      `state_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '노드 상태 코드' COLLATE 'utf8mb4_general_ci',
      `note_status_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '문서 상태' COLLATE 'utf8mb4_general_ci',
+     `source_cd` VARCHAR(7) NULL COMMENT '노드 생성 출처 코드' COLLATE 'utf8mb4_general_ci',
      `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
      PRIMARY KEY (`idx`) USING BTREE,
      UNIQUE KEY `ui_knowledge_garden_node_version` (`node_idx`, `version_no`) USING BTREE,
-     FULLTEXT INDEX `ft_idx_knowledge_garden_node_version` (`title`, `content`),
      INDEX `fk_knowledge_garden_node_version_node_idx` (`node_idx`) USING BTREE,
      CONSTRAINT `fk_knowledge_garden_node_version_node_idx` FOREIGN KEY (`node_idx`) REFERENCES `knowledge_garden_node` (`idx`) ON UPDATE CASCADE ON DELETE CASCADE
 )

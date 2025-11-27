@@ -82,6 +82,7 @@ public class KnowledgeService {
         nodeVO.setTypeCd(req.getTypeCd());
         nodeVO.setStateCd(EnumCode.KnowledgeGardenNode.StateCd.ACTIVE.getCode());
         nodeVO.setNoteStatusCd(noteStatusCd);
+        nodeVO.setSourceCd(req.getSourceCd());
         knowledgeComponent.insertByNodeVOAndParentNodeIdx(nodeVO, req.getParentNodeIdx());
 
         // Create Knowledge Garden Node Version
@@ -91,6 +92,7 @@ public class KnowledgeService {
         versionVO.setTitle(req.getLabel());
         versionVO.setNoteStatusCd(noteStatusCd);
         versionVO.setStateCd(EnumCode.KnowledgeGardenNode.StateCd.ACTIVE.getCode());
+        versionVO.setSourceCd(req.getSourceCd());
         knowledgeGardenNodeVersionMapper.insertByKnowledgeGardenNodeVersionVO(versionVO);
 
         nodeVO.setCurrentVersionIdx(versionVO.getIdx());
@@ -572,6 +574,15 @@ public class KnowledgeService {
         node.setViewCount(node.getViewCount() + 1);
         knowledgeGardenNodeMapper.updateByKnowledgeGardenNodeVO(node);
 
+        List<ResponseKnowledgeDTO.NodeInfo> pathNodes = knowledgeGardenNodeMapper.selectBreadCrumbByNodeIdx(node.getIdx(), node.getPartnershipMemberIdx()).stream()
+                .map(n -> ResponseKnowledgeDTO.NodeInfo.builder()
+                        .nodeId(n.getIdx())
+                        .label(n.getLabel())
+                        .type(n.getTypeCd())
+                        .depth(n.getDepth())
+                        .build()
+                ).toList();
+
         return ResponseKnowledgeDTO.KnowledgeNode.builder()
                 .content(content)
                 .currentVersionIdx(node.getCurrentVersionIdx())
@@ -582,6 +593,7 @@ public class KnowledgeService {
                 .partnershipIdx(pmVO.getPartnershipIdx())
                 .keywordNodeList(keywordNodes)
                 .referenceNodeList(referenceNodes)
+                .pathNodeList(pathNodes)
                 .build();
     }
 

@@ -829,3 +829,65 @@ CREATE TABLE IF NOT EXISTS `em_saas`.`chat_mcp` (
 COMMENT='LLM 채팅 MCP 정보'
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`knowledge_garden_node` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '지식정원 노드 번호',
+     `partnership_member_idx` INT(11) NULL DEFAULT NULL COMMENT '파트너십 회원 번호',
+     `label` VARCHAR(255) NULL DEFAULT NULL COMMENT '라벨' COLLATE 'utf8mb4_general_ci',
+     `type_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '노드 타입 코드' COLLATE 'utf8mb4_general_ci',
+     `parent_node_idx` INT(11) NULL DEFAULT NULL COMMENT '상위 노드 번호',
+     `sort_order` DECIMAL(20,10) NOT NULL DEFAULT 0 COMMENT '동일 parent_node_idx 내 정렬순서',
+     `depth` INT(11) NOT NULL DEFAULT 0 COMMENT '트리 깊이 (0=root)',
+     `current_version_idx` INT(11) NULL DEFAULT NULL COMMENT '현재 버전 노드 번호',
+     `state_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '노드 상태 코드' COLLATE 'utf8mb4_general_ci',
+     `note_status_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '문서 상태' COLLATE 'utf8mb4_general_ci',
+     `view_count` INT(11) NOT NULL DEFAULT 0 COMMENT '조회수',
+     `update_date` DATETIME NULL DEFAULT NULL COMMENT '수정일',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     INDEX `fk_knowledge_garden_node_partnership_member_idx` (`partnership_member_idx`) USING BTREE,
+     INDEX `idx_node_parent_sort` (`parent_node_idx`, `sort_order`) USING BTREE,
+     INDEX `idx_knowledge_garden_node_node_type` (`type_cd`) USING BTREE,
+     INDEX `idx_current_version_idx` (`current_version_idx`) USING BTREE,
+     CONSTRAINT `fk_knowledge_garden_node_partnership_member_idx` FOREIGN KEY (`partnership_member_idx`) REFERENCES `partnership_member` (`idx`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COMMENT='지식정원 노드 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`knowledge_garden_node_version` (
+     `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '지식정원 노드 버전 번호',
+     `node_idx` INT(11) NOT NULL COMMENT '지식정원 노드 번호',
+     `version_no` INT(11) NOT NULL COMMENT '버전 번호 (1부터 시작)',
+     `title` VARCHAR(255) NOT NULL COMMENT '제목' COLLATE 'utf8mb4_general_ci',
+     `content` LONGTEXT NOT NULL COMMENT '내용' COLLATE 'utf8mb4_general_ci',
+     `state_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '노드 상태 코드' COLLATE 'utf8mb4_general_ci',
+     `note_status_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '문서 상태' COLLATE 'utf8mb4_general_ci',
+     `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+     PRIMARY KEY (`idx`) USING BTREE,
+     UNIQUE KEY `ui_knowledge_garden_node_version` (`node_idx`, `version_no`) USING BTREE,
+     INDEX `fk_knowledge_garden_node_version_node_idx` (`node_idx`) USING BTREE,
+     CONSTRAINT `fk_knowledge_garden_node_version_node_idx` FOREIGN KEY (`node_idx`) REFERENCES `knowledge_garden_node` (`idx`) ON UPDATE CASCADE ON DELETE CASCADE
+)
+COMMENT='지식정원 노드 버전 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `em_saas`.`knowledge_garden_link` (
+    `idx` INT(11) NOT NULL AUTO_INCREMENT COMMENT '지식정원 링크 번호',
+    `start_node_idx` INT(11) NOT NULL COMMENT '시작 노드 번호',
+    `end_node_idx` INT(11) NOT NULL COMMENT '종료 노드 번호',
+    `type_cd` VARCHAR(7) NOT NULL COMMENT '관계 타입 코드' COLLATE 'utf8mb4_general_ci',
+    `state_cd` VARCHAR(7) NULL DEFAULT NULL COMMENT '링크 상태 코드' COLLATE 'utf8mb4_general_ci',
+    `weight` FLOAT DEFAULT NULL COMMENT '가중치',
+    `create_date` DATETIME NULL DEFAULT NULL COMMENT '생성일',
+    PRIMARY KEY (`idx`) USING BTREE,
+    INDEX `idx_knowledge_garden_link_start_type` (`start_node_idx`, `type_cd`) USING BTREE,
+    INDEX `idx_knowledge_garden_link_end_type` (`end_node_idx`, `type_cd`) USING BTREE,
+    UNIQUE KEY `uq_link_start_end_type` (start_node_idx, end_node_idx, type_cd),
+    CONSTRAINT `fk_knowledge_garden_link_start_node_idx` FOREIGN KEY (`start_node_idx`) REFERENCES `knowledge_garden_node` (`idx`) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT `fk_knowledge_garden_link_end_node_idx` FOREIGN KEY (`end_node_idx`) REFERENCES `knowledge_garden_node` (`idx`) ON UPDATE CASCADE ON DELETE CASCADE
+)
+COMMENT='지식정원 링크 정보'
+COLLATE='utf8mb4_general_ci'
+ENGINE=InnoDB;

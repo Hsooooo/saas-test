@@ -35,6 +35,7 @@ public class ResponseKnowledgeDTO {
         private Integer nodeId;
         private String label;
         private String type;
+        private Integer depth;
         private Map<String, Object> properties;
     }
 
@@ -65,6 +66,7 @@ public class ResponseKnowledgeDTO {
         private Integer viewCount;
         private List<NodeInfo> keywordNodeList;
         private List<NodeInfo> referenceNodeList;
+        private List<NodeInfo> pathNodeList;
     }
 
     @Getter

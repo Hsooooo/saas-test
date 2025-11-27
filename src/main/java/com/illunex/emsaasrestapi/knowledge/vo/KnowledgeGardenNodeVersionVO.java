@@ -34,5 +34,6 @@ public class KnowledgeGardenNodeVersionVO {
     private String content;
     private String stateCd;
     private String noteStatusCd;
+    private String sourceCd;
     private String createDate;
 }

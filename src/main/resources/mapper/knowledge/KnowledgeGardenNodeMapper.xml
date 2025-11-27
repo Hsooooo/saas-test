@@ -295,4 +295,21 @@ public class KnowledgeGardenNodeVO {
          ORDER BY n.update_date DESC
          LIMIT #{limit}
     </select>
+
+    <select id="selectBreadCrumbByNodeIdx" resultType="KnowledgeGardenNodeVO">
+        WITH RECURSIVE breadcrumb AS (
+            SELECT *
+            FROM knowledge_garden_node
+            WHERE idx = #{nodeIdx}
+              AND partnership_member_idx = #{partnershipMemberIdx}
+            UNION ALL
+            SELECT n.*
+            FROM knowledge_garden_node n
+            JOIN breadcrumb b ON n.idx = b.parent_node_idx
+            WHERE n.partnership_member_idx = #{partnershipMemberIdx}
+        )
+        SELECT *
+        FROM breadcrumb
+        ORDER BY depth ASC
+    </select>
 </mapper>
