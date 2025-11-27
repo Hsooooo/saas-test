@@ -386,15 +386,28 @@ public class KnowledgeService {
         knowledgeComponent.updateSubtreeDepth(moving.getIdx(), newDepth);
     }
 
-    public List<KnowledgeGardenNodeVO> searchKnowledgeNodes(RequestKnowledgeDTO.NodeSearch req, MemberVO memberVO) throws CustomException {
+    public List<ResponseKnowledgeDTO.KnowledgeNodeSearchResult> searchKnowledgeNodes(RequestKnowledgeDTO.NodeSearch req, MemberVO memberVO) throws CustomException {
         PartnershipMemberVO pmVO = partnershipComponent.checkPartnershipMember(memberVO, req.getPartnershipIdx());
-
-        return knowledgeGardenNodeMapper.selectByPmIdxAndSearchStrAndTypeCdInWithLimit(
+        List<ResponseKnowledgeDTO.KnowledgeNodeSearchResult> resp = knowledgeGardenNodeMapper.selectByPmIdxAndSearchStrAndTypeCdInWithLimit(
                 pmVO.getIdx(),
                 req.getSearchStr(),
                 req.getIncludeTypes(),
                 req.getLimit()
-        );
+        ).stream().map(n -> ResponseKnowledgeDTO.KnowledgeNodeSearchResult.builder()
+                        .nodeIdx(n.getIdx())
+                        .label(n.getLabel())
+                        .typeCd(n.getTypeCd())
+                        .pathNodeList(knowledgeGardenNodeMapper.selectBreadCrumbByNodeIdx(n.getIdx(), pmVO.getIdx()).stream()
+                                .map(bn -> ResponseKnowledgeDTO.NodeBreadCrumb.builder()
+                                        .nodeIdx(bn.getIdx())
+                                        .label(bn.getLabel())
+                                        .parentNodeIdx(bn.getParentNodeIdx())
+                                        .build())
+                                .toList())
+                        .build())
+                .toList();
+
+        return resp;
     }
 
     /**
@@ -783,6 +796,13 @@ public class KnowledgeService {
         );
     }
 
+    /**
+     * 지식 노드 휴지통 목록 조회
+     * @param req
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
     public List<KnowledgeGardenNodeVO> getTrashNodes(RequestKnowledgeDTO.TrashSearch req, MemberVO memberVO)
             throws CustomException {
 
@@ -797,5 +817,19 @@ public class KnowledgeService {
                 searchStr,
                 limit
         );
+    }
+
+    /**
+     * 지식 노드 트리 전체 조회
+     * @param partnershipIdx
+     * @param memberVO
+     * @return
+     * @throws CustomException
+     */
+    public List<KnowledgeGardenNodeVO> getKnowledgeNodeTreeAll(Integer partnershipIdx, MemberVO memberVO) throws CustomException {
+        // 파트너십 멤버 체크
+        PartnershipMemberVO pmVO = partnershipComponent.checkPartnershipMember(memberVO, partnershipIdx);
+        // 트리 노드 조회
+        return knowledgeGardenNodeMapper.selectTreeByPartnershipMemberIdx(pmVO.getIdx());
     }
 }

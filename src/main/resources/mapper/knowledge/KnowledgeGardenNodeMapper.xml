@@ -312,4 +312,13 @@ public class KnowledgeGardenNodeVO {
         FROM breadcrumb
         ORDER BY depth ASC
     </select>
+
+    <select id="selectTreeByPartnershipMemberIdx" resultType="KnowledgeGardenNodeVO">
+        SELECT *
+        FROM knowledge_garden_node
+        WHERE partnership_member_idx = #{partnershipMemberIdx}
+          AND type_cd IN ('KNT0001', 'KNT0002')
+          AND state_cd = 'KNS0001'
+        ORDER BY parent_node_idx, sort_order, idx
+    </select>
 </mapper>

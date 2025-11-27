@@ -45,4 +45,6 @@ public interface KnowledgeGardenNodeMapper {
     List<KnowledgeGardenNodeVO> selectTrashNodes(Integer partnershipMemberIdx, String[] includeTypes, String searchStr, Integer limit);
 
     List<KnowledgeGardenNodeVO> selectBreadCrumbByNodeIdx(Integer nodeIdx, Integer partnershipMemberIdx);
+
+    List<KnowledgeGardenNodeVO> selectTreeByPartnershipMemberIdx(Integer partnershipMemberIdx);
 }

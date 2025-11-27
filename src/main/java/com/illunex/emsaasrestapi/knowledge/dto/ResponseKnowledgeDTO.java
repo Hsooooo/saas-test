@@ -93,4 +93,15 @@ public class ResponseKnowledgeDTO {
         private String createdAt;
         private Boolean isCurrent;
     }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @Builder
+    public static class KnowledgeNodeSearchResult {
+        private Integer nodeIdx;
+        private String label;
+        private String typeCd;
+        private List<NodeBreadCrumb> pathNodeList;
+    }
 }

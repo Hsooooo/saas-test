@@ -146,6 +146,14 @@ public class KnowledgeController {
                 .build();
     }
 
+    @GetMapping("/node/tree/all")
+    public CustomResponse<?> getNodeTreeAll(@RequestParam Integer partnershipIdx,
+                                            @CurrentMember MemberVO memberVO) throws CustomException {
+        return CustomResponse.builder()
+                .data(knowledgeService.getKnowledgeNodeTreeAll(partnershipIdx, memberVO))
+                .build();
+    }
+
     /**
      * 지식 노드 트리 위치 변경
      * @param req
